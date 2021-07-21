@@ -198,7 +198,7 @@ def main():
     bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
 
     print ("Performing spatial overlay...")
-    pm_tenures_htg = intersect_HTG (workspace, bcgw_conn_path, table)
+    pm_tenures_htg = intersect_HTG (bcgw_conn_path, table)
 
     print ("Generating the report...")
     fields = ['DISTRICT_OFFICE', 'FILE_NBR', 'DTID', 'CLIENT_NAME', 'STATUS', 'APPLICATION_TYPE',
