@@ -283,7 +283,7 @@ def main():
                 '6': ['South Island Natural Resource District','Nanaimo Staff &  Port Alberni for Log Handling / Storage']
                 }
 
-    tenures = proximity_alaysis (workspace, bcgw_conn_path, table,zone_layer,zone_dict)
+    tenures = proximity_alaysis (bcgw_conn_path, table,zone_layer,zone_dict)
 
     print ("Generating the report...")
     fields = ['DISTRICT_OFFICE', 'FDISTRICT', 'FILE_NBR', 'DTID', 'CLIENT_NAME', 'STAGE', 'STATUS', 'APPLICATION_TYPE',
