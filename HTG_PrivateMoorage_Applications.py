@@ -99,14 +99,14 @@ def create_bcgw_connection(workspace, bcgw_user_name,bcgw_password):
 
 def intersect_HTG (workspace, bcgw_conn_path, table):
     """Returns the spatial intersection of PM tenures and HTG consulatation areas"""
-    tenure_layer = os.path.join(workspace, 'Temp_BCGW.sde', 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
+    tenure_layer = os.path.join(bcgw_conn_path, 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
     tenureLayer = 'tenure_layer'
     arcpy.MakeFeatureLayer_management (tenure_layer, tenureLayer)
     arcpy.AddJoin_management(tenureLayer, 'DISPOSITION_TRANSACTION_SID', table, 'DTID','KEEP_COMMON')
     pm_tenures = 'in_memory\pm_tenures'
     arcpy.CopyFeatures_management(tenureLayer, pm_tenures)
 
-    FN_layer = os.path.join(workspace, 'Temp_BCGW.sde', 'WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP')
+    FN_layer = os.path.join(bcgw_conn_path, 'WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP')
     htgLayer = 'htg_layer'
     where_clause = """ CONTACT_NAME in ('Halalt First Nation', 'Lake Cowichan First Nation')
                        AND CONTACT_ORGANIZATION_NAME = 'Halalt First Nation'"""
