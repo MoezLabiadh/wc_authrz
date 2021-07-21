@@ -123,9 +123,9 @@ def create_bcgw_connection(workspace, bcgw_user_name,bcgw_password):
     return bcgw_conn_path
 
 
-def proximity_alaysis (workspace, bcgw_conn_path, table, zone_layer, zone_dict):
+def proximity_alaysis (bcgw_conn_path, table, zone_layer, zone_dict):
     """Returns the spatial intersection of tenure shapes and District poximity areas"""
-    tenure_layer = os.path.join(workspace, 'Temp_BCGW.sde', 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
+    tenure_layer = os.path.join(bcgw_conn_path, 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
     tenureLayer = 'tenure_layer'
     arcpy.MakeFeatureLayer_management (tenure_layer, tenureLayer)
     arcpy.AddJoin_management(tenureLayer, 'DISPOSITION_TRANSACTION_SID', table, 'DTID','KEEP_COMMON')
