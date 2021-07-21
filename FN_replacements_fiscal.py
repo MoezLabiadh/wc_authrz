@@ -108,7 +108,7 @@ def create_bcgw_connection(workspace, bcgw_user_name,bcgw_password):
     return bcgw_conn_path
 
 
-def get_layers (workspace, table, bcgw_conn_path, req_fields):
+def get_layers (table, bcgw_conn_path, req_fields):
     """Returns layers of FN consultation areas and Expiring tenures"""
     tenure_layer = os.path.join(workspace, 'Temp_BCGW.sde', 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
     tenureLayer = 'tenure_layer'
@@ -310,7 +310,7 @@ def main():
     print ('Creating Layers: Consultation areas and Expring Tenures')
     req_fields = ['FILE_NBR', 'EXPIRY_DATE','DISTRICT_OFFICE', 'STAGE', 'STATUS', 'APPLICATION_TYPE',
                   'TYPE', 'SUBTYPE', 'PURPOSE', 'SUBPURPOSE', 'LOCATION', 'CLIENT_NAME']
-    expiring_tenures, consult_areas = get_layers (workspace, table, bcgw_conn_path, req_fields)
+    expiring_tenures, consult_areas = get_layers (table, bcgw_conn_path, req_fields)
 
     print('Intersecting Expiring tenures and FN areas...')
     intersect = intersect_FN (expiring_tenures,consult_areas)
