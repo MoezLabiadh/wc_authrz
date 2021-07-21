@@ -97,7 +97,7 @@ def create_bcgw_connection(workspace, bcgw_user_name,bcgw_password):
 
     return bcgw_conn_path
 
-def intersect_HTG (workspace, bcgw_conn_path, table):
+def intersect_HTG (bcgw_conn_path, table):
     """Returns the spatial intersection of PM tenures and HTG consulatation areas"""
     tenure_layer = os.path.join(bcgw_conn_path, 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
     tenureLayer = 'tenure_layer'
