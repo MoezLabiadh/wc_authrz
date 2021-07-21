@@ -87,9 +87,9 @@ def create_bcgw_connection(workspace, bcgw_user_name,bcgw_password):
 
     return bcgw_conn_path
 
-def intersect_Nanwakolas (workspace, bcgw_conn_path, table):
+def intersect_Nanwakolas (bcgw_conn_path, table):
     """Returns the spatial intersection tenures and NAN consulatation area"""
-    tenure_layer = os.path.join(workspace, 'Temp_BCGW.sde', 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
+    tenure_layer = os.path.join(bcgw_conn_path, 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
     tenureLayer = 'tenure_layer'
     arcpy.MakeFeatureLayer_management (tenure_layer, tenureLayer)
     arcpy.AddJoin_management(tenureLayer, 'CROWN_LANDS_FILE', table, 'FILE_NUMBER','KEEP_COMMON')
@@ -183,7 +183,7 @@ def main():
     bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
 
     print ("Performing spatial overlay...")
-    assign_tenures_nan = intersect_Nanwakolas (workspace, bcgw_conn_path, table)
+    assign_tenures_nan = intersect_Nanwakolas (bcgw_conn_path, table)
 
     print ("Generating the report...")
     fields = ['ORG_UNIT', 'FDISTRICT', 'DISTRICT_OFFICE', 'FILE_NUMBER', 'TASK_TYPE',
