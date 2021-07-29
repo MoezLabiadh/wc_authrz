@@ -110,7 +110,7 @@ def create_bcgw_connection(workspace, bcgw_user_name,bcgw_password):
 
 def get_layers (table, bcgw_conn_path, req_fields):
     """Returns layers of FN consultation areas and Expiring tenures"""
-    tenure_layer = os.path.join(workspace, 'Temp_BCGW.sde', 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
+    tenure_layer = os.path.join(bcgw_conn_path, 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
     tenureLayer = 'tenure_layer'
     arcpy.MakeFeatureLayer_management (tenure_layer, tenureLayer)
     arcpy.AddJoin_management(tenureLayer, 'DISPOSITION_TRANSACTION_SID', table, 'DTID','KEEP_COMMON')
@@ -121,7 +121,7 @@ def get_layers (table, bcgw_conn_path, req_fields):
     expiring_tenures = 'in_memory\_expiring_tenures'
     arcpy.Dissolve_management (join_tenures, expiring_tenures, req_fields)
 
-    FN_layer = os.path.join(workspace, 'Temp_BCGW.sde', 'WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP')
+    FN_layer = os.path.join(bcgw_conn_path, 'WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP')
     consult_layer = 'consult_layer'
     arcpy.MakeFeatureLayer_management(FN_layer, consult_layer)
     arcpy.SelectLayerByLocation_management(consult_layer, 'intersect', expiring_tenures)
@@ -129,7 +129,7 @@ def get_layers (table, bcgw_conn_path, req_fields):
     consult_areas = 'in_memory\_consult_areas'
     arcpy.Dissolve_management (consult_layer, consult_areas, 'CNSLTN_AREA_NAME')
 
-    return expiring_tenures, consult_areas
+    return expiring_tenures, consult_layer, consult_areas
 
 
 def intersect_FN (expiring_tenures,consult_areas):
@@ -181,7 +181,7 @@ def summarize_data (df):
 def generate_report (workspace, df_list, fiscal):
     """ Exports dataframes to multi-tab excel spreasheet"""
     sheet_list = ["Master List- Expring Tenures", "Master List- FN overlap",
-                  "Summary- Files per office & FN"]
+                  "Summary- Files per office & FN", "FN Contact info"]
     file_name = os.path.join(workspace, 'FN_replacements_Fiscal' + str(fiscal) +'.xlsx')
 
     writer = pd.ExcelWriter(file_name,engine='xlsxwriter')
@@ -301,8 +301,6 @@ def main():
     table = df2gdb (df_filter)
 
     print ('Connecting to BCGW...PLease enter your credentials')
-    #bcgw_user_name = ''
-    #bcgw_password = ''
     bcgw_user_name = raw_input("Enter your BCGW username:")
     bcgw_password = raw_input("Enter your BCGW password:")
     bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
@@ -310,7 +308,7 @@ def main():
     print ('Creating Layers: Consultation areas and Expring Tenures')
     req_fields = ['FILE_NBR', 'EXPIRY_DATE','DISTRICT_OFFICE', 'STAGE', 'STATUS', 'APPLICATION_TYPE',
                   'TYPE', 'SUBTYPE', 'PURPOSE', 'SUBPURPOSE', 'LOCATION', 'CLIENT_NAME']
-    expiring_tenures, consult_areas = get_layers (table, bcgw_conn_path, req_fields)
+    expiring_tenures, consult_layer, consult_areas = get_layers (table, bcgw_conn_path, req_fields)
 
     print('Intersecting Expiring tenures and FN areas...')
     intersect = intersect_FN (expiring_tenures,consult_areas)
@@ -318,6 +316,13 @@ def main():
     print('Exporting result to dataframe...')
     req_fields.insert(2,'CNSLTN_AREA_NAME')
     df_inter = fc2df (intersect, req_fields)
+
+    # FN contact info
+    fields = ['CNSLTN_AREA_NAME','CONTACT_ORGANIZATION_NAME','CONTACT_NAME','ORGANIZATION_TYPE','CONTACT_UPDATE_DATE',
+              'CONTACT_TITLE', 'CONTACT_ADDRESS','CONTACT_CITY','CONTACT_PROVINCE','CONTACT_POSTAL_CODE',
+              'CONTACT_FAX_NUMBER','CONTACT_PHONE_NUMBER','CONTACT_EMAIL_ADDRESS']
+    df_fn = fc2df (consult_layer, fields)
+    df_fn.sort_values(by=[fields[0],fields[1]], inplace = True)
 
     print('Creating Summary Statistics...')
     sum_nbr_files = summarize_data(df_inter)
@@ -327,8 +332,8 @@ def main():
     excel_path = create_dir (out_path, 'SPREADSHEET')
 
     print('Exporting Results...')
-    generate_report (excel_path, [df_filter, df_inter,sum_nbr_files], fiscal)
-    export_shapes (sum_nbr_files,expiring_tenures,fiscal,spatial_path)
+    generate_report (excel_path, [df_filter, df_inter,sum_nbr_files,df_fn], fiscal)
+    #export_shapes (sum_nbr_files,expiring_tenures,fiscal,spatial_path)
 
     arcpy.Delete_management('in_memory')
 
