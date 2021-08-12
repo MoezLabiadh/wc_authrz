@@ -60,14 +60,34 @@ def filter_TITAN (titan_report, fiscal):
                  (df['EXPIRY DATE'] >= datetime.date(fiscal,4,1)) &
                  (df['EXPIRY DATE'] <= datetime.date(fiscal+1,3,31))]
 
+    # Convert commencement date column to datetime format
+    df['COMMENCEMENT DATE'] =  pd.to_datetime(df['COMMENCEMENT DATE'],
+                                    infer_datetime_format=True,
+                                    errors = 'coerce').dt.date
+    #Calculate Tenure Length
+    df ['diff'] = ((df['EXPIRY DATE'] - df['COMMENCEMENT DATE'] )\
+                                  / np.timedelta64(1,'Y'))
+    df['TENURE LENGTH'] = df['diff'].fillna(0).round().astype(int)
+
+
     #Remove spaces from column names, remove special characters
     df.sort_values(by = ['EXPIRY DATE'], inplace = True)
     df['EXPIRY DATE'] = df['EXPIRY DATE'].astype(str)
+    df['COMMENCEMENT DATE'] = df['COMMENCEMENT DATE'].astype(str)
     df['DISTRICT OFFICE'] = df['DISTRICT OFFICE'].fillna(value='NANAIMO')
     df.rename(columns={'FILE #':'FILE_NBR'}, inplace=True)
     df.columns = df.columns.str.replace(' ', '_')
 
     return df
+
+def add_max_term (df, terms_file):
+    """Add the Maximum tenure term column to the datataframe"""
+    df_terms = pd.read_excel(terms_file)
+    df_tn = pd.merge(df, df_terms,  how='left',
+                     left_on=['PURPOSE', 'SUBPURPOSE', 'TYPE', 'SUBTYPE'],
+                     right_on=['PURPOSE', 'SUBPURPOSE', 'TYPE', 'SUBTYPE'])
+
+    return df_tn
 
 def df2gdb (df):
     """Converts a pandas df to a gbd table"""
@@ -296,25 +316,34 @@ def main():
     print ("Filtering TITAN report...")
     fiscal = 2022
     df_filter = filter_TITAN (titan_report,fiscal)
+    print ("Adding maximum tenure terms...")
+    terms_file = r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Moez\DATASETS\Tenure_Terms\max_tenure_terms.xlsx'
+    df_tn = add_max_term (df_filter, terms_file)
+
+    req_fields = ['DISTRICT_OFFICE', 'FILE_NBR', 'DTID', 'COMMENCEMENT_DATE',
+                  'EXPIRY_DATE', 'TENURE_LENGTH', 'MAX_TENURE_TERM','STAGE', 'STATUS', 'APPLICATION_TYPE',
+                  'TYPE', 'SUBTYPE', 'PURPOSE', 'SUBPURPOSE', 'LOCATION', 'CLIENT_NAME']
+
+    df_tn = df_tn[req_fields]
 
     print ("Converting df to GBD table...")
-    table = df2gdb (df_filter)
+    table = df2gdb (df_tn)
 
     print ('Connecting to BCGW...PLease enter your credentials')
-    bcgw_user_name = raw_input("Enter your BCGW username:")
-    bcgw_password = raw_input("Enter your BCGW password:")
+    bcgw_user_name = 'MLABIADH'
+    bcgw_password = 'MoezLab8813'
+    #bcgw_user_name = raw_input("Enter your BCGW username:")
+    #bcgw_password = raw_input("Enter your BCGW password:")
     bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
 
     print ('Creating Layers: Consultation areas and Expring Tenures')
-    req_fields = ['FILE_NBR', 'EXPIRY_DATE','DISTRICT_OFFICE', 'STAGE', 'STATUS', 'APPLICATION_TYPE',
-                  'TYPE', 'SUBTYPE', 'PURPOSE', 'SUBPURPOSE', 'LOCATION', 'CLIENT_NAME']
     expiring_tenures, consult_layer, consult_areas = get_layers (table, bcgw_conn_path, req_fields)
 
     print('Intersecting Expiring tenures and FN areas...')
     intersect = intersect_FN (expiring_tenures,consult_areas)
 
     print('Exporting result to dataframe...')
-    req_fields.insert(2,'CNSLTN_AREA_NAME')
+    req_fields.insert(7,'CNSLTN_AREA_NAME')
     df_inter = fc2df (intersect, req_fields)
 
     # FN contact info
@@ -332,8 +361,8 @@ def main():
     excel_path = create_dir (out_path, 'SPREADSHEET')
 
     print('Exporting Results...')
-    generate_report (excel_path, [df_filter, df_inter,sum_nbr_files,df_fn], fiscal)
-    #export_shapes (sum_nbr_files,expiring_tenures,fiscal,spatial_path)
+    generate_report (excel_path, [df_tn, df_inter,sum_nbr_files,df_fn], fiscal)
+    export_shapes (sum_nbr_files,expiring_tenures,fiscal,spatial_path)
 
     arcpy.Delete_management('in_memory')
 
