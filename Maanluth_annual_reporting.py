@@ -1,11 +1,12 @@
 #-------------------------------------------------------------------------------
 # Name:        Maanluth Annual Reporting
 #
-# Purpose:     This script generates reports for Maanluth Annual Reporting
+# Purpose:     This script generates information required
+#              for Maanluth Annual Reporting
 #
 # Input(s):    (1) Workspace (folder) where outputs will be generated.
 #              (2) Titan report (excel file) - TITAN_RPT010
-#              (3) Start Year (e.g 2020)
+#              (3) Start Year (e.g 2021)
 #              (4) BCGW connection parameters - will be prompt during
 #                  script execution
 #
@@ -38,9 +39,6 @@ def filter_TITAN (titan_report, year):
     #Read TITAN report into df
     df = pd.read_excel(titan_report, 'TITAN_RPT010',
                        converters={'FILE NUMBER':str,
-                                   'RECEIVED DATE':str,
-                                   'EXPIRY DATE':str,
-                                   'ADJUDICATED DATE':str,
                                    'OFFER ACCEPTED DATE':str})
 
     # Convert expiry date column to datetime format
@@ -48,18 +46,30 @@ def filter_TITAN (titan_report, year):
                                     infer_datetime_format=True,
                                     errors = 'coerce').dt.date
 
+    df['EXPIRY DATE'] =  pd.to_datetime(df['EXPIRY DATE'],
+                                    infer_datetime_format=True,
+                                    errors = 'coerce').dt.date
+
+
     # Filter the needed data: tenures expiring during fiscal year
-    df = df.loc [(df['OFFERED DATE'] >= datetime.date(year,9,1)) &
-                 (df['OFFERED DATE'] <= datetime.date(year+1,8,31)) &
+    df = df.loc [(df['OFFERED DATE'] >= datetime.date(year-1,9,1)) &
+                 (df['OFFERED DATE'] <= datetime.date(year,8,31)) &
                  (~df['STATUS'].isin(['CANCELLED', 'EXPIRED']))]
+
+    #Calculate Tenure Length
+    df ['diff'] = ((df['EXPIRY DATE'] - df['OFFERED DATE'] )\
+                                  / np.timedelta64(1,'Y'))
+    df['TENURE LENGTH YEARS'] = df['diff'].fillna(0).round().astype(int)
 
     #Remove spaces from column names, remove special characters
     df.sort_values(by = ['OFFERED DATE'], inplace = True)
     df['OFFERED DATE'] = df['OFFERED DATE'].astype(str)
+    df['EXPIRY DATE'] = df['EXPIRY DATE'].astype(str)
     df['DISTRICT OFFICE'] = df['DISTRICT OFFICE'].fillna(value='NANAIMO')
     df.columns = df.columns.str.replace(' ', '_')
 
     return df
+
 
 def df2gdb (df):
     """Converts a pandas df to a gbd table"""
@@ -100,7 +110,7 @@ def create_bcgw_connection(workspace, bcgw_user_name,bcgw_password):
     return bcgw_conn_path
 
 
-def get_offered (bcgw_conn_path,table):
+def get_offered (bcgw_conn_path,table,workspace):
     """Returns the spatial intersection of offered tenures and Maanulth area"""
     tenures = os.path.join(bcgw_conn_path, 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
     tenureLayer = 'tenure_layer'
@@ -108,6 +118,7 @@ def get_offered (bcgw_conn_path,table):
     arcpy.AddJoin_management(tenureLayer, 'CROWN_LANDS_FILE', table, 'FILE_NUMBER','KEEP_COMMON')
 
     offered = 'in_memory\_offered'
+    #offered = os.path.join(workspace, 'data.gdb', 'offered_20210811')
     arcpy.CopyFeatures_management(tenureLayer, offered)
 
     FN_layer = os.path.join(bcgw_conn_path, 'WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP')
@@ -115,6 +126,7 @@ def get_offered (bcgw_conn_path,table):
     where_clause = """ CNSLTN_AREA_NAME = 'Maa-nulth First Nations Final Agreement Areas' """
     arcpy.MakeFeatureLayer_management (FN_layer, maanLayer, where_clause)
     offered_maan = 'in_memory\_offered_maan'
+    #offered_maan = os.path.join(workspace, 'data.gdb', 'offered_maan_20210811')
     arcpy.SpatialJoin_analysis(offered, maanLayer,offered_maan,'', 'KEEP_COMMON')
 
     return offered_maan
@@ -123,23 +135,37 @@ def get_offered (bcgw_conn_path,table):
 def intersect_LU (bcgw_conn_path, offered_maan):
     """ Returns the intersection of offered tenures and Landscape Units"""
     offered_maan_lu = 'in_memory\_offered_maan_lu'
+    #offered_maan_lu = os.path.join(workspace, 'data.gdb', 'lu_intersect_tempo')
     lu_fc = os.path.join(bcgw_conn_path, 'WHSE_LAND_USE_PLANNING.RMP_LANDSCAPE_UNIT_SVW')
-    arcpy.SpatialJoin_analysis(offered_maan,lu_fc, offered_maan_lu,'JOIN_ONE_TO_MANY', 'KEEP_COMMON')
+    arcpy.Intersect_analysis([offered_maan,lu_fc], offered_maan_lu)
+    arcpy.AddField_management(offered_maan_lu, "AREA_HA", "DOUBLE")
+    with arcpy.da.UpdateCursor(offered_maan_lu, ["AREA_HA","SHAPE@AREA"]) as cursor:
+        for row in cursor:
+            row[0] = row[1]/10000
+            cursor.updateRow(row)
 
     return offered_maan_lu
 
 
 def intersect_IHA (bcgw_conn_path, offered_maan):
     """ Returns the intersection of offered tenures and Important HArvest Areas"""
+    arcpy.DeleteField_management (offered_maan, ['STATUS'])
     offered_maan_iha = 'in_memory\_offered_maan_iha'
+    #offered_maan_iha = os.path.join(workspace, 'data.gdb', 'iha_intersect_tempo')
     iha_fc = os.path.join(bcgw_conn_path, 'WHSE_LEGAL_ADMIN_BOUNDARIES.FNT_TREATY_SIDE_AGREEMENTS_SP')
     maan_iha = 'maan_iha'
-    where_clause = """ STATUS = 'ACTIVE' AND TREATY = 'Maa-nulth'
+    where_clause = """ TREATY = 'Maa-nulth'
                        AND AREA_TYPE = 'Important Harvest Area' """
     arcpy.MakeFeatureLayer_management (iha_fc, maan_iha, where_clause)
-    arcpy.SpatialJoin_analysis(offered_maan,maan_iha, offered_maan_iha,'JOIN_ONE_TO_MANY', 'KEEP_COMMON')
+    arcpy.Intersect_analysis([offered_maan,maan_iha], offered_maan_iha)
+    arcpy.AddField_management(offered_maan_iha, "AREA_HA", "DOUBLE")
+    with arcpy.da.UpdateCursor(offered_maan_iha, ["AREA_HA","SHAPE@AREA"]) as cursor:
+        for row in cursor:
+            row[0] = row[1]/10000
+            cursor.updateRow(row)
 
     return offered_maan_iha
+
 
 
 def fc2df (fc, fields):
@@ -155,9 +181,15 @@ def fc2df (fc, fields):
     return df
 
 
-def generate_report (workspace, df_list, year):
+def sum_lu (df_lu):
+    groupby = df_lu.groupby(['LANDSCAPE_UNIT_NAME'])['AREA_HA'].sum().reset_index()
+    df_lu_sum = pd.DataFrame(groupby)
+
+    return df_lu_sum
+
+
+def generate_report (workspace, df_list, sheet_list, year):
     """ Exports dataframes to multi-tab excel spreasheet"""
-    sheet_list = ['Offered Tenures in Maanulth area', 'Overlay - IHA','Overlay - LU']
     file_name = os.path.join(workspace, 'Maanulth_annual_reporting_' + str(year) +'.xlsx')
 
     writer = pd.ExcelWriter(file_name,engine='xlsxwriter')
@@ -190,14 +222,14 @@ def main():
     """Runs the program"""
     arcpy.env.overwriteOutput = True
     arcpy.env.qualifiedFieldNames = False
-    workspace = r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Moez\WORKSPACE\202110720_Maanulth_reporting'
+    workspace = r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Moez\WORKSPACE\202110720_Maanulth_reporting\final_aug2021'
     titan_report = os.path.join(workspace, 'TITAN_RPT010.xlsx')
 
     titan_date = get_titan_report_date (titan_report)
     print 'Titan report date/time is: {}'.format (titan_date)
 
     print ("Filtering TITAN report...")
-    year = 2020
+    year = 2021
     df_filter = filter_TITAN (titan_report,year)
 
     print ("Converting df to GBD table...")
@@ -211,7 +243,7 @@ def main():
     bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
 
     print ("Retrieving Offered Tenures in Maanulth FN area...")
-    offered_maan = get_offered (bcgw_conn_path, table)
+    offered_maan = get_offered (bcgw_conn_path, table,workspace)
     print ("Performing spatial overlays...")
     print ("..overlay with Landscape Units")
     offered_maan_lu = intersect_LU (bcgw_conn_path, offered_maan)
@@ -219,24 +251,31 @@ def main():
     offered_maan_iha = intersect_IHA (bcgw_conn_path, offered_maan)
 
     print ("Export dfs...")
-    fields = ['FILE_NUMBER','TENURE_STAGE','TENURE_STATUS', 'TASK_DESCRIPTION', 'OFFERED_DATE',
-              'TYPE','SUBTYPE','PURPOSE','SUBPURPOSE', 'TENURE_AREA_IN_HECTARES']
+    fields = ['FILE_NUMBER','TENURE_STAGE','TENURE_STATUS', 'TASK_DESCRIPTION', 'OFFERED_DATE', 'OFFER_ACCEPTED_DATE',
+              'EXPIRY_DATE', 'TENURE_LENGTH_YEARS','TYPE','SUBTYPE','PURPOSE','SUBPURPOSE',
+              'TENURE_AREA_IN_HECTARES']
     df_tenures = fc2df (offered_maan, fields)
 
-    fields = ['FILE_NUMBER', 'LANDSCAPE_UNIT_NAME']
+    fields = ['FILE_NUMBER', 'LANDSCAPE_UNIT_NAME','AREA_HA']
     df_lu = fc2df (offered_maan_lu, fields)
+    df_lu_sum = sum_lu (df_lu)
 
-    fields = ['FILE_NUMBER','AREA_TYPE', 'TREATY_SIDE_AGREEMENT_ID','TREATY_SIDE_AGREEMENT_AREA_ID']
+
+    fields = ['FILE_NUMBER','AREA_TYPE', 'TREATY_SIDE_AGREEMENT_ID',
+              'TREATY_SIDE_AGREEMENT_AREA_ID','STATUS', 'AREA_HA']
     df_iha = fc2df (offered_maan_iha, fields)
 
     print ('Generate the report...')
     df_tenures.sort_values (by = ['OFFERED_DATE'], inplace=True)
-    df_list = [df_tenures,df_iha,df_lu]
-    generate_report (workspace, df_list, year)
+    df_list = [df_tenures,df_iha,df_lu, df_lu_sum]
+    sheet_list = ['Offered Tenures in Maan. area', 'Overlay - IHA',
+                  'Overlay - LU', 'LU Area Summary']
+    generate_report (workspace, df_list, sheet_list, year)
 
     arcpy.Delete_management('in_memory')
 
     print ('Processing completed!')
+
 
 if __name__ == "__main__":
     main()
