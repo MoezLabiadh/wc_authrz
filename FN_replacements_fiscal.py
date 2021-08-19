@@ -139,7 +139,7 @@ def get_layers (table, bcgw_conn_path, req_fields):
     arcpy.CopyFeatures_management(tenureLayer, join_tenures)
 
     expiring_tenures = 'in_memory\_expiring_tenures'
-    arcpy.Dissolve_management (join_tenures, expiring_tenures, req_fields)
+    arcpy.Dissolve_management (join_tenures, expiring_tenures, req_fields,[['TENURE_AREA_IN_HECTARES', "SUM"]])
 
     FN_layer = os.path.join(bcgw_conn_path, 'WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP')
     consult_layer = 'consult_layer'
@@ -316,35 +316,44 @@ def main():
     print ("Filtering TITAN report...")
     fiscal = 2022
     df_filter = filter_TITAN (titan_report,fiscal)
-    print ("Adding maximum tenure terms...")
-    terms_file = r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Moez\DATASETS\Tenure_Terms\max_tenure_terms.xlsx'
-    df_tn = add_max_term (df_filter, terms_file)
 
-    req_fields = ['DISTRICT_OFFICE', 'FILE_NBR', 'DTID', 'COMMENCEMENT_DATE',
-                  'EXPIRY_DATE', 'TENURE_LENGTH', 'MAX_TENURE_TERM','STAGE', 'STATUS', 'APPLICATION_TYPE',
-                  'TYPE', 'SUBTYPE', 'PURPOSE', 'SUBPURPOSE', 'LOCATION', 'CLIENT_NAME']
-
-    df_tn = df_tn[req_fields]
 
     print ("Converting df to GBD table...")
-    table = df2gdb (df_tn)
+    table = df2gdb (df_filter)
 
     print ('Connecting to BCGW...PLease enter your credentials')
-    bcgw_user_name = 'MLABIADH'
-    bcgw_password = 'MoezLab8813'
-    #bcgw_user_name = raw_input("Enter your BCGW username:")
-    #bcgw_password = raw_input("Enter your BCGW password:")
+    bcgw_user_name = raw_input("Enter your BCGW username:")
+    bcgw_password = raw_input("Enter your BCGW password:")
     bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
 
     print ('Creating Layers: Consultation areas and Expring Tenures')
+    req_fields = ['DISTRICT_OFFICE','FDISTRICT','FILE_NBR', 'DTID', 'COMMENCEMENT_DATE',
+              'EXPIRY_DATE', 'TENURE_LENGTH','STAGE', 'STATUS', 'APPLICATION_TYPE',
+              'TYPE', 'SUBTYPE', 'PURPOSE', 'SUBPURPOSE','LOCATION',
+              'CLIENT_NAME', 'ADDRESS_LINE_1', 'ADDRESS_LINE_2','ADDRESS_LINE_3','CITY', 'PROVINCE', 'POSTAL_CODE',
+              'COUNTRY','STATE','ZIP_CODE']
     expiring_tenures, consult_layer, consult_areas = get_layers (table, bcgw_conn_path, req_fields)
 
     print('Intersecting Expiring tenures and FN areas...')
     intersect = intersect_FN (expiring_tenures,consult_areas)
 
     print('Exporting result to dataframe...')
-    req_fields.insert(7,'CNSLTN_AREA_NAME')
-    df_inter = fc2df (intersect, req_fields)
+    req_fields.insert(14,'SUM_TENURE_AREA_IN_HECTARES')
+    df_exp = fc2df (expiring_tenures, req_fields)
+    fields_inter = req_fields[:]
+    fields_inter.remove('TENURE_LENGTH')
+    fields_inter.insert(8,'CNSLTN_AREA_NAME')
+    df_inter = fc2df (intersect, fields_inter)
+    df_inter.rename(columns={'SUM_TENURE_AREA_IN_HECTARES': 'AREA_HA'}, inplace=True)
+
+    print ("Adding maximum tenure terms...")
+    terms_file = r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Moez\DATASETS\Tenure_Terms\max_tenure_terms.xlsx'
+    df_tn = add_max_term (df_exp, terms_file)
+    field_tn = req_fields[:]
+    field_tn.insert(7,'MAX_TENURE_TERM')
+    df_tn = df_tn[field_tn]
+    df_tn.rename(columns={'SUM_TENURE_AREA_IN_HECTARES': 'AREA_HA'}, inplace=True)
+
 
     # FN contact info
     fields = ['CNSLTN_AREA_NAME','CONTACT_ORGANIZATION_NAME','CONTACT_NAME','ORGANIZATION_TYPE','CONTACT_UPDATE_DATE',
@@ -359,6 +368,7 @@ def main():
     out_path = create_dir (workspace, 'OUTPUTS')
     spatial_path = create_dir (out_path, 'SPATAL')
     excel_path = create_dir (out_path, 'SPREADSHEET')
+
 
     print('Exporting Results...')
     generate_report (excel_path, [df_tn, df_inter,sum_nbr_files,df_fn], fiscal)
