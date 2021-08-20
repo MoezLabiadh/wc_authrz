@@ -74,6 +74,7 @@ def filter_TITAN (titan_report, fiscal):
     df.sort_values(by = ['EXPIRY DATE'], inplace = True)
     df['EXPIRY DATE'] = df['EXPIRY DATE'].astype(str)
     df['COMMENCEMENT DATE'] = df['COMMENCEMENT DATE'].astype(str)
+    df.loc[df['PURPOSE'] == 'AQUACULTURE', 'DISTRICT OFFICE'] = 'AQUACULTURE'
     df['DISTRICT OFFICE'] = df['DISTRICT OFFICE'].fillna(value='NANAIMO')
     df.rename(columns={'FILE #':'FILE_NBR'}, inplace=True)
     df.columns = df.columns.str.replace(' ', '_')
@@ -332,6 +333,7 @@ def main():
     table = df2gdb (df_ten)
 
     print ('Connecting to BCGW...PLease enter your credentials')
+
     bcgw_user_name = raw_input("Enter your BCGW username:")
     bcgw_password = raw_input("Enter your BCGW password:")
     bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
