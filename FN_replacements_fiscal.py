@@ -317,9 +317,19 @@ def main():
     fiscal = 2022
     df_filter = filter_TITAN (titan_report,fiscal)
 
+    print ("Adding Max term Column...")
+    terms_file = r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Moez\DATASETS\Tenure_Terms\max_tenure_terms.xlsx'
+    req_fields = ['DISTRICT_OFFICE','FDISTRICT','FILE_NBR', 'DTID', 'COMMENCEMENT_DATE',
+          'EXPIRY_DATE', 'TENURE_LENGTH','MAX_TENURE_TERM','STAGE', 'STATUS', 'APPLICATION_TYPE',
+          'TYPE', 'SUBTYPE', 'PURPOSE', 'SUBPURPOSE','LOCATION',
+          'CLIENT_NAME', 'ADDRESS_LINE_1', 'ADDRESS_LINE_2','ADDRESS_LINE_3','CITY', 'PROVINCE', 'POSTAL_CODE',
+          'COUNTRY','STATE','ZIP_CODE']
+
+    df_ten= add_max_term (df_filter, terms_file)
+    df_ten = df_ten[req_fields]
 
     print ("Converting df to GBD table...")
-    table = df2gdb (df_filter)
+    table = df2gdb (df_ten)
 
     print ('Connecting to BCGW...PLease enter your credentials')
     bcgw_user_name = raw_input("Enter your BCGW username:")
@@ -327,32 +337,21 @@ def main():
     bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
 
     print ('Creating Layers: Consultation areas and Expring Tenures')
-    req_fields = ['DISTRICT_OFFICE','FDISTRICT','FILE_NBR', 'DTID', 'COMMENCEMENT_DATE',
-              'EXPIRY_DATE', 'TENURE_LENGTH','STAGE', 'STATUS', 'APPLICATION_TYPE',
-              'TYPE', 'SUBTYPE', 'PURPOSE', 'SUBPURPOSE','LOCATION',
-              'CLIENT_NAME', 'ADDRESS_LINE_1', 'ADDRESS_LINE_2','ADDRESS_LINE_3','CITY', 'PROVINCE', 'POSTAL_CODE',
-              'COUNTRY','STATE','ZIP_CODE']
     expiring_tenures, consult_layer, consult_areas = get_layers (table, bcgw_conn_path, req_fields)
 
     print('Intersecting Expiring tenures and FN areas...')
     intersect = intersect_FN (expiring_tenures,consult_areas)
 
     print('Exporting result to dataframe...')
-    req_fields.insert(14,'SUM_TENURE_AREA_IN_HECTARES')
+
+    req_fields.insert(15,'SUM_TENURE_AREA_IN_HECTARES')
     df_exp = fc2df (expiring_tenures, req_fields)
+    df_exp.rename(columns={'SUM_TENURE_AREA_IN_HECTARES': 'AREA_HA'}, inplace=True)
+
     fields_inter = req_fields[:]
-    fields_inter.remove('TENURE_LENGTH')
-    fields_inter.insert(8,'CNSLTN_AREA_NAME')
+    fields_inter.insert(4,'CNSLTN_AREA_NAME')
     df_inter = fc2df (intersect, fields_inter)
     df_inter.rename(columns={'SUM_TENURE_AREA_IN_HECTARES': 'AREA_HA'}, inplace=True)
-
-    print ("Adding maximum tenure terms...")
-    terms_file = r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Moez\DATASETS\Tenure_Terms\max_tenure_terms.xlsx'
-    df_tn = add_max_term (df_exp, terms_file)
-    field_tn = req_fields[:]
-    field_tn.insert(7,'MAX_TENURE_TERM')
-    df_tn = df_tn[field_tn]
-    df_tn.rename(columns={'SUM_TENURE_AREA_IN_HECTARES': 'AREA_HA'}, inplace=True)
 
 
     # FN contact info
@@ -371,7 +370,7 @@ def main():
 
 
     print('Exporting Results...')
-    generate_report (excel_path, [df_tn, df_inter,sum_nbr_files,df_fn], fiscal)
+    generate_report (excel_path, [df_exp, df_inter,sum_nbr_files,df_fn], fiscal)
     export_shapes (sum_nbr_files,expiring_tenures,fiscal,spatial_path)
 
     arcpy.Delete_management('in_memory')
