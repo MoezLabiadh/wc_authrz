@@ -251,7 +251,7 @@ def main():
     offered_maan_iha = intersect_IHA (bcgw_conn_path, offered_maan)
 
     print ("Export dfs...")
-    fields = ['FILE_NUMBER','TENURE_STAGE','TENURE_STATUS', 'TASK_DESCRIPTION', 'OFFERED_DATE', 'OFFER_ACCEPTED_DATE',
+    fields = ['FILE_NUMBER', 'DISTRICT_OFFICE', 'TENURE_STAGE','TENURE_STATUS', 'TASK_DESCRIPTION', 'OFFERED_DATE', 'OFFER_ACCEPTED_DATE',
               'EXPIRY_DATE', 'TENURE_LENGTH_YEARS','TYPE','SUBTYPE','PURPOSE','SUBPURPOSE',
               'TENURE_AREA_IN_HECTARES']
     df_tenures = fc2df (offered_maan, fields)
