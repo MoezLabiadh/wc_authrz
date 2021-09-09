@@ -28,6 +28,7 @@ def get_table_cols (item,status_xls):
 
     fields = []
     fields.append('b.' + str(df_stat['Fields_to_Summarize'].iloc[0].strip()))
+
     for f in range (2,7):
         for i in df_stat['Fields_to_Summarize' + str(f)].tolist():
             if i != 'nan':
@@ -45,6 +46,7 @@ def get_def_query (item,status_xls):
     df_stat.fillna(value='nan',inplace=True)
 
     elem = df_stat['Definition_Query'].iloc[0].strip()
+
     if elem == 'nan':
         def_query = " "
     else:
@@ -103,14 +105,14 @@ def generate_report (workspace, df_list, sheet_list):
 
 def main ():
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
-    #bcgw_user_name = 'MLABIADH'
+    #bcgw_user_name = ''
 
     #bcgw_user_name = getpass.getuser()
     #bcgw_password = getpass.getpass("Please enter BCGW password for User Name : %s" % bcgw_user_name)
 
     bcgw_user_name = sys.argv[1]
     demo_bcgw_password = sys.argv[2]
-    bcgw_password = 'MoezLab8814'
+    bcgw_password = ''
 
     disp_list = sys.argv[3].replace(" ", "")
     radius = sys.argv[4]
