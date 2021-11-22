@@ -8,6 +8,7 @@
 #-------------------------------------------------------------------------------
 
 import os
+import math
 import arcpy
 
 def set_defQuery (mxd,df,file_nbr,dt_id,parcel_id):
@@ -38,7 +39,7 @@ def set_scale (df, df_oview, tenure_layer,in_scale):
 
     df.extent = ext
 
-    # Use user entry if any otherwise calculate scale based on licence layer extent
+    # Use user entry if any otherwise calculate scale based on tenure layer extent
     scale = int (df.scale)
     scale_buf = scale*4
     if in_scale == '#':
@@ -158,3 +159,4 @@ def main ():
 
 if __name__ == "__main__":
     main()
+
