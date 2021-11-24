@@ -180,13 +180,18 @@ def main():
     arcpy.AddMessage ('Populating Map text info...')
     populate_info (mxd, lic_nbr, file_nbr, lic_parcel, wtr_disct, wtr_prsct, lnd_disct, bcgs_sheet)
 
-    arcpy.AddMessage ('Exporting Map...')
-    #export_Map(workspace,mxd,lic_nbr)
+    if workspace != '#':
+        arcpy.AddMessage ('Exporting Map...')
+        export_Map(workspace,mxd,lic_nbr)
 
-    arcpy.AddMessage  ('Completed! Check the output folder for results')
+    else:
+        pass
+
+    arcpy.AddMessage  ('Completed!')
 
 
 
 if __name__ == "__main__":
     main()
+
 
