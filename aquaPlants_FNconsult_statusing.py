@@ -160,8 +160,6 @@ def main():
     rules_dict = get_stat_rules(workspace)
 
     print ('Connecting to BCGW...PLease enter your credentials')
-    bcgw_user_name = 'MLABIADH'
-    bcgw_password = 'MoezLab8815'
     #bcgw_user_name = raw_input("Enter your BCGW username:")
     #bcgw_password = raw_input("Enter your BCGW password:")
     bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
