@@ -88,7 +88,7 @@ def overlay_analysis (mxd,dframe,rules_dict,bcgw_conn_path):
 
                 print ('...Adding Areas')
                 exist_fields = [f.name for f in arcpy.ListFields('in_memory\_intersect')]
-                area_field = 'OVERLAY_AREA_HA'
+                area_field = 'OVERLAP_AREA_HA'
                 if area_field not in exist_fields:
                      arcpy.AddField_management('in_memory\_intersect', area_field, 'DOUBLE')
 
@@ -109,14 +109,15 @@ def overlay_analysis (mxd,dframe,rules_dict,bcgw_conn_path):
 
                 df = pd.DataFrame (arr)
                 df.sort_values(by=['Harvest_Area_Number'], inplace = True)
+
                 if df.shape [0] < 1:
                     df = df.append({'Harvest_Area_Number' : 'NO OVERLAPS FOUND!'}, ignore_index=True)
                 else:
                     pass
 
-
                 df_list.append (df)
                 sheet_list.append (k)
+
 
     return df_list, sheet_list
 
@@ -150,6 +151,9 @@ def generate_report (workspace, df_list, sheet_list):
 
     writer.save()
     writer.close()
+
+
+
 
 
 def main():
