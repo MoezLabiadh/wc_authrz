@@ -110,6 +110,15 @@ def overlay_analysis (mxd,dframe,rules_dict,bcgw_conn_path):
                 df = pd.DataFrame (arr)
                 df.sort_values(by=['Harvest_Area_Number'], inplace = True)
 
+                if k == 'FN PIP Consultation Areas':
+                    df = df.groupby(['Harvest_Area_Number','CNSLTN_AREA_NAME','CONTACT_ORGANIZATION_NAME'], as_index=False)[area_field]\
+                           .agg('sum')
+
+                    print (df.head())
+                else:
+                    pass
+
+
                 if df.shape [0] < 1:
                     df = df.append({'Harvest_Area_Number' : 'NO OVERLAPS FOUND!'}, ignore_index=True)
                 else:
