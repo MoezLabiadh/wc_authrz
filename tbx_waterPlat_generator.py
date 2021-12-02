@@ -5,7 +5,7 @@
 #
 # Author:      MLABIADH
 #
-# Created:     03-11-2021
+# Created:     23-11-2021
 #-------------------------------------------------------------------------------
 
 import os
@@ -18,11 +18,8 @@ def get_layers (mxd,df):
     layersList = arcpy.mapping.ListLayers(mxd,"",df)
     arcpy.AddMessage ('Getting the required layers...')
     for lyr in layersList:
-        if lyr.name == 'Land Parcel with Water Licences':
+        if lyr.name == 'SELECTED PARCEL':
             lic_parcel = lyr
-
-        elif lyr.name  == 'Water Rights - Licences - Internal':
-            lic_pod = lyr
 
         elif lyr.name  == 'Water Management Districts':
             wtr_disct = lyr
@@ -33,20 +30,18 @@ def get_layers (mxd,df):
         elif lyr.name  == 'Land Districts':
             lnd_disct = lyr
 
-        elif lyr.name  == 'BCGS_SHEETS':
+        elif lyr.name  == 'BCGS_SHEETS_5k':
             bcgs_sheet = lyr
 
         else:
             pass
 
-    return lic_parcel, lic_pod, wtr_disct, wtr_prsct, lnd_disct, bcgs_sheet
+    return lic_parcel, wtr_disct, wtr_prsct, lnd_disct, bcgs_sheet
 
 
-def update_defQuery (lic_nbr,lic_parcel):
+def update_defQuery (pid,lic_parcel):
     """Updates the definition Query of Water Licence parcel Layer"""
-    defQuery = """
-               WHSE_WATER_MANAGEMENT.WLS_LICENCE_WITH_PARCELS_ISP.LICENCE_NO = '{}'
-               """.format (str(lic_nbr))
+    defQuery = """PID = '{}' """.format (str(pid))
 
     lic_parcel.definitionQuery = defQuery
 
@@ -54,9 +49,9 @@ def update_defQuery (lic_nbr,lic_parcel):
     result = arcpy.GetCount_management(lic_parcel)
     count = int(result.getOutput(0))
     if count < 1:
-        raise Exception ('ERROR: Licence Number {} not found!'.format(str(lic_nbr)))
+        raise Exception ('ERROR:Parcel Identifier (PID) {} not found!'.format(str(pid)))
     else:
-        arcpy.AddWarning ('There is/are {} parcel(s) associated with Licence Number {}'.format (count,str(lic_nbr)))
+        pass
 
 
 def set_scale (df, df_oview, lic_parcel,in_scale):
@@ -90,15 +85,14 @@ def set_scale (df, df_oview, lic_parcel,in_scale):
         df_oview.scale = 550000
 
 
-def populate_info (mxd,lic_nbr, lic_parcel,lic_pod, wtr_disct, wtr_prsct, lnd_disct, bcgs_sheet):
+def populate_info (mxd,lic_nbr, file_nbr,lic_parcel, wtr_disct, wtr_prsct, lnd_disct, bcgs_sheet):
     """ Populates map text elements"""
 
     field_dict = {
-                  lic_pod: ['FILE_NUMBER'],
                   wtr_disct: ['DISTRICT_NAME'],
                   wtr_prsct: ['PRECINCT_NAME'],
                   lnd_disct: ['LAND_DISTRICT_NAME'],
-                  bcgs_sheet: ['BCGS_SHEET_CHR']
+                  bcgs_sheet: ['MAP_TILE_DISPLAY_NAME']
                   }
 
     for k, v in field_dict.items():
@@ -107,11 +101,7 @@ def populate_info (mxd,lic_nbr, lic_parcel,lic_pod, wtr_disct, wtr_prsct, lnd_di
             arcpy.Delete_management("tempo_lyr")
 
         arcpy.MakeFeatureLayer_management(k, "tempo_lyr")
-
-        if k == lic_pod:
-            arcpy.SelectLayerByAttribute_management ("tempo_lyr", "NEW_SELECTION", """LICENCE_NUMBER = '{}'""".format (str(lic_nbr)))
-        else:
-            arcpy.SelectLayerByLocation_management ("tempo_lyr", "INTERSECT", lic_parcel)
+        arcpy.SelectLayerByLocation_management ("tempo_lyr", "INTERSECT", lic_parcel)
 
         with arcpy.da.SearchCursor("tempo_lyr", v[0]) as cursor:
             for row in cursor:
@@ -134,7 +124,7 @@ def populate_info (mxd,lic_nbr, lic_parcel,lic_pod, wtr_disct, wtr_prsct, lnd_di
             elm.text = field_dict.get(lnd_disct)[1].replace('DISTRICT', '').replace('DIST', '')
 
         elif elm.name == "file_nbr":
-            elm.text = field_dict.get(lic_pod)[1]
+            elm.text = str(file_nbr)
 
         elif elm.name == "map_sheet":
             elm.text = field_dict.get(bcgs_sheet)[1]
@@ -163,29 +153,41 @@ def main():
     """ Executes the program"""
     #user inputs
     lic_nbr = sys.argv[1]
-    in_scale = sys.argv[2]
-    workspace = sys.argv[3]
+    file_nbr = sys.argv[2]
+    pid = sys.argv[3]
+    in_scale = sys.argv[4]
+    workspace = sys.argv[5]
 
     mxd = arcpy.mapping.MapDocument("CURRENT")
     df = arcpy.mapping.ListDataFrames(mxd, "Layers")[0]
     df_oview = arcpy.mapping.ListDataFrames(mxd, "Overview")[0]
 
+    brknMXD = arcpy.mapping.ListBrokenDataSources(mxd)
+    if len(brknMXD) >= 1:
+        raise Exception ('Layers are broken!')
+    else:
+        pass
+
     arcpy.AddMessage  ('Getting layers...')
-    lic_parcel, lic_pod, wtr_disct, wtr_prsct, lnd_disct, bcgs_sheet = get_layers(mxd,df)
+    lic_parcel, wtr_disct, wtr_prsct, lnd_disct, bcgs_sheet = get_layers(mxd,df)
 
     arcpy.AddMessage ('Updating the Def Query...')
-    update_defQuery (lic_nbr,lic_parcel)
+    update_defQuery (pid,lic_parcel)
 
     arcpy.AddMessage ('Setting Scale')
     set_scale (df, df_oview, lic_parcel,in_scale)
 
     arcpy.AddMessage ('Populating Map text info...')
-    populate_info (mxd, lic_nbr, lic_parcel,lic_pod, wtr_disct, wtr_prsct, lnd_disct, bcgs_sheet)
+    populate_info (mxd, lic_nbr, file_nbr, lic_parcel, wtr_disct, wtr_prsct, lnd_disct, bcgs_sheet)
 
-    arcpy.AddMessage ('Exporting Map...')
-    export_Map(workspace,mxd,lic_nbr)
+    if workspace != '#':
+        arcpy.AddMessage ('Exporting Map...')
+        export_Map(workspace,mxd,lic_nbr)
 
-    arcpy.AddMessage  ('Completed! Check the output folder for results')
+    else:
+        pass
+
+    arcpy.AddMessage  ('Completed!')
 
 
 
