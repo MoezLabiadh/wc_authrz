@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # Name:        Water plat generator
 # Purpose:     This script generates a water plat (pdf map)
-#              based on a water licence number.
+#              based on a Parcel ID.
 #
 # Author:      MLABIADH
 #
