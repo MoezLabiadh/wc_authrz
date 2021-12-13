@@ -131,7 +131,6 @@ def overlay_analysis (mxd,dframe,rules_dict,bcgw_conn_path):
     return df_list, sheet_list
 
 
-
 def generate_report (workspace, df_list, sheet_list):
     """ Exports dataframes to multi-tab excel spreasheet"""
     file_name = os.path.join(workspace, '2022_aquaPlants_Statusing.xlsx')
@@ -162,9 +161,6 @@ def generate_report (workspace, df_list, sheet_list):
     writer.close()
 
 
-
-
-
 def main():
     arcpy.env.overwriteOutput = True
     arcpy.env.qualifiedFieldNames = False
@@ -173,8 +169,8 @@ def main():
     rules_dict = get_stat_rules(workspace)
 
     print ('Connecting to BCGW...PLease enter your credentials')
-    #bcgw_user_name = raw_input("Enter your BCGW username:")
-    #bcgw_password = raw_input("Enter your BCGW password:")
+    bcgw_user_name = raw_input("Enter your BCGW username:")
+    bcgw_password = raw_input("Enter your BCGW password:")
     bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
 
     print ('Running Overlay Analysis')
@@ -187,9 +183,7 @@ def main():
 
     arcpy.Delete_management('in_memory')
 
-
     print ('Processing Completed!')
-
 
 
 if __name__ == "__main__":
