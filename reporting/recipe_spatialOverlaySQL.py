@@ -92,8 +92,7 @@ def main ():
     workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20211207_aqua_cancelled\TESTS'
     titan_report = os.path.join(workspace, 'TITAN_RPT012.xlsx')
     df_dtid = filter_TITAN (titan_report)
-    print (df_dtid['INTEREST PARCEL ID'].nunique())
-    
+
     print ("Connect to BCGW...\n")    
     bcgw_host = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
@@ -105,8 +104,6 @@ def main ():
     sqls = load_sql(params)
     
     df_sql = read_query(connection, sqls['ip_pip'])
-    print (df_sql['INTRID_SID'].nunique())
-    
     
     print ("Create report(s)...\n")
     df = pd.merge(df_dtid, df_sql, left_on='INTEREST PARCEL ID', right_on= 'INTRID_SID')
