@@ -26,9 +26,10 @@ for index, row in df_sp.iterrows():
     
     
 for index, row in df.iterrows():
-    if  row['Scientific_Names'] == 'tempo_NAN':
+    if  (row['Scientific_Names'] == 'tempo_NAN') or (row['Appl_num'] == '2021-044'):
+        
         f.write('Row {}. Appl# {} has NO Species. NO ACTION\n'.format (index+2, row['Appl_num']))
-        print ('Row {}. Appl# {} has NO Species. NO ACTION'.format (index+2, row['Appl_num']))
+        print ('Row {}. Appl# {} has NO Species. NO ACTION\n'.format (index+2, row['Appl_num']))
         
     else:
         l = row['Scientific_Names'].split(",")
@@ -49,7 +50,7 @@ for index, row in df.iterrows():
             df.loc[index, spHarv_col] = row['Total_Quantity_harvested']
             
             f.write ('Row {}. Appl# {} has {} Species. {} INFO UPDATED\n'.format (index+2, row['Appl_num'], sp_nbr,spName_col))
-            #print ('Row {}. Appl# {} has {} Species. SPECIES 1 INFO UPDATED'.format (index+2, row['Appl_num'], sp_nbr))
+            print ('Row {}. Appl# {} has {} Species. {} INFO UPDATED\n'.format (index+2, row['Appl_num'], sp_nbr,spName_col))
             
             
         else:
