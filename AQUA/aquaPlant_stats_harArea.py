@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import seaborn as sns
-import matplotlib
 import matplotlib.pyplot as plt
 
 
@@ -46,30 +45,30 @@ for ha in har_areas:
     
     sp_grps = list(df_ha['Species_Group'].unique())
     
-    
+    # initiate the figure/plot
     fig, ax = plt.subplots(nrows=len(sp_grps), figsize=(20,len(sp_grps)*6))
-    t_txt = 'Harvest information by Year\n Harvest Area {}'.format (ha)  
+    t_txt = 'Wild Aquatic Plant Harvest by Year\n Harvest Area # {}'.format (ha)  
     fig.suptitle(t_txt, fontsize=30)
     #plt.tight_layout()
     
+    #Create one subplot for each Species Group
     for i, sp_g in enumerate(sp_grps):
-        filt_hr = df_hr.loc [df_hr['Species_Group'] == sp_g]
+        filt_hr = df_hr.loc [df_hr['Species_Group'] == sp_g].reset_index()
         filt_qt= df_qt.loc [df_qt['Species_Group'] == sp_g]
-
+   
         
-        sns.lineplot(data =filt_hr['Total_Quantity_harvested'], linewidth = 1.5, markers=True,
-                     marker="o",markersize=10, color='darkred', label='Harvested Quantity', ax=ax[i])
+        sns.barplot(data = filt_qt, x='Year', y='value', alpha=0.7,
+                    palette = ['tab:orange', 'tab:blue'], hue = 'variable', ax=ax[i])
         
-        sns.barplot(data = filt_qt, x='Year', y='value', alpha=0.7, ax=ax[i],
-                    palette = ['tab:orange', 'tab:blue'], hue = 'variable')
+        sns.lineplot(data =filt_hr['Total_Quantity_harvested'], linewidth = 1.5, markers=True,sort = False,
+                     marker="o",markersize=10, color='darkred', label='Harvested Quantity', ax=ax[i])   
         
         
         #Set labels
-        t_txt = 'Harvest information by Year\n Harvest Area {}\n Species Group {}'.format (ha, sp_g)
         ax[i].set_title('Species Group: {}'.format(sp_g), size=25)
         ax[i].set_ylabel('Quantity (tonne)', fontsize=14)
         
-        if i == 2:
+        if sp_g == sp_grps[-1]:
             ax[i].set_xlabel('Harvest Year', fontsize=14)
         else:
             ax[i].set_xlabel(xlabel = None)
