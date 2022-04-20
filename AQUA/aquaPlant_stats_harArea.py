@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -22,8 +23,13 @@ df = df.sort_values(by=['Appl_num'])
 df['Species_Group'] = df['Species_Group'].astype(int).astype(str)
 df['Appl_num'] = df['Appl_num'].astype(str)
 
+df['harv_is_missing'] = 'NO'
+df.loc[df['Total_Quantity_harvested'].isnull(), 'harv_is_missing'] = "YES"
+        
+        
+
 har_areas = df['Harvest_Area_Num'].unique()
-#har_areas = ['5499']
+#har_areas = ['5204']
 
 for ha in har_areas:
     print ('working on Harvest Area {} '.format(ha))
@@ -32,7 +38,7 @@ for ha in har_areas:
     df_ha = df_ha.rename(columns={'Quota_Requested_MT': 'Quota Requested', 
                                   'Total_Quota_Approved': 'Quota Approved'})
         
-        
+
     df_gr = df_ha.groupby(['Year', 'Species_Group']).agg({'Quota Requested':'sum',
                                                           'Quota Approved':'sum',
                                                           'Total_Quantity_harvested':'sum'}).reset_index()
@@ -80,23 +86,34 @@ for ha in har_areas:
         ax.set_title('Species Group: {}'.format(sp_g), size=15)
         ax.set_ylabel('Quantity (tonne)', fontsize=14)
         
+        #add annotation for missing Harvest Quantity values
+        for ind in range (0,filt_hr.shape[0]):
+            miss = df_ha.loc[(df_ha['Year'] == filt_hr['Year'].iloc[ind]) & 
+                             (df_ha['Species_Group'] == sp_g)]['harv_is_missing'].iloc[0]
+            
+            if miss == 'YES':
+               x = filt_hr.index[filt_hr['Year']==filt_hr['Year'].iloc[ind]].tolist()[0]
+               y = filt_hr['Total_Quantity_harvested'].iloc[ind]
+               ax.text(x,y+0.08, '**')
+               
+               nan_txt = "**: Harvest Quantity for one (or more) application(s) is missing"
+               plt.gcf().text(0, 0.007, nan_txt, fontsize=12)
+               #fig.subplots_adjust(bottom=0.05)
+               
+        
+        
         if sp_g == sp_grps[-1]:
             ax.set_xlabel('Harvest Year', fontsize=14)
         else:
             ax.set_xlabel(xlabel = None)
             
-  
-        #label bars
-        #for container in ax1.containers:
-            #ax1.bar_label(container)
-        
-        #plt.legend(fontsize=22)
-        
         
         #Remove legend
         #ax1.legend(title='Legend')
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles=handles, labels=labels)
+     
+        
         
     filename = 'graph_harvArea_{}.png'.format (ha)
-    #fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_harvest_area', filename))
+    fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_harvest_area', filename))
