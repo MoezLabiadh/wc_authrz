@@ -27,6 +27,7 @@ df['Appl_num'] = df['Appl_num'].astype(str)
 xlsx_mapp = os.path.join(wks, 'data', 'lookup_harArea_MaPP.xlsx')
 df_mapp = pd.read_excel (xlsx_mapp)
 
+
 mapp_dict = {}
 for index, row in df_mapp.iterrows():
     mapp_dict[str(row['harvest_area'])] = str(row['MaPP_name'])
@@ -36,7 +37,14 @@ for index, row in df.iterrows():
         if str(row['Harvest_Area_Num']) == str(k):
             df.at[index, 'MaPP_name'] =  str(v) 
 
+
 df = df.loc[df['MaPP_name'].notnull()]
+
+
+
+
+
+
 mapps = df['MaPP_name'].unique()
 #har_areas = ['5107','5405', '5438']
 
@@ -57,7 +65,7 @@ for mapp in mapps:
                        value_vars=['Quota Requested', 'Quota Approved' ], ignore_index=True)
     
     
-    sp_grps = list(df_mp['Species_Group'].unique())
+    sp_grps = sorted(list(df_mp['Species_Group'].unique()))
     
     # initiate the figure/plot
 
@@ -89,7 +97,8 @@ for mapp in mapps:
         
         sns.lineplot(data =filt_hr['Total_Quantity_harvested'], linewidth = 1.5, markers=True,sort = False,
                      marker="o",markersize=10, color='darkred', label='Harvested Quantity', ax=ax)   
-             
+        
+        
         #Set labels
         ax.set_title('Species Group: {}'.format(sp_g), size=15)
         ax.set_ylabel('Quantity (tonne)', fontsize=14)
@@ -97,18 +106,20 @@ for mapp in mapps:
         if sp_g == sp_grps[-1]:
             ax.set_xlabel('Harvest Year', fontsize=14)
         else:
-            ax.set_xlabel(xlabel = None            
+            ax.set_xlabel(xlabel = None)
+            
   
         #label bars
         #for container in ax1.containers:
             #ax1.bar_label(container)
         
         #plt.legend(fontsize=22)
-             
+        
+        
         #Remove legend
         #ax1.legend(title='Legend')
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles=handles, labels=labels)
         
     filename = 'graph_MaPP_{}.png'.format (mapp)
-    fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_maPP', filename))
+    #fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_maPP', filename))
