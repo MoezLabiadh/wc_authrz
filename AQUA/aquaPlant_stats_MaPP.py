@@ -23,6 +23,11 @@ df = df.sort_values(by=['Appl_num'])
 df['Species_Group'] = df['Species_Group'].astype(int).astype(str)
 df['Appl_num'] = df['Appl_num'].astype(str)
 
+
+df['harv_is_missing'] = 'NO'
+df.loc[df['Total_Quantity_harvested'].isnull(), 'harv_is_missing'] = "YES"
+
+
 # Add MaPP column to master df
 xlsx_mapp = os.path.join(wks, 'data', 'lookup_harArea_MaPP.xlsx')
 df_mapp = pd.read_excel (xlsx_mapp)
@@ -108,6 +113,23 @@ for mapp in mapps:
         else:
             ax.set_xlabel(xlabel = None)
             
+        #add annotation for missing Harvest Quantity values
+        df_mp = df_mp.sort_values(by=['harv_is_missing'], ascending=False)
+        for ind in range (0,filt_hr.shape[0]):
+            miss = df_mp.loc[(df_mp['Year'] == filt_hr['Year'].iloc[ind]) & 
+                             (df_mp['Species_Group'] == sp_g)]['harv_is_missing'].iloc[0]
+
+
+
+            if miss == 'YES':
+               x = filt_hr.index[filt_hr['Year']==filt_hr['Year'].iloc[ind]].tolist()[0]
+               y = filt_hr['Total_Quantity_harvested'].iloc[ind]
+               ax.text(x,y+0.08, '**')
+               
+               nan_txt = "**: Harvest Quantity for one (or more) application(s) is missing"
+               plt.gcf().text(0, 0.007, nan_txt, fontsize=12)
+               #fig.subplots_adjust(bottom=0.05)
+            
   
         #label bars
         #for container in ax1.containers:
@@ -122,4 +144,4 @@ for mapp in mapps:
         ax.legend(handles=handles, labels=labels)
         
     filename = 'graph_MaPP_{}.png'.format (mapp)
-    #fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_maPP', filename))
+    fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_maPP', filename))
