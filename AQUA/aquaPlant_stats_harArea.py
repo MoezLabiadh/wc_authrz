@@ -23,7 +23,7 @@ df['Species_Group'] = df['Species_Group'].astype(int).astype(str)
 df['Appl_num'] = df['Appl_num'].astype(str)
 
 har_areas = df['Harvest_Area_Num'].unique()
-#har_areas = ['5107','5405', '5438']
+#har_areas = ['5499']
 
 for ha in har_areas:
     print ('working on Harvest Area {} '.format(ha))
@@ -42,11 +42,11 @@ for ha in har_areas:
                        value_vars=['Quota Requested', 'Quota Approved' ], ignore_index=True)
     
     
-    sp_grps = list(df_ha['Species_Group'].unique())
+    sp_grps = sorted(list(df_ha['Species_Group'].unique()))
+
     
     # initiate the figure/plot
 
- 
     if len(sp_grps) in (1,2):
         h_coef = 6
     elif len(sp_grps) == 3:
@@ -99,10 +99,4 @@ for ha in har_areas:
         ax.legend(handles=handles, labels=labels)
         
     filename = 'graph_harvArea_{}.png'.format (ha)
-    fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_harvest_area', filename))
-
-
-
-
-
-
+    #fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_harvest_area', filename))
