@@ -116,5 +116,5 @@ for dfo in dfos:
      
         
         
-    filename = 'graph_harvArea_{}.png'.format (str(dfo))
+    filename = 'graph_dfo_{}.png'.format (str(dfo))
     fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_dfo', filename), dpi=150)
