@@ -60,7 +60,7 @@ for ha in har_areas:
     else:
         h_coef = 4
 
-    fig, axes = plt.subplots(nrows=len(sp_grps), figsize=(16,len(sp_grps)*h_coef), constrained_layout=True)
+    fig, axes = plt.subplots(nrows=len(sp_grps), figsize=(10,len(sp_grps)*h_coef), constrained_layout=True)
     t_txt = 'Wild Aquatic Plant Harvest by Year (#{})'.format (ha)  
     fig.suptitle(t_txt, fontsize=20)
     #fig.tight_layout()
@@ -94,10 +94,10 @@ for ha in har_areas:
             if miss == 'YES':
                x = filt_hr.index[filt_hr['Year']==filt_hr['Year'].iloc[ind]].tolist()[0]
                y = filt_hr['Total_Quantity_harvested'].iloc[ind]
-               ax.text(x,y+0.008, '**', weight="bold")
+               ax.text(x,y+0.008, '**')
                
-               nan_txt = "**: Harvest Quantity for one (or more) application(s) is missing"
-               plt.gcf().text(0, 0.007, nan_txt, fontsize=12)
+               nan_txt = "**: Missing Harvest Quantity(ies)"
+               plt.gcf().text(0, 0.007, nan_txt, fontsize=11)
                #fig.subplots_adjust(bottom=0.05)
                
         
@@ -116,4 +116,4 @@ for ha in har_areas:
         
         
     filename = 'graph_harvArea_{}.png'.format (ha)
-    fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_harvest_area', filename))
+    fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_harvest_area', filename), dpi=150)
