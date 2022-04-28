@@ -78,7 +78,7 @@ for mapp in mapps:
     else:
         h_coef = 4
 
-    fig, axes = plt.subplots(nrows=len(sp_grps), figsize=(16,len(sp_grps)*h_coef), constrained_layout=True)
+    fig, axes = plt.subplots(nrows=len(sp_grps), figsize=(10,len(sp_grps)*h_coef), constrained_layout=True)
     t_txt = 'Wild Aquatic Plant Harvest by Year ({})'.format (mapp)  
     fig.suptitle(t_txt, fontsize=20)
     #fig.tight_layout()
@@ -111,6 +111,7 @@ for mapp in mapps:
             
         #add annotation for missing Harvest Quantity values
         df_mp = df_mp.sort_values(by=['harv_is_missing'], ascending=False)
+        
         for ind in range (0,filt_hr.shape[0]):
             miss = df_mp.loc[(df_mp['Year'] == filt_hr['Year'].iloc[ind]) & 
                              (df_mp['Species_Group'] == sp_g)]['harv_is_missing'].iloc[0]
@@ -120,10 +121,10 @@ for mapp in mapps:
             if miss == 'YES':
                x = filt_hr.index[filt_hr['Year']==filt_hr['Year'].iloc[ind]].tolist()[0]
                y = filt_hr['Total_Quantity_harvested'].iloc[ind]
-               ax.text(x,y+0.008, '**', weight="bold")
+               ax.text(x,y+0.008, '**')
                
-               nan_txt = "**: Harvest Quantity for one (or more) application(s) is missing"
-               plt.gcf().text(0, 0.007, nan_txt, fontsize=12)
+               nan_txt = "**: Missing Harvest Quantity(ies)"
+               plt.gcf().text(0, 0.007, nan_txt, fontsize=11)
                #fig.subplots_adjust(bottom=0.05)
             
   
@@ -140,4 +141,4 @@ for mapp in mapps:
         ax.legend(handles=handles, labels=labels)
         
     filename = 'graph_MaPP_{}.png'.format (mapp)
-    fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_maPP', filename))
+    fig.savefig(os.path.join(wks, 'outputs', 'plots', 'by_maPP', filename), dpi=150)
