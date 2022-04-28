@@ -95,10 +95,10 @@ for dfo in dfos:
             if miss == 'YES':
                x = filt_hr.index[filt_hr['Year']==filt_hr['Year'].iloc[ind]].tolist()[0]
                y = filt_hr['Total_Quantity_harvested'].iloc[ind]
-               ax.text(x,y+0.008, '**', weight="bold")
+               ax.text(x,y+0.008, '**')
                
                nan_txt = "**: Missing Harvest Quantity(ies)"
-               plt.gcf().text(0, 0.007, nan_txt, fontsize=12)
+               plt.gcf().text(0, 0.007, nan_txt, fontsize=11)
                #fig.subplots_adjust(bottom=0.05)
                
         
