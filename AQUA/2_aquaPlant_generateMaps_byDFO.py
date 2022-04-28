@@ -23,31 +23,33 @@ df['harv_is_missing'] = 'NO'
 df.loc[df['Total_Quantity_harvested'].isnull(), 'harv_is_missing'] = "YES"
         
 dfos = sorted(df['DFO_Area'].unique())
-#dfos= ['7', '123']
-
+#dfos= ['10', '14', '15']
 
 mxd_path = os.path.join(wks, 'Aquaculture_HarvestArea_MapsPlots','Aquaculture_HarvestArea_MapsPlots.aprx')
 mxd = arcpy.mp.ArcGISProject(mxd_path)
 mp = mxd.listMaps("Main Map")[0]
-lyt = mxd.listLayouts("2022_Aquaculture_HarvestArea_Maps_small")[0]
 
 layersList = mp.listLayers()
 harAr_lyr = layersList[0]
 
-#for lyr in layersList:
- #       if lyr.name == 'harvest_areas_unique':
-  #          harAr_lyr = lyr
-
 for dfo in dfos:
-    print ('Working on DFO {}'.format (str(dfo)))
+    print ('\n Working on DFO {}'.format (str(dfo)))
     df_dfo = df.loc[df['DFO_Area'] == str(dfo)]
     harvArs = df_dfo['Harvest_Area_Num'].unique()
+    
     harvArs_str = ",".join ("'" + str(x).strip() + "'" for x in harvArs)
-    print (harvArs)
 
     defQuery = """harvest_area IN ({}) """.format (harvArs_str)
     harAr_lyr.definitionQuery = defQuery
+    print (defQuery)
 
+    sp_gr = df_dfo['Species_Group'].unique()
+
+    if len(sp_gr) <= 2:
+        lyt = mxd.listLayouts("2022_Aquaculture_HarvestArea_Maps_2orless")[0]
+    else:
+        lyt = mxd.listLayouts("2022_Aquaculture_HarvestArea_Maps_more2")[0]
+    
     mf = lyt.listElements("mapframe_element", "Main Map")[0]
     ext = mf.getLayerExtent(harAr_lyr, False, True)
     mf.camera.setExtent(ext)
@@ -59,9 +61,11 @@ for dfo in dfos:
                                    'graph_dfo_{}.png'.format(str(dfo)))
 
             elem.sourceImage = picPath 
+            elem.elementPositionX = 27.8998
+            elem.elementPositionY = 9.68
 
         elif elem.name == "dfo_num":
             elem.text = str(dfo)
 
-        output = os.path.join(wks, 'outputs', 'maps', 'Map_DFO_{}.pdf'.format(str(dfo)))
-        lyt.exportToPDF(output)
+        output = os.path.join(wks, 'outputs', 'maps', 'by_dfo', 'Map_DFO_{}.pdf'.format(str(dfo)))
+        lyt.exportToPDF(output, resolution =60)
