@@ -45,8 +45,10 @@ for dfo in dfos:
 
     sp_gr = df_dfo['Species_Group'].unique()
 
-    if len(sp_gr) <= 2:
-        lyt = mxd.listLayouts("2022_Aquaculture_HarvestArea_Maps_2orless")[0]
+    if len(sp_gr) == 1:
+        lyt = mxd.listLayouts("2022_Aquaculture_HarvestArea_Maps_1spcs")[0]
+    elif len(sp_gr) == 2:
+        lyt = mxd.listLayouts("2022_Aquaculture_HarvestArea_Maps_2spcs")[0]
     else:
         lyt = mxd.listLayouts("2022_Aquaculture_HarvestArea_Maps_more2")[0]
     
@@ -61,8 +63,9 @@ for dfo in dfos:
                                    'graph_dfo_{}.png'.format(str(dfo)))
 
             elem.sourceImage = picPath 
-            elem.elementPositionX = 27.8998
-            elem.elementPositionY = 9.68
+            if len(sp_gr) > 2:
+                elem.elementPositionX = 27.8998
+                elem.elementPositionY = 9.68
 
         elif elem.name == "dfo_num":
             elem.text = str(dfo)
