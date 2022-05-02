@@ -70,5 +70,5 @@ for dfo in dfos:
         elif elem.name == "dfo_num":
             elem.text = str(dfo)
 
-        output = os.path.join(wks, 'outputs', 'maps', 'by_dfo', 'Map_DFO_{}.pdf'.format(str(dfo)))
-        lyt.exportToPDF(output, resolution =60)
+    output = os.path.join(wks, 'outputs', 'maps', 'by_dfo', 'Map_DFO_{}.pdf'.format(str(dfo)))
+    lyt.exportToPDF(output, resolution =150)
