@@ -47,10 +47,13 @@ for dfo in dfos:
 
     if len(sp_gr) == 1:
         lyt = mxd.listLayouts("2022_Aquaculture_HarvestArea_Maps_1spcs")[0]
+        posY = 6.1648
     elif len(sp_gr) == 2:
         lyt = mxd.listLayouts("2022_Aquaculture_HarvestArea_Maps_2spcs")[0]
+        posY = 7.6339
     else:
         lyt = mxd.listLayouts("2022_Aquaculture_HarvestArea_Maps_more2")[0]
+        posY = 9.68
     
     mf = lyt.listElements("mapframe_element", "Main Map")[0]
     ext = mf.getLayerExtent(harAr_lyr, False, True)
@@ -63,9 +66,8 @@ for dfo in dfos:
                                    'graph_dfo_{}.png'.format(str(dfo)))
 
             elem.sourceImage = picPath 
-            if len(sp_gr) > 2:
-                elem.elementPositionX = 27.8998
-                elem.elementPositionY = 9.68
+            elem.elementPositionX = 27.8998
+            elem.elementPositionY = posY
 
         elif elem.name == "dfo_num":
             elem.text = str(dfo)
