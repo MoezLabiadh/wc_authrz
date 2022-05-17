@@ -22,26 +22,41 @@ df['Harvest_Area_Num'] = df['Harvest_Area_Num'].astype(str)
 df['harv_is_missing'] = 'NO'
 df.loc[df['Total_Quantity_harvested'].isnull(), 'harv_is_missing'] = "YES"
         
-dfos = sorted(df['DFO_Area'].unique())
-#dfos= ['10', '14', '15']
-
 mxd_path = os.path.join(wks, 'Aquaculture_HarvestArea_MapsPlots','Aquaculture_HarvestArea_MapsPlots.aprx')
 mxd = arcpy.mp.ArcGISProject(mxd_path)
-mp = mxd.listMaps("Main Map")[0]
 
+homeFol = mxd.homeFolder
+name = 'BCGW'
+database_platform = 'ORACLE'
+account_authorization  = 'DATABASE_AUTH'
+instance = 'bcgw.bcgov/idwprod1.bcgov'
+username = 'XXX'
+password = 'XXX'
+bcgw_conn_path = os.path.join(homeFol,'BCGW.sde')
+if arcpy.Exists(bcgw_conn_path):
+    arcpy.Delete_management(bcgw_conn_path)
+    arcpy.CreateDatabaseConnection_management (homeFol,name, database_platform,
+                                               instance,account_authorization,
+                                               username ,password, 'DO_NOT_SAVE_USERNAME')
+
+mp = mxd.listMaps("Main Map")[0]
 layersList = mp.listLayers()
-harAr_lyr = layersList[0]
+dfo_ar_lyr = layersList[0]
+dfo_subar_lyr = layersList[1]
+
+#dfos = sorted(df['DFO_Area'].unique())
+dfos= ['29']
 
 for dfo in dfos:
     print ('\n Working on DFO {}'.format (str(dfo)))
     df_dfo = df.loc[df['DFO_Area'] == str(dfo)]
     harvArs = df_dfo['Harvest_Area_Num'].unique()
     
-    harvArs_str = ",".join ("'" + str(x).strip() + "'" for x in harvArs)
+    #harvArs_str = ",".join ("'" + str(x).strip() + "'" for x in harvArs)
 
-    defQuery = """harvest_area IN ({}) """.format (harvArs_str)
-    harAr_lyr.definitionQuery = defQuery
-    print (defQuery)
+    defQuery = """ MANAGEMENT_AREA = {} """.format (dfo)
+    dfo_ar_lyr.definitionQuery = defQuery
+    dfo_subar_lyr.definitionQuery = defQuery
 
     sp_gr = df_dfo['Species_Group'].unique()
 
@@ -56,21 +71,28 @@ for dfo in dfos:
         posY = 9.68
     
     mf = lyt.listElements("mapframe_element", "Main Map")[0]
-    ext = mf.getLayerExtent(harAr_lyr, False, True)
+    ext = mf.getLayerExtent(dfo_ar_lyr, False, True)
     mf.camera.setExtent(ext)
     mf.camera.scale = mf.camera.scale * 1.1
 
     for elem in lyt.listElements():
         if elem.name == 'Plot':
             picPath = os.path.join(wks,'outputs','plots','by_dfo', 
-                                   'graph_dfo_{}.png'.format(str(dfo)))
+                                       'graph_dfo_{}.png'.format(str(dfo)))
 
             elem.sourceImage = picPath 
             elem.elementPositionX = 27.8998
             elem.elementPositionY = posY
 
+
         elif elem.name == "dfo_num":
             elem.text = str(dfo)
 
+        elif elem.name == "harvAreaList":
+            harvArs = df_dfo['Harvest_Area_Num'].astype(str).unique()
+            harvArs = sorted(list(set(harvArs)))
+            harvArs_str = ", ".join (str(x).strip() for x in harvArs)
+            elem.text = harvArs_str
+
     output = os.path.join(wks, 'outputs', 'maps', 'by_dfo', 'Map_DFO_{}.pdf'.format(str(dfo)))
-    lyt.exportToPDF(output, resolution =150)
+    lyt.exportToPDF(output, resolution =200)
