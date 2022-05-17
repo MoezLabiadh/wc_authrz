@@ -22,15 +22,30 @@ df['Harvest_Area_Num'] = df['Harvest_Area_Num'].astype(str)
 df['harv_is_missing'] = 'NO'
 df.loc[df['Total_Quantity_harvested'].isnull(), 'harv_is_missing'] = "YES"
         
-harvs = sorted(df['Harvest_Area_Num'].unique())
-#harvs= ['5107', '5000']
-
 mxd_path = os.path.join(wks, 'Aquaculture_HarvestArea_MapsPlots','Aquaculture_HarvestArea_MapsPlots_harvArea.aprx')
 mxd = arcpy.mp.ArcGISProject(mxd_path)
-mp = mxd.listMaps("Main Map")[0]
 
+homeFol = mxd.homeFolder
+name = 'BCGW'
+database_platform = 'ORACLE'
+account_authorization  = 'DATABASE_AUTH'
+instance = 'bcgw.bcgov/idwprod1.bcgov'
+username = 'XXX'
+password = 'XXX'
+bcgw_conn_path = os.path.join(homeFol,'BCGW.sde')
+if arcpy.Exists(bcgw_conn_path):
+    arcpy.Delete_management(bcgw_conn_path)
+    arcpy.CreateDatabaseConnection_management (homeFol,name, database_platform,
+                                               instance,account_authorization,
+                                               username ,password, 'DO_NOT_SAVE_USERNAME')
+
+mp = mxd.listMaps("Main Map")[0]
 layersList = mp.listLayers()
 harAr_lyr = layersList[0]
+
+
+harvs = sorted(df['Harvest_Area_Num'].astype(str).unique())
+#harvs= ['5107', '5000']
 
 for harv in harvs:
     print ('\n Working on Harvest Area {}'.format (str(harv)))
@@ -41,7 +56,6 @@ for harv in harvs:
 
     defQuery = """harvest_area = '{}' """.format (str(harv))
     harAr_lyr.definitionQuery = defQuery
-    print (defQuery)
 
     sp_gr = df_harv['Species_Group'].unique()
 
@@ -73,4 +87,4 @@ for harv in harvs:
             elem.text = str(harv)
 
     output = os.path.join(wks, 'outputs', 'maps', 'by_harvArea', 'Map_harvestArea_{}.pdf'.format(str(harv)))
-    lyt.exportToPDF(output, resolution =150)
+    lyt.exportToPDF(output, resolution =200)
