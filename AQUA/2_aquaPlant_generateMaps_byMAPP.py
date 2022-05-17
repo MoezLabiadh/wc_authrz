@@ -40,27 +40,39 @@ for index, row in df.iterrows():
 
 
 df = df.loc[df['MaPP_name'].notnull()]
-
-
 mapps = df['MaPP_name'].unique()
 #dfos= ['10', '14', '15']
 
+
 mxd_path = os.path.join(wks, 'Aquaculture_HarvestArea_MapsPlots','Aquaculture_HarvestArea_MapsPlots_MAPP.aprx')
 mxd = arcpy.mp.ArcGISProject(mxd_path)
-mp = mxd.listMaps("Main Map")[0]
 
+homeFol = mxd.homeFolder
+name = 'BCGW'
+database_platform = 'ORACLE'
+account_authorization  = 'DATABASE_AUTH'
+instance = 'bcgw.bcgov/idwprod1.bcgov'
+username = 'XXX'
+password = 'XXX'
+bcgw_conn_path = os.path.join(homeFol,'BCGW.sde')
+if arcpy.Exists(bcgw_conn_path):
+    arcpy.Delete_management(bcgw_conn_path)
+    arcpy.CreateDatabaseConnection_management (homeFol,name, database_platform,
+                                               instance,account_authorization,
+                                               username ,password, 'DO_NOT_SAVE_USERNAME')
+
+mp = mxd.listMaps("Main Map")[0]
 layersList = mp.listLayers()
-harAr_lyr = layersList[0]
+mapp_lyr = layersList[0]
 
 for mapp in mapps:
-    print ('\nWorking {}'.format (str(mapp)))
+    print ('\nWorking on {}'.format (str(mapp)))
     df_mapp = df.loc[df['MaPP_name'] == str(mapp)]
-    harvArs = df_mapp['Harvest_Area_Num'].unique()
-    
-    harvArs_str = ",".join ("'" + str(x).strip() + "'" for x in harvArs)
 
-    defQuery = """harvest_area IN ({}) """.format (harvArs_str)
-    harAr_lyr.definitionQuery = defQuery
+    #harvArs_str = ",".join ("'" + str(x).strip() + "'" for x in harvArs)
+
+    defQuery = """STRGC_LAND_RSRCE_PLAN_NAME = '{}' """.format (str(mapp))
+    mapp_lyr.definitionQuery = defQuery
     print (defQuery)
 
     sp_gr = df_mapp['Species_Group'].unique()
@@ -76,7 +88,7 @@ for mapp in mapps:
         posY = 9.68
     
     mf = lyt.listElements("mapframe_element", "Main Map")[0]
-    ext = mf.getLayerExtent(harAr_lyr, False, True)
+    ext = mf.getLayerExtent(mapp_lyr, False, True)
     mf.camera.setExtent(ext)
     mf.camera.scale = mf.camera.scale * 1.1
 
@@ -94,5 +106,11 @@ for mapp in mapps:
             st_mapp = ' '.join(x for x in l)
             elem.text = str(st_mapp)
 
+        elif elem.name == "harvAreaList":
+            harvArs = df_mapp['Harvest_Area_Num'].astype(str).unique()
+            harvArs = sorted(list(set(harvArs)))
+            harvArs_str = ", ".join (str(x).strip() for x in harvArs)
+            elem.text = harvArs_str
+
     output = os.path.join(wks, 'outputs', 'maps', 'by_mapp', 'Map_MaPP_{}.pdf'.format(str(st_mapp)))
-    lyt.exportToPDF(output, resolution =150)
+    lyt.exportToPDF(output, resolution =300)
