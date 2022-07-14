@@ -158,7 +158,7 @@ def generate_report (workspace, df_list, sheet_list, filename):
 def main():
     """Runs the program"""
 
-    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220713_aqua_cancelled_westCoast'
+    workspace = r'\\...\WORKSPACE\20220713_aqua_cancelled_westCoast'
     
     print ('Connecting to BCGW...')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
