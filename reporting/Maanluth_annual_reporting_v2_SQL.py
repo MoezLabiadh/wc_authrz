@@ -115,8 +115,7 @@ def load_queries ():
              WHERE ipr.CROWN_LANDS_FILE in ({tm})
                AND ipr.TENURE_STAGE = 'TENURE' 
                AND SDO_RELATE (ldu.GEOMETRY, ipr.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
-                 """ 
-                 
+                 """           
     return sql
          
 
@@ -132,8 +131,50 @@ def read_query(connection,query):
     finally:
         if cursor is not None:
             cursor.close()
-            
 
+
+def get_maan_tenures (df_off,connection, sql):
+    """Returns a df containing Tenures offered within Maanulth Territory"""
+        
+    s_off = ",".join("'" + str(x) + "'" for x in df_off['FILE NUMBER'].tolist())
+    query = sql['maan'].format(t= s_off)
+    df_maan = read_query(connection,query)
+    
+    df_maan = df_maan.groupby('CROWN_LANDS_FILE')[['TENURE_HECTARE', 'OVERLAP_HECTARE']].apply(sum).reset_index()
+    
+    df_maan = pd.merge(df_maan, df_off, how= 'left', left_on='CROWN_LANDS_FILE', right_on='FILE NUMBER')
+    
+    df_maan = df_maan[['FILE NUMBER', 'DISTRICT OFFICE', 'STATUS', 'TASK DESCRIPTION', 
+                       'OFFERED DATE', 'OFFER ACCEPTED DATE','EXPIRY DATE', 'TENURE LENGTH YEARS',
+                       'TYPE','SUBTYPE','PURPOSE','SUBPURPOSE','TENURE_HECTARE','OVERLAP_HECTARE']]
+    
+    df_maan.sort_values(by = ['FILE NUMBER'], inplace = True)
+    
+    return df_maan
+
+
+def get_iha_overlaps (df_maan,connection, sql):
+    """Return a df containing Tenures overlapping with IHAs"""
+    s_maan= ",".join("'" + str(x) + "'" for x in df_maan['FILE NUMBER'].tolist())
+    query = sql['iha'].format(tm= s_maan)
+    df_iha = read_query(connection,query)
+    df_iha.sort_values(by = ['CROWN_LANDS_FILE'], inplace = True)
+    
+    return df_iha
+ 
+def get_lu_overlaps (df_maan,connection, sql):
+    """"Return a df containing overlaps of Tenures and Land Use Units"""
+    s_maan= ",".join("'" + str(x) + "'" for x in df_maan['FILE NUMBER'].tolist())
+    query = sql['lu'].format(tm= s_maan)
+    df_lu = read_query(connection,query)
+    
+    df_lu.sort_values(by = ['CROWN_LANDS_FILE'], inplace = True)
+    
+    df_lu_sum = df_lu.groupby('LANDSCAPE_UNIT_NAME')[['OVERLAP_HECTARE']].apply(sum).reset_index()
+    
+    return df_lu, df_lu_sum
+
+           
 def generate_report (workspace, df_list, sheet_list,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
     file_name = os.path.join(workspace, filename+'.xlsx')
@@ -180,41 +221,19 @@ def main():
     print ("TITAN filtering: Getting Offered Tenures...")
     year = 2022
     df_off = filter_TITAN (titan_report,year)
-    s_off = ",".join("'" + str(x) + "'" for x in df_off['FILE NUMBER'].tolist())
     
-    print ("SQL-1: Getting Tenures within Maanulth Territory...")
+    print ("Loading SQL queries...")
     sql = load_queries ()
     
-    query = sql['maan'].format(t= s_off)
-    df_maan = read_query(connection,query)
-    
-    df_maan = df_maan.groupby('CROWN_LANDS_FILE')[['TENURE_HECTARE', 'OVERLAP_HECTARE']].apply(sum).reset_index()
-    
-    df_maan = pd.merge(df_maan, df_off, how= 'left', left_on='CROWN_LANDS_FILE', right_on='FILE NUMBER')
-    
-    
-    df_maan = df_maan[['FILE NUMBER', 'DISTRICT OFFICE', 'STATUS', 'TASK DESCRIPTION', 'OFFERED DATE', 
-                       'OFFER ACCEPTED DATE','EXPIRY DATE', 'TENURE LENGTH YEARS','TYPE','SUBTYPE','PURPOSE','SUBPURPOSE',
-                       'TENURE_HECTARE','OVERLAP_HECTARE']]
-    
-    df_maan.sort_values(by = ['FILE NUMBER'], inplace = True)
-    
-    s_maan= ",".join("'" + str(x) + "'" for x in df_maan['FILE NUMBER'].tolist())
-    
+    print ("SQL-1: Getting Tenures within Maanulth Territory...")
+    df_maan = get_maan_tenures (df_off,connection, sql)
+
     print ("SQL-2: Getting overlaps with Important Harvest Areas...")
-    query = sql['iha'].format(tm= s_maan)
-    df_iha = read_query(connection,query)
-    
-    df_iha.sort_values(by = ['CROWN_LANDS_FILE'], inplace = True)
-    
+    df_iha = get_iha_overlaps (df_maan,connection, sql)
+
     print ("SQL-3: Getting overlaps with Landscape Units...")
-    query = sql['lu'].format(tm= s_maan)
-    df_lu = read_query(connection,query)
-    
-    df_lu.sort_values(by = ['CROWN_LANDS_FILE'], inplace = True)
-    
-    df_lu_sum = df_lu.groupby('LANDSCAPE_UNIT_NAME')[['OVERLAP_HECTARE']].apply(sum).reset_index()
-    
+    df_lu, df_lu_sum = get_lu_overlaps (df_maan,connection, sql) 
+
     print ('Generating the report...')
     df_list = [df_maan,df_iha,df_lu, df_lu_sum]
     sheet_list = ['Offered Tenures in Maanulth', 'Overlay - IHA','Overlay - LU', 'LU Area Summary']
