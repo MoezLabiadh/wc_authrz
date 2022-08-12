@@ -2,6 +2,8 @@ import os
 import datetime
 import cx_Oracle
 import pandas as pd
+import geopandas as gpd
+from shapely import wkt
 import numpy as np
 
 
@@ -174,6 +176,35 @@ def get_lu_overlaps (df_maan,connection, sql):
     
     return df_lu, df_lu_sum
 
+
+def generate_shp(df_maan, connection, workspace, year):
+    """Generate a Shapefile of Tenures"""
+    s_maan= ",".join("'" + str(x) + "'" for x in df_maan['FILE NUMBER'].tolist())
+    
+    q = """
+       SELECT
+       ipr.INTRID_SID, ipr.CROWN_LANDS_FILE,
+       ROUND (ipr.TENURE_AREA_IN_HECTARES, 2) AREA_HECTARE, 
+       SDO_UTIL.TO_WKTGEOMETRY(ipr.SHAPE) SHAPE
+       
+       FROM
+       WHSE_TANTALIS.TA_CROWN_TENURES_SVW ipr
+    
+       WHERE ipr.TENURE_STAGE = 'TENURE' 
+       AND ipr.CROWN_LANDS_FILE in ({t})
+        """
+    query = q.format(t= s_maan)
+    df = read_query(connection,query)
+    df['SHAPE'] = df['SHAPE'].astype(str)
+    df['geometry'] = df['SHAPE'].apply(wkt.loads)
+    
+    gdf = gpd.GeoDataFrame(df, geometry = df['geometry'])
+    gdf.crs = "EPSG:3005"
+    del gdf['SHAPE']
+    
+    shp_name = os.path.join(workspace, 'maan_report_{}_shapes.shp'.format(str(year)))
+    if not os.path.isfile(shp_name):
+        gdf.to_file(shp_name, driver="ESRI Shapefile")
            
 def generate_report (workspace, df_list, sheet_list,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
@@ -206,7 +237,7 @@ def generate_report (workspace, df_list, sheet_list,filename):
 def main():
     """Runs the program"""
     
-    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220719_maanulth_annual_report_2022'
+    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220719_maanulth_annual_report_2022\20220812'
     titan_report = os.path.join(workspace, 'TITAN_RPT009.xlsx')
     
     print ('Connecting to BCGW...')
@@ -234,10 +265,12 @@ def main():
     print ("SQL-3: Getting overlaps with Landscape Units...")
     df_lu, df_lu_sum = get_lu_overlaps (df_maan,connection, sql) 
 
-    print ('Generating the report...')
+    print ('Generating Outputs...')
     df_list = [df_maan,df_iha,df_lu, df_lu_sum]
     sheet_list = ['Offered Tenures in Maanulth', 'Overlay - IHA','Overlay - LU', 'LU Area Summary']
     filename = 'Maanulth_annualReporting_{}_tables'.format(str(year))
     generate_report (workspace, df_list, sheet_list,filename)
+    
+    generate_shp(df_maan, connection, workspace, year)
     
 main ()
