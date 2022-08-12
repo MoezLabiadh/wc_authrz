@@ -4,6 +4,7 @@ import cx_Oracle
 import pandas as pd
 import geopandas as gpd
 from shapely import wkt
+import fiona
 import numpy as np
 
 
@@ -81,7 +82,8 @@ def load_queries ():
                 WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP pip
             
              WHERE pip.CONTACT_ORGANIZATION_NAME = q'[Maa-nulth First Nations]'
-               AND ipr.TENURE_STAGE = 'TENURE' 
+               AND (ipr.TENURE_STAGE = 'TENURE' 
+                    OR (ipr.TENURE_STAGE = 'APPLICATION' AND ipr.TENURE_STATUS in ('OFFERED', 'OFFER ACCEPTED')))
                AND ipr.CROWN_LANDS_FILE in ({t})
                AND SDO_RELATE (pip.SHAPE, ipr.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
                  """
@@ -203,8 +205,14 @@ def generate_shp(df_maan, connection, workspace, year):
     del gdf['SHAPE']
     
     shp_name = os.path.join(workspace, 'maan_report_{}_shapes.shp'.format(str(year)))
+    kml_name = os.path.join(workspace, 'maan_report_{}_shapes.kml'.format(str(year)))
     if not os.path.isfile(shp_name):
         gdf.to_file(shp_name, driver="ESRI Shapefile")
+        
+    if not os.path.isfile(kml_name):
+        fiona.supported_drivers['KML'] = 'rw'
+        gdf.to_file(kml_name, driver='KML')
+
            
 def generate_report (workspace, df_list, sheet_list,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
@@ -237,7 +245,7 @@ def generate_report (workspace, df_list, sheet_list,filename):
 def main():
     """Runs the program"""
     
-    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220719_maanulth_annual_report_2022\20220812'
+    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220719_maanulth_annual_report_2022\20220812_2'
     titan_report = os.path.join(workspace, 'TITAN_RPT009.xlsx')
     
     print ('Connecting to BCGW...')
