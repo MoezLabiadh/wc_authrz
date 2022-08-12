@@ -1,3 +1,20 @@
+#-------------------------------------------------------------------------------
+# Name:        Maanluth Annual Reporting
+#
+# Purpose:     This script generates information required
+#              for Maanluth Annual Reporting
+#
+# Input(s):    (1) Workspace (folder) where outputs will be generated.
+#              (2) Titan report (excel file) - TITAN_RPT009
+#              (3) Report Year (e.g 2022)
+#              (4) BCGW connection parameters
+#
+# Author:      Moez Labiadh - FCBC, Nanaimo
+#
+# Created:     12-08-2022
+# Updated:
+#-------------------------------------------------------------------------------
+
 import os
 import datetime
 import cx_Oracle
