@@ -72,30 +72,30 @@ def update_wtshd_info(f, connection, sql, df_lk):
     
     wb.save(f)
     
-#def main():
-workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220916_waterLicencing_support'
-f = os.path.join (workspace,'Water Application Ledger_workingCopy.xlsx')
-df_lk = pd.read_excel(f, 'Pick Lists')
-df_lk = df_lk[['WATER_LICENSING_WATERSHED', 'REGION']]
-
-print ('Connecting to BCGW...')
-hostname = 'bcgw.bcgov/idwprod1.bcgov'
-bcgw_user = os.getenv('bcgw_user')
-bcgw_pwd = os.getenv('bcgw_pwd')
-connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-
-sql = '''
-        SELECT 
-            WATER_LICENSING_WATERSHED_NAME
-        FROM 
-            WHSE_WATER_MANAGEMENT.WLS_WATER_LIC_WATERSHEDS_SP wsh
-        WHERE 
-            SDO_RELATE (wsh.SHAPE, 
-                        SDO_GEOMETRY('POINT({long} {lat})', 4326),
-                        'mask=ANYINTERACT') = 'TRUE'
-    '''
+def main():
+    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220916_waterLicencing_support'
+    f = os.path.join (workspace,'Water Application Ledger_workingCopy.xlsx')
+    df_lk = pd.read_excel(f, 'Pick Lists')
+    df_lk = df_lk[['WATER_LICENSING_WATERSHED', 'REGION']]
     
-print ("Updating Watershed and Region info...")
-update_wtshd_info(f, connection, sql, df_lk)
+    print ('Connecting to BCGW...')
+    hostname = 'bcgw.bcgov/idwprod1.bcgov'
+    bcgw_user = os.getenv('bcgw_user')
+    bcgw_pwd = os.getenv('bcgw_pwd')
+    connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
-#main()
+    sql = '''
+            SELECT 
+                WATER_LICENSING_WATERSHED_NAME
+            FROM 
+                WHSE_WATER_MANAGEMENT.WLS_WATER_LIC_WATERSHEDS_SP wsh
+            WHERE 
+                SDO_RELATE (wsh.SHAPE, 
+                            SDO_GEOMETRY('POINT({long} {lat})', 4326),
+                            'mask=ANYINTERACT') = 'TRUE'
+        '''
+        
+    print ("Updating Watershed and Region info...")
+    update_wtshd_info(f, connection, sql, df_lk)
+    
+main()
