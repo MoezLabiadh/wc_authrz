@@ -61,10 +61,12 @@ def update_map (mxd_loc,out_loc,outShp,todayDate):
             dateText = datetime.today().strftime("%Y-%m-%d")
             elm.text = str(dateText)
 
-    outPDF = os.path.join(out_loc, 'waterApps_asof{}'.format(todayDate))
-    print('.....exporting map...')
-    arcpy.mapping.ExportToPDF(mxd, outPDF, resolution=150)
     #mxd.save()
+
+    outPDF = os.path.join(out_loc, 'waterApps_asof{}'.format(todayDate))
+    arcpy.mapping.ExportToPDF(mxd, outPDF, resolution=150,
+                              image_quality= 'BETTER', georef_info=False, jpeg_compression_quality=100)
+
 
 
 arcpy.env.overwriteOutput = True
