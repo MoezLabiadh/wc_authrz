@@ -68,27 +68,29 @@ def update_map (mxd_loc,out_loc,outShp,todayDate):
                               image_quality= 'BETTER', georef_info=False, jpeg_compression_quality=100)
 
 
+def main():
+    arcpy.env.overwriteOutput = True
+    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220916_waterLicencing_support\TESTS'
+    f = os.path.join(workspace,'Water Application Ledger_tests.xlsx')
 
-arcpy.env.overwriteOutput = True
-workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220916_waterLicencing_support\TESTS'
-f = os.path.join(workspace,'Water Application Ledger_tests.xlsx')
+    todayDate = datetime.today().strftime("%Y%m%d")
 
-todayDate = datetime.today().strftime("%Y%m%d")
+    print ('Formatting the Work Ledger Spreadsheet...')
+    df= prep_df (f)
 
-print ('Formatting the Work Ledger Spreadsheet...')
-df= prep_df (f)
+    print ('Converting to xy table...')
+    table= df2gdb (df)
 
-print ('Converting to xy table...')
-table= df2gdb (df)
+    print ('Creating Spatial Files...')
+    out_loc = os.path.join(workspace, 'OUT')
+    outShp = create_point_lyr (out_loc, table, todayDate)
 
-print ('Creating Spatial Files...')
-out_loc = os.path.join(workspace, 'OUT')
-outShp = create_point_lyr (out_loc, table, todayDate)
+    print ('Updating the Water Applications map...')
+    mxd_loc = os.path.join(workspace,'proj_test.mxd')
+    update_map (mxd_loc,out_loc,outShp,todayDate)
 
-print ('Updating the Water Applications map...')
-mxd_loc = os.path.join(workspace,'proj_test.mxd')
-update_map (mxd_loc,out_loc,outShp,todayDate)
+    arcpy.Delete_management('in_memory')
 
-arcpy.Delete_management('in_memory')
+    print('Finished Processing!')
 
-print('Finished Processing!')
+main()
