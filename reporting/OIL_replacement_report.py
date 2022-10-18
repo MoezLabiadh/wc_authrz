@@ -23,6 +23,14 @@ import numpy as np
 import pandas as pd
 
 
+def get_titan_report_date (rpt009):
+    """ Returns the date of the input TITAN report"""
+    df = pd.read_excel(rpt009,'Info')
+    titan_date = df.columns[1].strftime("%Y%m%d")
+   
+    return titan_date
+
+
 def load_reports (rpt009, rpt011):
     """Loads TITAN Reports"""
     df_rpt11 = pd.read_excel (rpt011,'TITAN_RPT011',
@@ -94,27 +102,20 @@ def add_cols (df):
     for i, row in df.iterrows():
         d = row['DAYS SINCE EXPIRY']
         if 1 < d <= 30:
-            df.at[i,'PERIOD OF EXPIRY'] = '1-30 days past Expiry'
-            
+            df.at[i,'PERIOD OF EXPIRY'] = '1-30 days past Expiry'       
         elif 1 < d < 30:
-            df.at[i,'PERIOD OF EXPIRY'] = '1-30 days past Expiry'
-            
+            df.at[i,'PERIOD OF EXPIRY'] = '1-30 days past Expiry'            
         elif 30 < d <= 120:
             df.at[i,'PERIOD OF EXPIRY'] = '30-120 days past Expiry'
-            
         elif 120 < d < 365:
             df.at[i,'PERIOD OF EXPIRY'] = '120-365 days past Expiry'        
-    
         elif 365 < d <= 730:
             df.at[i,'PERIOD OF EXPIRY'] = '1-2 Yrs past Expiry'  
-    
         elif 730 < d <= 1095:
             df.at[i,'PERIOD OF EXPIRY'] = '2-3 Yrs past Expiry'  
-    
         elif d > 1095:
             df.at[i,'PERIOD OF EXPIRY'] = '>3 Yrs past Expiry' 
             
-    
     #cleanup columns
     df['EXPIRY DATE'] =  pd.to_datetime(df['EXPIRY DATE'],
                                infer_datetime_format=True,
@@ -155,6 +156,7 @@ def main():
     rpt009 = os.path.join(workspace, 'TITAN_RPT009.xlsx')
     
     print ('Loading Titan Reports...')
+    titan_date = get_titan_report_date (rpt009)
     df_rpt11, df_rpt09 = load_reports (rpt009, rpt011)
     
     print ('Retrieving Expired Tenures...')
@@ -173,7 +175,7 @@ def main():
     df = df[cols]
     
     print ('Generating the report...')
-    filename = 'replacement_report_{}'.format(dt.datetime.today().strftime("%Y%m%d"))
+    filename = 'replacement_report_{}'.format(titan_date)
     generate_report (workspace, [df], ['REPLACEMETS'],filename)
     
     print ('Processing Completed!')
