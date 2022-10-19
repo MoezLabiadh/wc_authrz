@@ -62,7 +62,7 @@ def get_expired_tenures (df_rpt11, df_rpt09):
     df_exp.sort_values(by='EXPIRY DATE', ascending=False, inplace= True)
     df_exp.drop_duplicates(subset=['FILE NUMBER'], keep='first', inplace= True )
     df_exp.drop('RECEIVED DATE', axis=1, inplace=True)
-    df_exp = df_exp[['FILE NUMBER','EXPIRY DATE', 'RENT']]
+    df_exp = df_exp[['FILE NUMBER','EXPIRY DATE', 'RENT','INTEREST PARCEL ID']]
     
     df_exp = df_exp.loc[(df_exp['FILE NUMBER'].isin(df_rep['FILE NUMBER'].tolist()))]
     
