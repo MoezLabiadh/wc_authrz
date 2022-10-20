@@ -208,14 +208,19 @@ def proximity_model(df, wkt_dict, srid,connection,sql):
         for k, v in wkt_dict.items():
             query = sql.format(wkt= v,  srid= srid, prcl=p)
             df_q = read_query(connection,query)
-            dist_dict[k] = df_q['PROXIMITY_METERS'].iloc[0]
+            dis = df_q['PROXIMITY_METERS'].iloc[0]
             
-        prox_off = min(dist_dict, key=dist_dict.get)
+            dist_dict[k] = dis
         
-        if o != 'AQUA':
-            df.at[i,'PROXIMITY OFFICE'] = prox_off
+        if list(dist_dict.values())[0] != None:
+            prox_off = min(dist_dict, key=dist_dict.get)
+            
+            if o != 'AQUA':
+                df.at[i,'PROXIMITY OFFICE'] = prox_off
+            else:
+                df.at[i,'PROXIMITY OFFICE'] = 'AQUA'
         else:
-            df.at[i,'PROXIMITY OFFICE'] = 'AQUA'
+            pass
         
     return df
         
