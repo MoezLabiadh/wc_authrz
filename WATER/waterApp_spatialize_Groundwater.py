@@ -40,7 +40,7 @@ def create_point_lyr (out_loc, table,todayDate):
     outKml = os.path.join(out_loc, 'existingUse_gwApps_asof{}.kml'.format(todayDate))
     arcpy.MakeXYEventLayer_management(table, 'LONGITUDE', 'LATITUDE', outLayer, spRef)
     arcpy.CopyFeatures_management(outLayer, outShp)
-    arcpy.LayerToKML_conversion (outLayer, out_kmz_file)
+    arcpy.LayerToKML_conversion (outLayer, outKml)
 
     return outShp
 
