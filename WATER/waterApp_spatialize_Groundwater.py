@@ -37,10 +37,13 @@ def create_point_lyr (out_loc, table,todayDate):
     outLayer = 'in_memory\_xy_layer'
     spRef = arcpy.SpatialReference(4326)
     outShp = os.path.join(out_loc, 'existingUse_gwApps_asof{}.shp'.format(todayDate))
+    outKml = os.path.join(out_loc, 'existingUse_gwApps_asof{}.kml'.format(todayDate))
     arcpy.MakeXYEventLayer_management(table, 'LONGITUDE', 'LATITUDE', outLayer, spRef)
     arcpy.CopyFeatures_management(outLayer, outShp)
+    arcpy.LayerToKML_conversion (outLayer, out_kmz_file)
 
     return outShp
+
 
 def update_map (mxd_loc,out_loc,outShp,todayDate):
     """Generates a new map of Water Applications"""
