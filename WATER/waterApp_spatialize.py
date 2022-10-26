@@ -26,9 +26,9 @@ def df2gdb (df):
 
     #Update column names in structured array
     arr.dtype.names = tuple(colnames)
-    #print (arr.dtype)
+    #arcpy.AddMessage (arr.dtype)
     #Create the GDB table
-    table = 'in_memory\df_table'
+    #table = 'in_memory\df_table'
     arcpy.da.NumPyArrayToTable(arr, table)
 
     return table
@@ -70,27 +70,44 @@ def update_map (mxd_loc,out_loc,outShp,todayDate):
 
 def main():
     arcpy.env.overwriteOutput = True
-    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220916_waterLicencing_support\TESTS'
-    f = os.path.join(workspace,'Water Application Ledger_tests.xlsx')
+    #workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220916_waterLicencing_support\TESTS'
+    #f = os.path.join(workspace,'Water Application Ledger_tests.xlsx')
+    f =  arcpy.GetParameterAsText(0)
+    out_loc = arcpy.GetParameterAsText(1)
 
     todayDate = datetime.today().strftime("%Y%m%d")
 
-    print ('Formatting the Work Ledger Spreadsheet...')
+    #print ('Formatting the Work Ledger Spreadsheet...')
+    arcpy.AddMessage ('Formatting the Work Ledger Spreadsheet...')
     df= prep_df (f)
 
     print ('Converting to xy table...')
-    table= df2gdb (df)
+    arcpy.AddMessage ('Converting to xy table...')
+    # DEBUG THIS: works in staandalone. Doesent work in toolbox.
+    #table= df2gdb (df)
+
+
+
+    table= os.path.join(out_loc, 'table.dbf')
+    arcpy.ExcelToTable_conversion (f, table, 'Active Applications')
+
+
+
+
 
     print ('Creating Spatial Files...')
-    out_loc = os.path.join(workspace, 'OUT')
+    arcpy.AddMessage ('Creating Spatial Files...')
     outShp = create_point_lyr (out_loc, table, todayDate)
+    arcpy.management.Delete(table)
 
     print ('Updating the Water Applications map...')
-    mxd_loc = os.path.join(workspace,'proj_test.mxd')
+    arcpy.AddMessage ('Creating the Water Applications map (THIS MIGHT TAKE A WHILE!)')
+    mxd_loc = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TEMPLATES\Water_Licencing\template_waterApps_map.mxd'
     update_map (mxd_loc,out_loc,outShp,todayDate)
 
     arcpy.Delete_management('in_memory')
 
     print('Finished Processing!')
+    arcpy.AddMessage('Finished Processing!')
 
 main()
