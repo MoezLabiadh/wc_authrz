@@ -38,11 +38,11 @@ def create_point_lyr (out_loc, table,todayDate):
     outLayer = 'in_memory\_xy_layer'
     spRef = arcpy.SpatialReference(4326)
     outShp = os.path.join(out_loc, 'waterApps_asof{}.shp'.format(todayDate))
-    outKml = os.path.join(out_loc, 'existingUse_gwApps_asof{}.kml'.format(todayDate))
+    #outKml = os.path.join(out_loc, 'existingUse_gwApps_asof{}.kml'.format(todayDate))
     arcpy.MakeXYEventLayer_management(table, 'Longitude', 'Latitude', outLayer, spRef)
     arcpy.CopyFeatures_management(outLayer, outShp)
-    arcpy.MakeFeatureLayer_management (outShp, 'in_memory\_shp_layer')
-    arcpy.LayerToKML_conversion ('in_memory\_shp_layer', outKml)
+    #arcpy.MakeFeatureLayer_management (outShp, 'in_memory\_shp_layer')
+    #arcpy.LayerToKML_conversion ('in_memory\_shp_layer', outKml)
 
     return outShp
 
