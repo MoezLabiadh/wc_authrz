@@ -1,6 +1,6 @@
 import os
 import sys
-#import getpass
+import re
 #import arcpy
 import cx_Oracle
 import pandas as pd
@@ -39,20 +39,27 @@ def get_table_cols (item,status_xls):
     return table, cols
 
 def get_def_query (item,status_xls):
-    """Returns table and field names based on the Status tool common datasets spreadsheet"""
+    """Returns a definition query based on the Status tool common datasets spreadsheet"""
     excel = pd.ExcelFile(status_xls)
     df_stat = pd.read_excel(excel)
     df_stat = df_stat.loc[df_stat['Featureclass_Name(valid characters only)'] == item]
     df_stat.fillna(value='nan',inplace=True)
 
-    elem = df_stat['Definition_Query'].iloc[0].strip()
+    def_query = df_stat['Definition_Query'].iloc[0].strip()
 
-    if elem == 'nan':
+    if def_query == 'nan':
         def_query = " "
     else:
-       elem = elem.replace('"', '')
-       def_query = 'AND b.' + elem
-
+       def_query = def_query.replace('"', '')
+       def_query = re.sub(r'(\bAND\b)', r'\1 b.', def_query)
+       def_query = re.sub(r'(\bOR\b)', r'\1 b.', def_query)
+       
+       if def_query[0] == "(":
+           def_query = "(b." + def_query[1:]  
+       else:
+           def_query = "b." + def_query
+    
+    
     return def_query
 
 def get_geom_colname (table, connection):
