@@ -224,7 +224,8 @@ def get_geom_colname (connection,table,geomQuery):
     return geom_col
 
 
-def main ():
+def execute_status ():
+    """Executes the ST light process """
     print ('Connecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
@@ -234,9 +235,9 @@ def main ():
     connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
     print ('\nReading User Inputs.')
-    in_fileNbr = '1414635'
-    in_dispID = 929473
-    in_prclID = 957726
+    in_fileNbr = '1415320'
+    in_dispID = 944973
+    in_prclID = 978528
     print ('....input File Number: {}'.format(in_fileNbr))
     print ('....input Disposition ID: {}'.format(in_dispID))
     print ('....input Parcel ID: {}'.format(in_prclID))
@@ -314,5 +315,9 @@ def main ():
         
      
         counter += 1
+    
+    return results
+        
+        
 
-main()
+results = execute_status()
