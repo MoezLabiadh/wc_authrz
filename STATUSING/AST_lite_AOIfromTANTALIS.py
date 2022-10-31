@@ -29,6 +29,7 @@ warnings.simplefilter(action='ignore')
 
 import os
 import re
+import timeit
 import cx_Oracle
 import pandas as pd
 
@@ -201,7 +202,9 @@ def get_geom_colname (connection,table,geomQuery):
 
 
 def execute_status ():
-    """Executes the ST light process """
+    """Executes the AST light process """
+    start_t = timeit.default_timer() #start time
+    
     print ('Connecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
@@ -288,9 +291,12 @@ def execute_status ():
         print ('....Number of Overlay Features: {}'.format(ov_nbr))
         # add the dataframe to the resuls dictionnary
         results[item] =  df_all
-        
-     
+   
         counter += 1
+    
+    finish_t = timeit.default_timer() #finish time
+    print ('\nProcessing Completed in {} seconds'.format (round(finish_t-start_t)))  
+    
     
     return results
         
