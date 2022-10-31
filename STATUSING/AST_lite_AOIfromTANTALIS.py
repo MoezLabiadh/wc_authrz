@@ -77,42 +77,18 @@ def get_table_cols (item,df_stat):
                 fields.append('b.' + str(i.strip()))
                 
                 
-        # TEMPORARY FIXES: for incorrect column names in the AST spreadsheet
+    # TEMPORARY FIXES: for incorrect column names in the AST spreadsheet
     if 'b.ROAD_NAME' in fields:
         fields.remove('b.ROAD_NAME')
         fields.append('b.ROAD_SECTION_NAME')
 
-    if 'b.DAM_OWNER' in fields:
-        fields.remove('b.DAM_OWNER')
-        fields.append('b.DAM_OWNER_NAME')
-
     if 'b.DAM_FILE_NO' in fields:
         fields.remove('b.DAM_FILE_NO')
         fields.append('b.DAM_FILE_NUMBER')
-
-    if 'b.COMMUNITY_WS_NAME' in fields:
-        fields.remove('b.COMMUNITY_WS_NAME')
-        fields.append('b.CW_NAME')
-
-    if 'b.WELL_TAG_NO' in fields:
-        fields.remove('b.WELL_TAG_NO')
-        fields.append('b.WELL_TAG_NUMBER')
-
-    if 'b.AQUIFER_MATERIALS' in fields:
-        fields.remove('b.AQUIFER_MATERIALS')
-        fields.append('b.MATERIAL')
-
+                    
     if item == 'OGC Road Permit Areas':
         fields.remove('b.STATUS')
         fields.append('b.CONSTRUCTION_DESC')
-
-    if 'b.WASTE_DISPOSAL_NUMBER' in fields:
-        fields.remove('b.WASTE_DISPOSAL_NUMBER')
-        fields.append('b.DISPOSAL_NUMBER')
-
-    if 'b.HEALTH_AUTHORITY_NAME' in fields:
-        fields.remove('b.HEALTH_AUTHORITY_NAME')
-        fields.append('b.HLTH_AUTHORITY_NAME')
                     
 
     cols = ','.join(x for x in fields)
