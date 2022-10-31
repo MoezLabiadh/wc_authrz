@@ -1,5 +1,5 @@
 """
-Name:        Automatic Status Tool - LITE! DRAFT
+Name:        Automatic Status Tool - LITE version! DRAFT
 
 Purpose:     This script checks for overlaps between an AOI and BCGW datasets
              specified in the AST common datasets spreadsheet. 
