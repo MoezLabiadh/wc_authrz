@@ -24,7 +24,6 @@ Created:     2022-11-01
 """
 
 
-
 import warnings
 warnings.simplefilter(action='ignore')
 
@@ -87,7 +86,6 @@ def esri_to_gdf (aoi):
 def get_wkt_srid (gdf):
     """Dissolves multipart geometries and returns the SRID and WKT string"""
     
-    print (gdf.shape[0])
     if gdf.shape[0] > 1:
         gdf['dissolvefield'] = 1
         gdf = gdf.dissolve(by='dissolvefield')
@@ -97,7 +95,7 @@ def get_wkt_srid (gdf):
     #gdf_wgs = gdf.to_crs({'init': 'epsg:4326'})
     for index, row in gdf.iterrows():
         wkt_i = row['geometry'].wkt 
-        print ('Original WKT size is {}'.format(len(wkt_i)))
+        print ('......Original WKT size is {}'.format(len(wkt_i)))
     
         if len(wkt_i) < 4000:
             print ('......FULL WKT returned: within Oracle VARCHAR limit') 
