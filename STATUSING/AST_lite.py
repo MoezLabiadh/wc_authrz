@@ -17,8 +17,7 @@ Arguments:   - BCGW username
                  - Disposition ID
                  - Parcel ID
                 
-
-Author:      MLABIADH
+Author:      Moez Labiadh
 
 Created:     2022-11-01
 
