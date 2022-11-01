@@ -167,7 +167,7 @@ def load_queries ():
                         AND a.DISPOSITION_TRANSACTION_SID = {disp_id}
                         AND a.INTRID_SID = {parcel_id}
                         
-                        AND SDO_ANYINTERACT (b.{geom_col}, a.SHAPE) = 'TRUE'
+                        AND SDO_RELATE (b.{geom_col}, a.SHAPE,'mask=ANYINTERACT') = 'TRUE'
                         
                         {def_query}
                         """
