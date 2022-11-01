@@ -12,10 +12,10 @@ Note         - The script supports AOIs already in the TANTALIS Crown Tenure spa
 
 Arguments:   - BCGW username
              - BCGW password
-             - AOI (ESRI shp or featureclass) OR
-                 - File number
-                 - Disposition ID
-                 - Parcel ID
+             - AOI: - ESRI shp or featureclass OR
+                    - File number
+                    - Disposition ID
+                    - Parcel ID
                 
 Author:      Moez Labiadh
 
