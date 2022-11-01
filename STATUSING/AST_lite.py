@@ -1,13 +1,13 @@
 """
 Name:        Automatic Status Tool - LITE version! DRAFT
 
-Purpose:     This script checks for overlaps between an AOI and BCGW dataets
-             specified iin the AST common datasets spreadsheet. 
+Purpose:     This script checks for overlaps between an AOI and BCGW datasets
+             specified in the AST common datasets spreadsheet. 
              
-Note         - For now the script supports only AOIs already in the TANTALIS Crown Tenure table. 
+Note         - The script supports AOIs already in the TANTALIS Crown Tenure spatial view 
                and User defined AOIs (shp, featureclass).
                
-             - The script returns a Dictionnary containing the overlap results. Functions will 
+             - The script returns a Dictionnary containing the overlap results. Functions can 
                be added to support writing results to spreadsheet.
 
 Arguments:   - BCGW username
@@ -31,6 +31,7 @@ warnings.simplefilter(action='ignore')
 
 import os
 import re
+import timeit
 import cx_Oracle
 import pandas as pd
 import geopandas as gpd
@@ -81,6 +82,7 @@ def esri_to_gdf (aoi):
         raise Exception ('Format not recognized. Please provide a shp or featureclass (gdb)!')
     
     return gdf
+
 
 
 def get_wkt_srid (gdf):
@@ -157,8 +159,7 @@ def get_table_cols (item,df_stat):
 
     return table, cols
 
-
-            
+          
 
 def get_def_query (item,df_stat):
     """Returns an ORacle SQL formatted def query (if any) from the AST common datasets spreadsheet"""
@@ -198,7 +199,6 @@ def get_radius (item, df_stat):
     radius = df_stat['Buffer_Distance'].iloc[0]
     
     return radius
-
 
 
 
@@ -277,8 +277,11 @@ def get_geom_colname (connection,table,geomQuery):
     return geom_col
 
 
+
 def execute_status ():
     """Executes the AST light process """
+    start_t = timeit.default_timer() #start time
+    
     print ('Connecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
@@ -398,15 +401,14 @@ def execute_status ():
         # add the dataframe to the resuls dictionnary
         results[item] =  df_all
         
-     
         counter += 1
-    
+        
+        
+    finish_t = timeit.default_timer() #finish time
+    print ('\nProcessing Completed in {} seconds'.format (round(finish_t-start_t)))   
     
     return results
         
         
 
 results = execute_status()
-
-    
-    
