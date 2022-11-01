@@ -24,6 +24,7 @@ Created:     2022-11-01
 """
 
 
+
 import warnings
 warnings.simplefilter(action='ignore')
 
@@ -385,12 +386,14 @@ def execute_status ():
             df_buf ['OVERLAY RESULT'] = 'WITHIN {} m'.format(str(radius))   
             
             df_all =  pd.concat([df_intr, df_buf])
-            df_all.sort_values(by='OVERLAY RESULT', ascending=True, inplace = True)
-            df_cols = list(df_all.columns)
-            df_all.drop_duplicates(subset=df_cols, keep='first', inplace=True)
+
             
         else:
             df_all = df_intr
+        
+        df_all.sort_values(by='OVERLAY RESULT', ascending=True, inplace = True)
+        df_cols = list(df_all.columns)
+        df_all.drop_duplicates(subset=df_cols, keep='first', inplace=True)
         
         ov_nbr = df_all.shape[0]
         print ('....Number of Overlay Features: {}'.format(ov_nbr))
