@@ -1,7 +1,7 @@
 """
 Name:        Automatic Status Tool - LITE version! DRAFT
 
-Purpose:     This script checks for overlaps between an AOI and BCGW datasets
+Purpose:     This script checks for overlaps between an AOI and datasets
              specified in the AST datasets spreadsheets (common and region specific). 
              
 Notes        - The script supports AOIs already in the TANTALIS Crown Tenure spatial view 
