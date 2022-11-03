@@ -148,37 +148,28 @@ def read_input_spreadsheets (wksp_xls,region):
     df_stat = pd.concat([df_stat_c, df_stat_r])
     df_stat.dropna(how='all', inplace=True)
     
+    df_stat = df_stat.reset_index(drop=True)
+    
     return df_stat
     
     
 
-def get_table_cols (item,df_stat):
+def get_table_cols (item_index,df_stat):
     """Returns table and field names from the AST datasets spreadsheet"""
-    df_stat = df_stat.loc[df_stat['Featureclass_Name(valid characters only)'] == item]
-    df_stat.fillna(value='nan',inplace=True)
+    #df_stat = df_stat.loc[df_stat['Featureclass_Name(valid characters only)'] == item]
+    df_stat_item = df_stat.loc[[item_index]]
+    df_stat_item.fillna(value='nan',inplace=True)
 
-    table = df_stat['Datasource'].iloc[0].strip()
+    table = df_stat_item['Datasource'].iloc[0].strip()
 
     fields = []
-    fields.append(str(df_stat['Fields_to_Summarize'].iloc[0].strip()))
+    fields.append(str(df_stat_item['Fields_to_Summarize'].iloc[0].strip()))
 
     for f in range (2,7):
-        for i in df_stat['Fields_to_Summarize' + str(f)].tolist():
+        for i in df_stat_item['Fields_to_Summarize' + str(f)].tolist():
             if i != 'nan':
                 fields.append(str(i.strip()))
 
-    # TEMPORARY FIXES: for incorrect column names in the AST spreadsheet
-    if 'ROAD_NAME' in fields:
-        fields.remove('ROAD_NAME')
-        fields.append('ROAD_SECTION_NAME')
-
-    if 'DAM_FILE_NO' in fields:
-        fields.remove('DAM_FILE_NO')
-        fields.append('DAM_FILE_NUMBER')
-                    
-    if item == 'OGC Road Permit Areas':
-        fields.remove('STATUS')
-        fields.append('CONSTRUCTION_DESC')
 
     if table.startswith('WHSE') or table.startswith('REG'):       
         cols = ','.join('b.' + x for x in fields)
@@ -195,12 +186,13 @@ def get_table_cols (item,df_stat):
 
           
 
-def get_def_query (item,df_stat):
+def get_def_query (item_index,df_stat):
     """Returns an ORacle SQL formatted def query (if any) from the AST datasets spreadsheet"""
-    df_stat = df_stat.loc[df_stat['Featureclass_Name(valid characters only)'] == item]
-    df_stat.fillna(value='nan',inplace=True)
+    #df_stat = df_stat.loc[df_stat['Featureclass_Name(valid characters only)'] == item]
+    df_stat_item = df_stat.loc[[item_index]]
+    df_stat_item.fillna(value='nan',inplace=True)
 
-    def_query = df_stat['Definition_Query'].iloc[0].strip()
+    def_query = df_stat_item['Definition_Query'].iloc[0].strip()
 
     def_query = def_query.strip()
     
@@ -225,12 +217,13 @@ def get_def_query (item,df_stat):
 
 
 
-def get_radius (item, df_stat):
+def get_radius (item_index, df_stat):
     """Returns the buffer distance (if any) from the AST common datasets spreadsheet"""
-    df_stat = df_stat.loc[df_stat['Featureclass_Name(valid characters only)'] == item]
-    df_stat.fillna(value=0,inplace=True)
-    df_stat['Buffer_Distance'] = df_stat['Buffer_Distance'].astype(int)
-    radius = df_stat['Buffer_Distance'].iloc[0]
+    #df_stat = df_stat.loc[df_stat['Featureclass_Name(valid characters only)'] == item]
+    df_stat_item = df_stat.loc[[item_index]]
+    df_stat_item.fillna(value=0,inplace=True)
+    df_stat_item['Buffer_Distance'] = df_stat_item['Buffer_Distance'].astype(int)
+    radius = df_stat_item['Buffer_Distance'].iloc[0]
     
     return radius
 
@@ -324,207 +317,176 @@ def get_geom_colname (connection,table,geomQuery):
 
 
 
-#def execute_status ():
-"""Executes the AST light process """
-start_t = timeit.default_timer() #start time
-
-print ('Connecting to BCGW.')
-hostname = 'bcgw.bcgov/idwprod1.bcgov'
-bcgw_user = os.getenv('bcgw_user')
-#bcgw_user = 'XXXX'
-bcgw_pwd = os.getenv('bcgw_pwd')
-#bcgw_pwd = 'XXXX'
-connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-
-print ('\nLoading SQL queries')
-sql = load_queries ()
-
-
-print ('\nReading User inputs: AOI.')
-input_src = 'AOI' # **************USER INPUT: Possible values are "TANTALIS" and AOI*************
-
-if input_src == 'AOI':
-    print('....Reading the AOI file')
-    aoi = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\test_data\aoi_test_3.shp'
-    gdf_aoi = esri_to_gdf (aoi)
-    wkt, srid = get_wkt_srid (gdf_aoi)
+def execute_status ():
+    """Executes the AST light process """
+    start_t = timeit.default_timer() #start time
     
-elif input_src == 'TANTALIS':
-    in_fileNbr = '1415320'
-    in_dispID = 944973
-    in_prclID = 978528
-    print ('....input File Number: {}'.format(in_fileNbr))
-    print ('....input Disposition ID: {}'.format(in_dispID))
-    print ('....input Parcel ID: {}'.format(in_prclID))
+    print ('Connecting to BCGW.')
+    hostname = 'bcgw.bcgov/idwprod1.bcgov'
+    bcgw_user = os.getenv('bcgw_user')
+    #bcgw_user = 'XXXX'
+    bcgw_pwd = os.getenv('bcgw_pwd')
+    #bcgw_pwd = 'XXXX'
+    connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
-    aoi_query = sql ['aoi'].format(file_nbr= in_fileNbr,
-                           disp_id= in_dispID,parcel_id= in_prclID)
-    df_aoi= read_query(connection,aoi_query)  
+    print ('\nLoading SQL queries')
+    sql = load_queries ()
     
-    if df_aoi.shape[0] < 1:
-        raise Exception('Parcel not in TANTALIS. Please check inputs!')
+    
+    print ('\nReading User inputs: AOI.')
+    input_src = 'AOI' # **************USER INPUT: Possible values are "TANTALIS" and AOI*************
+    
+    if input_src == 'AOI':
+        print('....Reading the AOI file')
+        aoi = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\test_data\aoi_test_3.shp'
+        gdf_aoi = esri_to_gdf (aoi)
+        wkt, srid = get_wkt_srid (gdf_aoi)
         
-    else:
-        gdf_aoi = df_2_gdf (df_aoi, 3005)
-
-else:
-    raise Exception('Possible input sources are TANTALIS and AOI!')
-
-
-print ('\nReading the AST datasets spreadsheet.')
-wksp_xls = r'\\GISWHSE.ENV.GOV.BC.CA\whse_np\corp\script_whse\python\Utility_Misc\Ready\statusing_tools_arcpro\statusing_input_spreadsheets'
-region = 'northeast' #**************USER INPUT: REGION*************
-print ('....Region is {}'.format (region))
-df_stat = read_input_spreadsheets (wksp_xls,region)
-
-
-print ('\nRunning the analysis.')
-results = {} # this dictionnary will hold the overlay results
-item_count = df_stat.shape[0]
-counter = 1
-for index, row in df_stat.iterrows():
-    item = row['Featureclass_Name(valid characters only)']
-    
-    print ('\n****working on item {} of {}: {}***'.format(counter,item_count,item))
-    
-    print ('.....getting table and column names')
-    table, cols = get_table_cols (item,df_stat)
-    
-    print ('.....getting definition query (if any)')
-    def_query = get_def_query (item,df_stat)
-
-    print ('.....getting buffer distance (if any)')
-    radius = get_radius (item, df_stat)  
-    
-    
-    
-    
-    
-    
-    
-    print ('.....running Overlay Analysis.')
-    
-    if table.startswith('WHSE') or table.startswith('REG'): 
-        geomQuery = sql ['geomCol']
-        geom_col = get_geom_colname (connection,table,geomQuery)
+    elif input_src == 'TANTALIS':
+        in_fileNbr = '1415320'
+        in_dispID = 944973
+        in_prclID = 978528
+        print ('....input File Number: {}'.format(in_fileNbr))
+        print ('....input Disposition ID: {}'.format(in_dispID))
+        print ('....input Parcel ID: {}'.format(in_prclID))
         
-        if input_src == 'TANTALIS':
-            query_intr = sql ['intersect'].format(cols= cols,table= table,file_nbr= in_fileNbr,
-                                                  disp_id= in_dispID,parcel_id= in_prclID,
-                                                  def_query= def_query,geom_col= geom_col)
-        else:
-            query_intr = sql ['intersect_wkt'].format(cols= cols,table= table, wkt= wkt,
-                                                      srid=srid,def_query= def_query,
-                                                      geom_col= geom_col)
+        aoi_query = sql ['aoi'].format(file_nbr= in_fileNbr,
+                               disp_id= in_dispID,parcel_id= in_prclID)
+        df_aoi= read_query(connection,aoi_query)  
+        
+        if df_aoi.shape[0] < 1:
+            raise Exception('Parcel not in TANTALIS. Please check inputs!')
             
-        df_intr = read_query(connection,query_intr)
-        df_intr ['OVERLAY RESULT'] = 'INTERSECT'
+        else:
+            gdf_aoi = df_2_gdf (df_aoi, 3005)
+    
+    else:
+        raise Exception('Possible input sources are TANTALIS and AOI!')
+    
+    print ('\nReading the AST datasets spreadsheet.')
+    wksp_xls = r'\\GISWHSE.ENV.GOV.BC.CA\whse_np\corp\script_whse\python\Utility_Misc\Ready\statusing_tools_arcpro\statusing_input_spreadsheets'
+    region = 'west_coast' #**************USER INPUT: REGION*************
+    print ('....Region is {}'.format (region))
+    df_stat = read_input_spreadsheets (wksp_xls,region)
+    
+    print ('\nRunning the analysis.')
+    results = {} # this dictionnary will hold the overlay results
+    item_count = df_stat.shape[0]
+    counter = 1
+    for index, row in df_stat.iterrows():
+        item = row['Featureclass_Name(valid characters only)']
+        item_index = index
         
-        if radius > 0:
+        
+     
+        print ('\n****working on item {} of {}: {}***'.format(counter,item_count,item))
+        
+        print ('.....getting table and column names')
+        table, cols = get_table_cols (item_index,df_stat)
+        
+        print ('.....getting definition query (if any)')
+        def_query = get_def_query (item_index,df_stat)
+    
+        print ('.....getting buffer distance (if any)')
+        radius = get_radius (item_index, df_stat)  
+         
+        print ('.....running Overlay Analysis.')
+        
+        if table.startswith('WHSE') or table.startswith('REG'): 
+            geomQuery = sql ['geomCol']
+            geom_col = get_geom_colname (connection,table,geomQuery)
+            
             if input_src == 'TANTALIS':
-                query_buf= sql ['buffer'].format(cols= cols,table= table,file_nbr= in_fileNbr,
-                                                 disp_id= in_dispID,parcel_id= in_prclID,
-                                                 def_query= def_query,geom_col= geom_col, radius= radius)
-
+                query_intr = sql ['intersect'].format(cols= cols,table= table,file_nbr= in_fileNbr,
+                                                      disp_id= in_dispID,parcel_id= in_prclID,
+                                                      def_query= def_query,geom_col= geom_col)
             else:
-                query_buf = sql ['buffer_wkt'].format(cols= cols,table= table,wkt= wkt,
-                                                      srid=srid,def_query= def_query,
-                                                      geom_col= geom_col,radius= radius)
-            
-            df_buf = read_query(connection,query_buf)
-            df_buf ['OVERLAY RESULT'] = 'WITHIN {} m'.format(str(radius))   
-            
-            df_all =  pd.concat([df_intr, df_buf])
-
-            
-        else:
-            df_all = df_intr
-    
-    else:
-        try:
-            gdf_trg = esri_to_gdf (table)
-            
-            if not gdf_trg.crs.to_epsg() == 3005:
-                gdf_trg = gdf_trg.to_crs({'init': 'epsg:3005'})
+                query_intr = sql ['intersect_wkt'].format(cols= cols,table= table, wkt= wkt,
+                                                          srid=srid,def_query= def_query,
+                                                          geom_col= geom_col)
                 
-            gdf_intr = gpd.overlay(gdf_aoi, gdf_trg, how='intersection')
-            
-            # TEMPORARY FIX:  for empty column names in the REGION AST input spreadsheet
-            if len (cols) == 0:
-                cols = gdf_intr.columns[0] 
-                
-            # TEMPORARY FIX:  for WRONG column names in the REGION AST input spreadsheet 
-            try:
-                df_intr = pd.DataFrame(gdf_intr[cols])
-            except:
-                print ('.......WARNING: Column(s) name(s) does NOT exist!')
-                cols = df_intr.columns[0]
-                df_intr = pd.DataFrame(gdf_intr[cols])
-
-        
+            df_intr = read_query(connection,query_intr)
             df_intr ['OVERLAY RESULT'] = 'INTERSECT'
             
             if radius > 0:
-                aoi_buf = gdf_aoi.buffer(radius)
-                gdf_aoi_buf = gpd.GeoDataFrame(gpd.GeoSeries(aoi_buf))
-                gdf_aoi_buf = gdf_aoi_buf.rename(columns={0:'geometry'}).set_geometry('geometry')
-                gdf_aoi_buf_ext = gpd.overlay(gdf_aoi, gdf_aoi_buf, how='symmetric_difference')  
-                gdf_buf= gpd.overlay(gdf_aoi_buf_ext, gdf_trg, how='intersection')
+                if input_src == 'TANTALIS':
+                    query_buf= sql ['buffer'].format(cols= cols,table= table,file_nbr= in_fileNbr,
+                                                     disp_id= in_dispID,parcel_id= in_prclID,
+                                                     def_query= def_query,geom_col= geom_col, radius= radius)
+    
+                else:
+                    query_buf = sql ['buffer_wkt'].format(cols= cols,table= table,wkt= wkt,
+                                                          srid=srid,def_query= def_query,
+                                                          geom_col= geom_col,radius= radius)
                 
-                # TEMPORARY FIX:  for empty column names in the REGION AST input spreadsheet
-                if len (cols) == 0:
-                    cols = gdf_buf.columns[0] 
-                
-
-            # TEMPORARY FIX:  for WRONG column names in the REGION AST input spreadsheet 
-            try:
-                df_buf = pd.DataFrame(gdf_buf[cols])
-            except:
-                print ('.......WARNING: Column(s) name(s) does NOT exist!')
-                cols = df_intr.columns[0]
-                df_buf = pd.DataFrame(gdf_buf[cols])
-
-                    
-        
+                df_buf = read_query(connection,query_buf)
                 df_buf ['OVERLAY RESULT'] = 'WITHIN {} m'.format(str(radius))   
                 
                 df_all =  pd.concat([df_intr, df_buf])
+    
                 
             else:
                 df_all = df_intr
-            
-        except:
-            print ('.......ERROR: the Source Dataset does NOT exist!')
-            df_all = pd.DataFrame(['ERROR: Dataset does NOT exist:{}'.format(table)])
-            
-    #df_all.sort_values(by='OVERLAY RESULT', ascending=True, inplace = True)
-    #df_cols = list(df_all.columns)
-    #df_all.drop_duplicates(subset=df_cols, keep='first', inplace=True)
-    
-
-    ov_nbr = df_all.shape[0]
-    print ('.......Number of Overlay Features: {}'.format(ov_nbr))
-    
-    # add the dataframe to the resuls dictionnary
-    results[item] =  df_all
-    
-    counter += 1
- 
-    
- 
-    
- 
-    
- 
-    
-finish_t = timeit.default_timer() #finish time
-t_sec = round(finish_t-start_t)
-mins = int (t_sec/60)
-secs = int (t_sec%60)
-print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
-    
-    #return results
         
+        else:
+            try:
+                gdf_trg = esri_to_gdf (table)
+                
+                if not gdf_trg.crs.to_epsg() == 3005:
+                    gdf_trg = gdf_trg.to_crs({'init': 'epsg:3005'})
+                    
+                gdf_intr = gpd.overlay(gdf_aoi, gdf_trg, how='intersection')
+                
+                
+                # TEMPORARY FIX:  for Empty/Wrong column names in the REGION AST input spreadsheet
+                gdf_cols = [col for col in gdf_trg.columns]  
+                diffs = list(set(cols).difference(gdf_cols))
+                for diff in diffs:
+                    cols.remove(diff)
+                if len(cols) ==0:
+                    cols.append(gdf_trg.columns[0])
+                 
+                df_intr = pd.DataFrame(gdf_intr[cols])
+                df_intr ['OVERLAY RESULT'] = 'INTERSECT'
+                
+                if radius > 0:
+                    aoi_buf = gdf_aoi.buffer(radius)
+                    gdf_aoi_buf = gpd.GeoDataFrame(gpd.GeoSeries(aoi_buf))
+                    gdf_aoi_buf = gdf_aoi_buf.rename(columns={0:'geometry'}).set_geometry('geometry')
+                    gdf_aoi_buf_ext = gpd.overlay(gdf_aoi, gdf_aoi_buf, how='symmetric_difference')  
+                    gdf_buf= gpd.overlay(gdf_aoi_buf_ext, gdf_trg, how='intersection')
+                    
+                    df_buf = pd.DataFrame(gdf_buf[cols])
+                    df_buf ['OVERLAY RESULT'] = 'WITHIN {} m'.format(str(radius))   
+                    
+                    df_all =  pd.concat([df_intr, df_buf])
+                    
+                else:
+                    df_all = df_intr
+                
+            except:
+                print ('.......ERROR: the Source Dataset does NOT exist!')
+                df_all = pd.DataFrame(['ERROR: Dataset does NOT exist:{}'.format(table)])
+                
+        #df_all.sort_values(by='OVERLAY RESULT', ascending=True, inplace = True)
+        #df_cols = list(df_all.columns)
+        #df_all.drop_duplicates(subset=df_cols, keep='first', inplace=True)
         
+        ov_nbr = df_all.shape[0]
+        print ('.......Number of Overlay Features: {}'.format(ov_nbr))
+        
+        # add the dataframe to the resuls dictionnary
+        results[item] =  df_all
+        
+        counter += 1
+        
+    finish_t = timeit.default_timer() #finish time
+    t_sec = round(finish_t-start_t)
+    mins = int (t_sec/60)
+    secs = int (t_sec%60)
+    print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
+        
+    return results
+              
 
-#results = execute_status()
+results = execute_status()
