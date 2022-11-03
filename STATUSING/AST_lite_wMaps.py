@@ -331,7 +331,7 @@ def make_status_map (gdf_aoi, gdf_res, title):
     ax.set_xlim(minx-factor, maxx+factor)
     ax.set_ylim(miny-factor, maxy+factor)
     
-    plt.title('title', fontsize=18)
+    plt.title(title, fontsize=18)
     plt.xlabel('Longitude', fontsize=10)
     plt.ylabel('Latitude', fontsize=10)
 
