@@ -522,7 +522,7 @@ def execute_status ():
         #results_geo[item] =  df_all #with Geometry column
         
         
-        print ('....generating a map.')
+        print ('.....generating a map.')
         if df_all.shape[0] > 0:
             df_all['SHAPE'] = df_all['SHAPE'].astype(str)
             geoms = gpd.GeoSeries.from_wkt(df_all["SHAPE"])
