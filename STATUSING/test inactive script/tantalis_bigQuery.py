@@ -116,8 +116,8 @@ def load_sql ():
                   where
                       mm.disposition_transaction_sid(+) = nn.disposition_transaction_sid and
                       
-                      
                       nn.dts_activation_cde = 'INACT' and  
+                      nn.stage_nme != 'APPLICATION' and
                       mm.intrid_sid IN ({prcl})
 
                     """
