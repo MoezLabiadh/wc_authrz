@@ -7,14 +7,15 @@ def load_sql ():
                     select
                       cast(mm.intrid_sid as number) intrid_sid,
                       cast(mm.disposition_transaction_sid as number) disposition_transaction_sid,
-                      mm.expiry_dat as p_expiry_dat,
+
                       nn.file_chr,
                       nn.stage_nme,
+                      nn.status_nme,
+                      mm.expiry_dat,
                       nn.purpose_nme,
                       nn.subpurpose_nme,
                       nn.type_nme,
                       nn.subtype_nme,
-                      nn.status_nme,
                       nn.dts_activation_cde,
                       nn.location_dsc
 
