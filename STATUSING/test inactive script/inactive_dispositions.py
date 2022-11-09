@@ -68,6 +68,6 @@ def execute_process ():
     return df # just to inspect results
 
     
-execute_process ()
+df = execute_process ()
     
     
