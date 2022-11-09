@@ -119,8 +119,11 @@ def load_sql ():
                       
                       nn.dts_activation_cde = 'INACT' and  
                       nn.stage_nme != 'APPLICATION' and
-                      mm.intrid_sid IN ({prcl})
-
+                      mm.intrid_sid IN ({prcl}) and
+                      
+                       nn.file_chr NOT IN (select ten.CROWN_LANDS_FILE
+                                           from WHSE_TANTALIS.TA_CROWN_TENURES_VW ten
+                                           where ten.TENURE_STATUS IN ('DISPOSITION IN GOOD STANDING', 'OFFERED', 'OFFER ACCEPTED'))
                     """
                     
     return sql
