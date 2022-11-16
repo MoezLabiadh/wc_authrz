@@ -18,12 +18,11 @@ def load_sql ():
                       nn.dts_activation_cde,
                       nn.location_dsc,
                       nn.ORGANIZATIONS_LEGAL_NAME as holder_organnsation_name,
-                      nn.INDIVIDUALS_FIRST_NAME as holder_individual_first_name,
-                      nn.INDIVIDUALS_LAST_NAME as holder_individual_last_name,
+                      nn.INDIVIDUALS_FIRST_NAME || ' ' || nn.INDIVIDUALS_LAST_NAME as holder_individual_name,
                       nn.CITY as holder_city,
                       nn.REGION_CDE as holder_region,
-                      nn.COUNTRY_CDE as holder_country
-                      
+                      nn.COUNTRY_CDE as holder_country,
+                      nn.WORK_AREA_CODE || nn.WORK_EXTENSION_NUMBER|| nn.WORK_PHONE_NUMBER as holder_phone    
               from (select
                    cast(jj.disposition_transaction_sid as number) disposition_transaction_sid,
                    cast(jj.disposition_sid as number) disposition_sid,
@@ -58,7 +57,11 @@ def load_sql ():
                    jj.INDIVIDUALS_LAST_NAME,
                    jj.CITY,
                    jj.REGION_CDE,
-                   jj.COUNTRY_CDE                              
+                   jj.COUNTRY_CDE,
+                   jj.WORK_AREA_CODE,
+                   jj.WORK_EXTENSION_NUMBER,
+                   jj.WORK_PHONE_NUMBER
+                   
              from (select
                    cast(aa.disposition_transaction_sid as number) disposition_transaction_sid,
                    cast(aa.disposition_sid as number) disposition_sid,
@@ -85,7 +88,10 @@ def load_sql ():
                    ss.INDIVIDUALS_LAST_NAME,
                    ss.CITY,
                    ss.REGION_CDE,
-                   ss.COUNTRY_CDE
+                   ss.COUNTRY_CDE,
+                   zz.WORK_AREA_CODE,
+                   zz.WORK_EXTENSION_NUMBER,
+                   zz.WORK_PHONE_NUMBER
              from
                    whse_tantalis.ta_disposition_transactions aa,
                    whse_tantalis.ta_available_purposes bb,
@@ -93,11 +99,12 @@ def load_sql ():
                    whse_tantalis.ta_available_types dd,
                    whse_tantalis.ta_available_subtypes ee,
                    whse_tantalis.ta_organization_units ff,                             
-                   WHSE_TANTALIS.TA_INTEREST_HOLDER_VW ss
+                   WHSE_TANTALIS.TA_INTEREST_HOLDER_VW ss,
+                   WHSE_TANTALIS.TA_INTERESTED_PARTIES zz
 
              where
-                   ss.DISPOSITION_TRANSACTION_SID = aa.DISPOSITION_TRANSACTION_SID and
-                   
+                   ss.DISPOSITION_TRANSACTION_SID = aa.DISPOSITION_TRANSACTION_SID(+) and
+                   zz.INTERESTED_PARTY_SID = ss.INTERESTED_PARTY_SID(+) and
                    aa.purpose_sid = bb.purpose_sid and
                    bb.purpose_sid = cc.purpose_sid and
                    aa.subpurpose_sid = cc.subpurpose_sid and
@@ -140,8 +147,7 @@ def load_sql ():
                 
                 nn.dts_activation_cde = 'INACT' and  
                 nn.stage_nme != 'APPLICATION' and
-                mm.intrid_sid IN ({prcl}) and
-                
+                mm.intrid_sid IN ({prcl}) and               
                 nn.file_chr NOT IN (select ten.CROWN_LANDS_FILE
                                      from WHSE_TANTALIS.TA_CROWN_TENURES_VW ten
                                      where ten.TENURE_STATUS IN ('DISPOSITION IN GOOD STANDING', 'OFFERED', 'OFFER ACCEPTED'))
