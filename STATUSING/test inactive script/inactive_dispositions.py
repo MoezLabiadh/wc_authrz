@@ -1,16 +1,25 @@
 import os
-import cx_Oracle
+import pyodbc
 import pandas as pd
 from tantalis_bigQuery import load_sql
 
 
-def connect_to_DB (username,password,hostname):
+def connect_to_DB (driver,server,port,dbq, username,password):
     """ Returns a connection to Oracle database"""
     try:
-        connection = cx_Oracle.connect(username, password, hostname, encoding="UTF-8")
+        connectString ="""
+                    DRIVER={driver};
+                    SERVER={server}:{port};
+                    DBQ={dbq};
+                    Uid={uid};
+                    Pwd={pwd}
+                       """.format(driver=driver,server=server, port=port,
+                                  dbq=dbq,uid=username,pwd=password)
+
+        connection = pyodbc.connect(connectString)
         print  ("...Successffuly connected to the database")
     except:
-        raise Exception('...Connection failed! Please check your login parameters')
+        raise Exception('...Connection failed! Please check your connection parameters')
 
     return connection
 
@@ -22,7 +31,7 @@ def read_query(connection,query):
         cursor.execute(query)
         cols = [x[0] for x in cursor.description]
         rows = cursor.fetchall()
-        return pd.DataFrame(rows, columns=cols)
+        return pd.DataFrame.from_records(rows, columns=cols)
     
     finally:
         if cursor is not None:
@@ -33,12 +42,16 @@ def execute_process ():
     """Generates a csv of inactive Lands dispositions"""
     
     print ('Connecting to BCGW.')
+    driver = 'Oracle in OraClient12Home1'
+    server = 'bcgw.bcgov'
+    port= '1521'
+    dbq= 'idwprod1'
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
-    bcgw_user = os.getenv('bcgw_user')
-    #bcgw_user = 'XXXX'
-    bcgw_pwd = os.getenv('bcgw_pwd')
-    #bcgw_pwd = 'XXXX'
-    connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
+    #username = os.getenv('bcgw_user')
+    username = 'XXXX'
+    #password = os.getenv('bcgw_pwd')
+    password = 'XXXX'
+    connection= connect_to_DB (driver,server,port,dbq,username,password)
     
     print ('Loading SQL queries.')
     sql = load_sql ()
@@ -62,12 +75,11 @@ def execute_process ():
     print ('Export a csv of inactive dispositions.')
     # export the dataframe to csv.
     # the csv is then fed into the main AST/UOT script to replace ILRR report ???
-    out_file = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\inactive_query/incative.csv'
+    out_file = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\inactive_query\incative.csv'
     df.to_csv (out_file, index=False)
 
     return df # just to inspect results
 
     
 df = execute_process ()
-    
     
