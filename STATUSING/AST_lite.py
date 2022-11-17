@@ -10,9 +10,12 @@ Notes        - The script supports AOIs in TANTALIS Crown Tenure spatial view
              - The script returns a Dictionnary containing the overlap results -  Functions will 
                be added to support writing results to spreadsheet.
                
-             - Maps/plots are created in memory for now - can be saved to image.
+             - The script does not support ILRR reports (for now!)
+               
+             - The script creates Interactive HTML maps showing the AOI and ovelappng features.
 
-Arguments:   - BCGW username
+Arguments:   - workspace location
+             - BCGW username
              - BCGW password
              - Region (west coast, skeena...)
              - AOI: - ESRI shp or featureclass OR
@@ -22,7 +25,7 @@ Arguments:   - BCGW username
                 
 Author:      Moez Labiadh
 
-Created:     2022-11-01
+Created:     2022-11-17
 
 """
 
@@ -36,10 +39,11 @@ import re
 import timeit
 import cx_Oracle
 import pandas as pd
+import folium
 import geopandas as gpd
 from shapely import wkt
-import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
+#from datetime import datetime
+
 
 
 
@@ -94,8 +98,10 @@ def esri_to_gdf (aoi):
 def df_2_gdf (df, crs):
     """ Return a geopandas gdf based on a df with Geometry column"""
     df['SHAPE'] = df['SHAPE'].astype(str)
-    df['geometry'] = df['SHAPE'].apply(wkt.loads)
-    gdf = gpd.GeoDataFrame(df, geometry = df['geometry'])
+    df['geometry'] = gpd.GeoSeries.from_wkt(df['SHAPE'])
+    gdf = gpd.GeoDataFrame(df, geometry='geometry')
+    #df['geometry'] = df['SHAPE'].apply(wkt.loads)
+    #gdf = gpd.GeoDataFrame(df, geometry = df['geometry'])
     gdf.crs = "EPSG:" + str(crs)
     del df['SHAPE']
     
@@ -163,7 +169,7 @@ def get_table_cols (item_index,df_stat):
     df_stat_item.fillna(value='nan',inplace=True)
 
     table = df_stat_item['Datasource'].iloc[0].strip()
-
+    
     fields = []
     fields.append(str(df_stat_item['Fields_to_Summarize'].iloc[0].strip()))
 
@@ -172,9 +178,14 @@ def get_table_cols (item_index,df_stat):
             if i != 'nan':
                 fields.append(str(i.strip()))
 
-
+    col_lbl = df_stat_item['map_label_field'].iloc[0].strip()
+    
+    if col_lbl != 'nan' and col_lbl not in fields:
+        fields.append(col_lbl)
+    
     if table.startswith('WHSE') or table.startswith('REG'):       
         cols = ','.join('b.' + x for x in fields)
+
         # TEMPORARY FIX:  for empty column names in the COMMON AST input spreadsheet
         if cols == 'b.nan':
             cols = 'b.OBJECTID'
@@ -184,7 +195,7 @@ def get_table_cols (item_index,df_stat):
         if cols[0] == 'nan':
             cols = []
     
-    return table, cols
+    return table, cols, col_lbl
 
           
 
@@ -319,34 +330,35 @@ def get_geom_colname (connection,table,geomQuery):
 
 
 
-def make_status_map (gdf_aoi, gdf_res, title):
-    """ Generate maps by plotting the AOI and intersection geodataframes"""
-    fig, ax = plt.subplots(figsize=(12, 12))
+def make_status_map (gdf_aoi, gdf_intr, col_lbl, item,workspace):
+    """ Generates HTML Interactive maps of AOI and intersection geodataframes"""
+    m = gdf_aoi.explore(
+         tooltip= False,
+         style_kwds=dict(fill= False, color="red", weight=3),
+         name="AOI")
 
-    gdf_aoi.plot(ax=ax, color='r',linewidth = 2)
-    gdf_res.plot(ax=ax, color='g', alpha=0.5)
+    gdf_intr.explore(
+         m=m,
+         column= col_lbl, # make choropleth based on "BoroName" column
+         tooltip= col_lbl, # show "BoroName" value in tooltip (on hover)
+         popup=True, # show all values in popup (on click)
+         cmap="Dark2", # use "Set1" matplotlib colormap
+         style_kwds=dict(color="gray"), # use black outline
+         name=item)
+	
+    folium.TileLayer('stamenterrain', control=True).add_to(m)
+    folium.LayerControl().add_to(m)
     
-    minx, miny, maxx, maxy = gdf_aoi.total_bounds
-    factor = 5000
-    ax.set_xlim(minx-factor, maxx+factor)
-    ax.set_ylim(miny-factor, maxy+factor)
-    
-    plt.title(title, fontsize=18)
-    plt.xlabel('Longitude', fontsize=10)
-    plt.ylabel('Latitude', fontsize=10)
-
-
-    legend_elements = [Patch(facecolor='r', edgecolor='r', label='AOI'),
-                       Patch(facecolor='g', edgecolor='g', label='Intersect features')]
-    
-    ax.legend(handles=legend_elements)
-    
+    out_html = os.path.join(workspace,item + '.html')
+    m.save(out_html)
+ 
     
     
 def execute_status ():
     """Executes the AST light process """
     start_t = timeit.default_timer() #start time
     
+    workspace = r"\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\results_demo"
     print ('Connecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
@@ -360,7 +372,7 @@ def execute_status ():
     
     
     print ('\nReading User inputs: AOI.')
-    input_src = 'AOI' # **************USER INPUT: Possible values are "TANTALIS" and AOI*************
+    input_src = 'TANTALIS' # **************USER INPUT: Possible values are "TANTALIS" and AOI*************
     
     if input_src == 'AOI':
         print('....Reading the AOI file')
@@ -399,7 +411,7 @@ def execute_status ():
     df_stat = read_input_spreadsheets (wksp_xls,region)
     
     
-
+    
     print ('\nRunning the analysis.')
     results = {} # this dictionnary will hold the overlay results
     results_geo = {}
@@ -413,7 +425,17 @@ def execute_status ():
         print ('\n****working on item {} of {}: {}***'.format(counter,item_count,item))
         
         print ('.....getting table and column names')
-        table, cols = get_table_cols (item_index,df_stat)
+        table, cols, col_lbl = get_table_cols (item_index,df_stat)
+        
+        '''
+        if isinstance(cols, list) == True:
+            if col_lbl not in cols:
+                cols.append(col_lbl)
+        else:
+            if col_lbl not in cols:
+               cols = cols + ',' +  col_lbl
+            
+        '''
         
         print ('.....getting definition query (if any)')
         def_query = get_def_query (item_index,df_stat)
@@ -432,11 +454,13 @@ def execute_status ():
                                                       disp_id= in_dispID,parcel_id= in_prclID,
                                                       def_query= def_query,geom_col= geom_col)
             else:
+                
                 query_intr = sql ['intersect_wkt'].format(cols= cols,table= table, wkt= wkt,
                                                           srid=srid,def_query= def_query,
                                                           geom_col= geom_col)
                 
             df_intr = read_query(connection,query_intr)
+    
             df_intr ['OVERLAY RESULT'] = 'INTERSECT'
             
             if radius > 0:
@@ -458,6 +482,7 @@ def execute_status ():
                 
             else:
                 df_all = df_intr
+                
         
         else:
             try:
@@ -506,10 +531,18 @@ def execute_status ():
             l = cols.split(",")
             cols = [x[2:] for x in l]
     
-        cols.append('OVERLAY RESULT')    
-        df_all_res = df_all[cols]   
+        cols.append('OVERLAY RESULT')
+        
+        '''
+        if col_lbl in cols:
+            cols_res = cols.remove(col_lbl)    
+            df_all_res = df_all[cols_res]  
+        else:
+            df_all_res = df_all[cols]  
     
-    
+        '''
+        df_all_res = df_all[cols]  
+        
         #df_all.sort_values(by='OVERLAY RESULT', ascending=True, inplace = True)
         #df_cols = list(df_all.columns)
         #df_all.drop_duplicates(subset=df_cols, keep='first', inplace=True)
@@ -521,13 +554,25 @@ def execute_status ():
         results[item] =  df_all_res
         #results_geo[item] =  df_all #with Geometry column
         
-        
+    
         print ('.....generating a map.')
-        if df_all.shape[0] > 0:
-            df_all['SHAPE'] = df_all['SHAPE'].astype(str)
-            geoms = gpd.GeoSeries.from_wkt(df_all["SHAPE"])
-            make_status_map (gdf_aoi, geoms, item)
-        
+        if ov_nbr > 0:
+            gdf_intr = df_2_gdf (df_all, 3005)
+            
+            # FIX FOR MISSING LABEL COLUMN NAME
+            if col_lbl == 'nan': 
+                col_lbl = cols[0]
+                gdf_intr [col_lbl] = gdf_intr [col_lbl].astype(str)
+            
+            # datetime columns are causing errors when plotting in Folium
+            for col in gdf_intr.columns:
+                if gdf_intr[col].dtype == 'datetime64[ns]':
+                    gdf_intr[col] = gdf_intr[col].astype(str)
+            
+            gdf_intr[col_lbl] = gdf_intr[col_lbl].astype(str) 
+            
+            make_status_map (gdf_aoi, gdf_intr, col_lbl, item, workspace)
+    
         
         counter += 1
     
@@ -541,3 +586,4 @@ def execute_status ():
               
 
 results = execute_status()
+
