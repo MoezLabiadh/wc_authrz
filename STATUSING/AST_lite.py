@@ -37,7 +37,7 @@ import cx_Oracle
 import pandas as pd
 import folium
 import geopandas as gpd
-from shapely import wkt
+from shapely import wkt, wkb
 #from datetime import datetime
 
 
@@ -100,19 +100,32 @@ def df_2_gdf (df, crs):
 
 
 
-def get_wkb_srid (gdf):
-    """Dissolves multipart geometries and returns SRID and WKB objects"""
-    
-    if gdf.shape[0] > 1:
-        gdf['dissolvefield'] = 1
-        gdf = gdf.dissolve(by='dissolvefield')
-    
-    srid = gdf.crs.to_epsg()
+def multipart_to_singlepart(gdf):
+    """Converts a multipart gdf to singlepart gdf """
+    gdf['dissolvefield'] = 1
+    gdf = gdf.dissolve(by='dissolvefield')
+    gdf.reset_index(inplace=True)
+    del gdf['dissolvefield']
+        
+    return gdf
 
-    wkb = gdf['geometry'].to_wkb().iloc[0]
+
+
+def get_wkb_srid (gdf):
+    """Returns SRID and WKB objects from gdf"""
+
+    srid = gdf.crs.to_epsg()
+    
+    geom = gdf['geometry'].iloc[0]
+
+    wkb_aoi = geom.to_wkb()
+    
+    # if geometry has Z values, flatten geometry
+    if geom.has_z:
+        wkb_aoi = wkb.dumps(geom, output_dimension=2)
+        
     
     '''
-    wkt_i = gdf['geometry'].to_wkt().iloc[0]
     print ('......Original WKT size is {}'.format(len(wkt_i)))
 
     if len(wkt_i) < 4000:
@@ -131,8 +144,9 @@ def get_wkb_srid (gdf):
         print ('......Geometry Simplified with Tolerance {} m'.format (s))            
         wkt= wkt_sim 
     '''            
-
-    return wkb, srid
+    
+    
+    return wkb_aoi, srid
 
 
 
@@ -290,7 +304,7 @@ def load_queries ():
                     FROM {tab} b
                     
                     WHERE SDO_RELATE (b.{geom_col}, 
-                                      SDO_GEOMETRY(:wkb, :srid),'mask=ANYINTERACT') = 'TRUE'
+                                      SDO_GEOMETRY(:wkb_aoi, :srid),'mask=ANYINTERACT') = 'TRUE'
                         {def_query}  
                         """
                         
@@ -300,14 +314,14 @@ def load_queries ():
                     FROM {tab} b
                     
                     WHERE SDO_WITHIN_DISTANCE (b.{geom_col}, 
-                                               SDO_GEOMETRY(:wkb, :srid),'mask=ANYINTERACT') = 'TRUE'
+                                               SDO_GEOMETRY(:wkb_aoi, :srid),'mask=ANYINTERACT') = 'TRUE'
                         {def_query}   
                     """ 
     return sql
 
 
 
-def get_geom_colname (connection,table,geomQuery):
+def get_geom_colname (connection,cursor,table,geomQuery):
     """ Returns the geometry column of BCGW table name: can be either SHAPE or GEOMETRY"""
     el_list = table.split('.')
 
@@ -330,10 +344,10 @@ def make_status_map (gdf_aoi, gdf_intr, col_lbl, item,workspace):
 
     gdf_intr.explore(
          m=m,
-         column= col_lbl, # make choropleth based on "BoroName" column
-         tooltip= col_lbl, # show "BoroName" value in tooltip (on hover)
+         column= col_lbl, # make choropleth based on rhis column
+         tooltip= col_lbl, # show column value in tooltip (on hover)
          popup=True, # show all values in popup (on click)
-         cmap="Dark2", # use "Set1" matplotlib colormap
+         cmap="Dark2",  
          style_kwds=dict(color="gray"), # use black outline
          name=item)
 	
@@ -367,11 +381,20 @@ def execute_status ():
     
     if input_src == 'AOI':
         print('....Reading the AOI file')
+        
+        
+        #aoi = r'\\spatialfiles.bcgov\Work\srm\nan\Workarea\wes\FN\LUV\Outputs\Status\AutoStatus_20221117\aoi_boundary.gdb\aoi'
         aoi = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\test_data\aoi_test.shp'
+        
+        
         gdf_aoi = esri_to_gdf (aoi)
         if 'Id' in list (gdf_aoi.columns):
             del gdf_aoi['Id']
-        wkb, srid = get_wkb_srid (gdf_aoi)
+            
+        if gdf_aoi.shape[0] > 1:
+            gdf_aoi =  multipart_to_singlepart(gdf_aoi)
+        
+        wkb_aoi, srid = get_wkb_srid (gdf_aoi)
         
         
     elif input_src == 'TANTALIS':
@@ -407,7 +430,6 @@ def execute_status ():
     
     print ('\nRunning the analysis.')
     results = {} # this dictionnary will hold the overlay results
-    results_geo = {}
     
     item_count = df_stat.shape[0]
     counter = 1
@@ -440,7 +462,7 @@ def execute_status ():
         
         if table.startswith('WHSE') or table.startswith('REG'): 
             geomQuery = sql ['geomCol']
-            geom_col = get_geom_colname (connection,table,geomQuery)
+            geom_col = get_geom_colname (connection,cursor,table,geomQuery)
             
             if input_src == 'TANTALIS':
                 query= sql ['intersect'].format (cols=cols,tab=table,
@@ -450,8 +472,8 @@ def execute_status ():
             else:
                 query= sql ['intersect_wkb'].format (cols=cols,tab=table,
                                                      geom_col=geom_col,def_query=def_query)
-                cursor.setinputsizes(wkb=cx_Oracle.BLOB) # set the WKB as oracle BLOB
-                bvars_intr = {'wkb':wkb,'srid':srid}
+                cursor.setinputsizes(wkb_aoi=cx_Oracle.BLOB) # set the WKB as oracle BLOB
+                bvars_intr = {'wkb_aoi':wkb_aoi,'srid':srid}
                 
             df_intr = read_query(connection,cursor,query,bvars_intr) 
     
@@ -467,8 +489,8 @@ def execute_status ():
                 else:
                     query_buf = sql ['buffer_wkb'].format (cols=cols,tab=table,def_query=def_query,
                                                            geom_col=geom_col,radius=radius)
-                    cursor.setinputsizes(wkb=cx_Oracle.BLOB) # set the WKB as oracle BLOB
-                    bvars_buf = {'wkb':wkb,'srid':srid}
+                    cursor.setinputsizes(wkb_aoi=cx_Oracle.BLOB) # set the WKB as oracle BLOB
+                    bvars_buf = {'wkb_aoi':wkb_aoi,'srid':srid}
                 
                 df_buf = read_query(connection,cursor,query_buf, bvars_buf)
                 df_buf ['OVERLAY RESULT'] = 'WITHIN {} m'.format(str(radius))   
@@ -548,8 +570,7 @@ def execute_status ():
         
         # add the dataframe to the resuls dictionnary
         results[item] =  df_all_res
-        #results_geo[item] =  df_all #with Geometry column
-        
+    
     
         print ('.....generating a map.')
         if ov_nbr > 0:
