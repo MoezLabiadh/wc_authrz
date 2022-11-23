@@ -105,8 +105,8 @@ def multipart_to_singlepart(gdf):
     gdf['dissolvefield'] = 1
     gdf = gdf.dissolve(by='dissolvefield')
     gdf.reset_index(inplace=True)
-    del gdf['dissolvefield']
-        
+    gdf = gdf[['geometry']] #remove all columns
+         
     return gdf
 
 
@@ -377,15 +377,13 @@ def execute_status ():
     
     
     print ('\nReading User inputs: AOI.')
-    input_src = 'AOI' # **************USER INPUT: Possible values are "TANTALIS" and AOI*************
+    input_src = 'TANTALIS' # **************USER INPUT: Possible values are "TANTALIS" and AOI*************
     
     if input_src == 'AOI':
         print('....Reading the AOI file')
         aoi = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\test_data\aoi_test.shp'
         gdf_aoi = esri_to_gdf (aoi)
-        if 'Id' in list (gdf_aoi.columns):
-            del gdf_aoi['Id']
-            
+    
         if gdf_aoi.shape[0] > 1:
             gdf_aoi =  multipart_to_singlepart(gdf_aoi)
         
@@ -576,14 +574,10 @@ def execute_status ():
                 col_lbl = cols[0]
                 gdf_intr [col_lbl] = gdf_intr [col_lbl].astype(str)
             
-            # datetime columns are causing errors when plotting in Folium
+            # datetime columns are causing errors when plotting in Folium. Converting them to str
             for col in gdf_intr.columns:
                 if gdf_intr[col].dtype == 'datetime64[ns]':
                     gdf_intr[col] = gdf_intr[col].astype(str)
-            
-            for col in gdf_aoi.columns:
-                if gdf_aoi[col].dtype == 'datetime64[ns]':
-                    gdf_aoi[col] = gdf_aoi[col].astype(str)
             
             gdf_intr[col_lbl] = gdf_intr[col_lbl].astype(str) 
             
@@ -597,8 +591,8 @@ def execute_status ():
     mins = int (t_sec/60)
     secs = int (t_sec%60)
     print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
-    
-    return results
+        
+        return results
               
 
 results = execute_status()
