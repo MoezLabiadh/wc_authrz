@@ -1,6 +1,5 @@
 """
 Name:        Automatic Status Tool - LITE version! DRAFT
-
 Purpose:     This script checks for overlaps between an AOI and datasets
              specified in the AST datasets spreadsheets (common and region specific). 
              
@@ -13,7 +12,6 @@ Notes        - The script supports AOIs in TANTALIS Crown Tenure spatial view
              - The script does not support ILRR reports (for now!)
                
              - The script creates Interactive HTML maps showing the AOI and ovelappng features.
-
 Arguments:   - workspace location
              - BCGW username
              - BCGW password
@@ -24,9 +22,7 @@ Arguments:   - workspace location
                     - Parcel ID
                 
 Author:      Moez Labiadh
-
-Created:     2022-11-17
-
+Created:     2022-11-22
 """
 
 
@@ -46,33 +42,29 @@ from shapely import wkt
 
 
 
-
 def connect_to_DB (username,password,hostname):
-    """ Returns a connection to Oracle database"""
+    """ Returns a connection and cursor to Oracle database"""
     try:
         connection = cx_Oracle.connect(username, password, hostname, encoding="UTF-8")
+        cursor = connection.cursor()
         print  ("....Successffuly connected to the database")
     except:
         raise Exception('....Connection failed! Please check your login parameters')
 
-    return connection
+    return connection, cursor
 
 
 
-def read_query(connection,query):
+def read_query(connection,cursor,query,bvars):
     "Returns a df containing SQL Query results"
-    cursor = connection.cursor()
-    try:
-        cursor.execute(query)
-        names = [x[0] for x in cursor.description]
-        rows = cursor.fetchall()
-        return pd.DataFrame(rows, columns=names)
+    cursor.execute(query, bvars)
+    names = [x[0] for x in cursor.description]
+    rows = cursor.fetchall()
+    df = pd.DataFrame(rows, columns=names)
     
-    finally:
-        if cursor is not None:
-            cursor.close()
-   
-            
+    return df    
+  
+           
 
 def esri_to_gdf (aoi):
     """Returns a Geopandas file (gdf) based on 
@@ -94,7 +86,6 @@ def esri_to_gdf (aoi):
 
 
 
-
 def df_2_gdf (df, crs):
     """ Return a geopandas gdf based on a df with Geometry column"""
     df['SHAPE'] = df['SHAPE'].astype(str)
@@ -109,9 +100,8 @@ def df_2_gdf (df, crs):
 
 
 
-
-def get_wkt_srid (gdf):
-    """Dissolves multipart geometries and returns the SRID and WKT string"""
+def get_wkb_srid (gdf):
+    """Dissolves multipart geometries and returns SRID and WKB objects"""
     
     if gdf.shape[0] > 1:
         gdf['dissolvefield'] = 1
@@ -119,29 +109,30 @@ def get_wkt_srid (gdf):
     
     srid = gdf.crs.to_epsg()
 
-    #gdf_wgs = gdf.to_crs({'init': 'epsg:4326'})
-    for index, row in gdf.iterrows():
-        wkt_i = row['geometry'].wkt 
-        print ('......Original WKT size is {}'.format(len(wkt_i)))
+    wkb = gdf['geometry'].to_wkb().iloc[0]
     
-        if len(wkt_i) < 4000:
-            print ('......FULL WKT returned: within Oracle VARCHAR limit') 
-            wkt = wkt_i
-            
-        else:
-            print ('......Geometry will be Simplified - beyond Oracle VARCHAR limit')
-            s = 10
-            wkt_sim = row['geometry'].simplify(s).wkt
+    '''
+    wkt_i = gdf['geometry'].to_wkt().iloc[0]
+    print ('......Original WKT size is {}'.format(len(wkt_i)))
 
-            while len(wkt_sim) > 4000:
-                s += 50
-                wkt_sim = row['geometry'].simplify(s).wkt
+    if len(wkt_i) < 4000:
+        print ('......FULL WKT returned: within Oracle VARCHAR limit') 
+        wkt = wkt_i
+        
+    else:
+        print ('......Geometry will be Simplified - beyond Oracle VARCHAR limit')
+        s = 10
+        wkt_sim = gdf['geometry'].simplify(s).wkt
 
-            print ('......Geometry Simplified with Tolerance {} m'.format (s))            
-            wkt= wkt_sim 
-                
+        while len(wkt_sim) > 4000:
+            s += 50
+            wkt_sim = gdf['geometry'].simplify(s).wkt
 
-    return wkt, srid
+        print ('......Geometry Simplified with Tolerance {} m'.format (s))            
+        wkt= wkt_sim 
+    '''            
+
+    return wkb, srid
 
 
 
@@ -250,9 +241,9 @@ def load_queries ():
                     
                     FROM  WHSE_TANTALIS.TA_CROWN_TENURES_SVW a
                     
-                    WHERE a.CROWN_LANDS_FILE = '{file_nbr}'
-                        AND a.DISPOSITION_TRANSACTION_SID = {disp_id}
-                        AND a.INTRID_SID = {parcel_id}
+                    WHERE a.CROWN_LANDS_FILE = :file_nbr
+                        AND a.DISPOSITION_TRANSACTION_SID = :disp_id
+                        AND a.INTRID_SID = :parcel_id
                   """
                         
     sql ['geomCol'] = """
@@ -260,19 +251,19 @@ def load_queries ():
                     
                     FROM  ALL_SDO_GEOM_METADATA
                     
-                    WHERE owner = '{owner}'
-                        AND table_name = '{tab_name}'
+                    WHERE owner = :owner
+                        AND table_name = :tab_name
                         
                     """                   
                     
     sql ['intersect'] = """
                     SELECT {cols}, SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
                     
-                    FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, {table} b
+                    FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, {tab} b
                     
-                    WHERE a.CROWN_LANDS_FILE = '{file_nbr}'
-                        AND a.DISPOSITION_TRANSACTION_SID = {disp_id}
-                        AND a.INTRID_SID = {parcel_id}
+                    WHERE a.CROWN_LANDS_FILE = :file_nbr
+                        AND a.DISPOSITION_TRANSACTION_SID = :disp_id
+                        AND a.INTRID_SID = :parcel_id
                         
                         AND SDO_RELATE (b.{geom_col}, a.SHAPE,'mask=ANYINTERACT') = 'TRUE'
                         
@@ -282,34 +273,34 @@ def load_queries ():
     sql ['buffer'] = """
                     SELECT {cols}, SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
                     
-                    FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, {table} b
+                    FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, {tab} b
                     
-                    WHERE a.CROWN_LANDS_FILE = '{file_nbr}'
-                        AND a.DISPOSITION_TRANSACTION_SID = {disp_id}
-                        AND a.INTRID_SID = {parcel_id}
+                    WHERE a.CROWN_LANDS_FILE = :file_nbr
+                        AND a.DISPOSITION_TRANSACTION_SID = :disp_id
+                        AND a.INTRID_SID = :parcel_id
                         
                         AND SDO_WITHIN_DISTANCE (b.{geom_col}, a.SHAPE,'distance = {radius}') = 'TRUE'
                         
-                        {def_query}    
+                        {def_query}  
                     """ 
                     
-    sql ['intersect_wkt'] = """
+    sql ['intersect_wkb'] = """
                     SELECT {cols}, SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
                     
-                    FROM {table} b
+                    FROM {tab} b
                     
                     WHERE SDO_RELATE (b.{geom_col}, 
-                                      SDO_GEOMETRY('{wkt}', {srid}),'mask=ANYINTERACT') = 'TRUE'
-                        {def_query}
+                                      SDO_GEOMETRY(:wkb, :srid),'mask=ANYINTERACT') = 'TRUE'
+                        {def_query}  
                         """
                         
-    sql ['buffer_wkt'] = """
+    sql ['buffer_wkb'] = """
                     SELECT {cols}, SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
                     
-                    FROM {table} b
+                    FROM {tab} b
                     
                     WHERE SDO_WITHIN_DISTANCE (b.{geom_col}, 
-                                               SDO_GEOMETRY('{wkt}', {srid}),'distance = {radius}') = 'TRUE'
+                                               SDO_GEOMETRY(:wkb, :srid),'mask=ANYINTERACT') = 'TRUE'
                         {def_query}   
                     """ 
     return sql
@@ -320,9 +311,9 @@ def get_geom_colname (connection,table,geomQuery):
     """ Returns the geometry column of BCGW table name: can be either SHAPE or GEOMETRY"""
     el_list = table.split('.')
 
-    geomQuery = geomQuery.format(owner =el_list[0].strip(),
-                                 tab_name =el_list[1].strip())
-    df_g = read_query(connection,geomQuery)
+    bvars_geom = {'owner':el_list[0].strip(),
+                  'tab_name':el_list[1].strip()}
+    df_g = read_query(connection,cursor,geomQuery, bvars_geom)
     
     geom_col = df_g['GEOM_NAME'].iloc[0]
 
@@ -365,7 +356,7 @@ def execute_status ():
     #bcgw_user = 'XXXX'
     bcgw_pwd = os.getenv('bcgw_pwd')
     #bcgw_pwd = 'XXXX'
-    connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
+    connection, cursor = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
     print ('\nLoading SQL queries')
     sql = load_queries ()
@@ -380,7 +371,8 @@ def execute_status ():
         gdf_aoi = esri_to_gdf (aoi)
         if 'Id' in list (gdf_aoi.columns):
             del gdf_aoi['Id']
-        wkt, srid = get_wkt_srid (gdf_aoi)
+        wkb, srid = get_wkb_srid (gdf_aoi)
+        
         
     elif input_src == 'TANTALIS':
         in_fileNbr = '1415320'
@@ -390,9 +382,10 @@ def execute_status ():
         print ('....input Disposition ID: {}'.format(in_dispID))
         print ('....input Parcel ID: {}'.format(in_prclID))
         
-        aoi_query = sql ['aoi'].format(file_nbr= in_fileNbr,
-                               disp_id= in_dispID,parcel_id= in_prclID)
-        df_aoi= read_query(connection,aoi_query)  
+        bvars_aoi = {'file_nbr': in_fileNbr,
+                     'disp_id': in_dispID, 'parcel_id': in_prclID}
+        
+        df_aoi= read_query(connection,cursor,sql ['aoi'],bvars_aoi) 
         
         if df_aoi.shape[0] < 1:
             raise Exception('Parcel not in TANTALIS. Please check inputs!')
@@ -450,31 +443,34 @@ def execute_status ():
             geom_col = get_geom_colname (connection,table,geomQuery)
             
             if input_src == 'TANTALIS':
-                query_intr = sql ['intersect'].format(cols= cols,table= table,file_nbr= in_fileNbr,
-                                                      disp_id= in_dispID,parcel_id= in_prclID,
-                                                      def_query= def_query,geom_col= geom_col)
+                query= sql ['intersect'].format (cols=cols,tab=table,
+                                                 geom_col=geom_col,def_query=def_query)
+                bvars_intr = {'file_nbr':in_fileNbr,
+                              'disp_id':in_dispID,'parcel_id': in_prclID}
             else:
+                query= sql ['intersect_wkb'].format (cols=cols,tab=table,
+                                                     geom_col=geom_col,def_query=def_query)
+                cursor.setinputsizes(wkb=cx_Oracle.BLOB) # set the WKB as oracle BLOB
+                bvars_intr = {'wkb':wkb,'srid':srid}
                 
-                query_intr = sql ['intersect_wkt'].format(cols= cols,table= table, wkt= wkt,
-                                                          srid=srid,def_query= def_query,
-                                                          geom_col= geom_col)
-                
-            df_intr = read_query(connection,query_intr)
+            df_intr = read_query(connection,cursor,query,bvars_intr) 
     
             df_intr ['OVERLAY RESULT'] = 'INTERSECT'
             
             if radius > 0:
                 if input_src == 'TANTALIS':
-                    query_buf= sql ['buffer'].format(cols= cols,table= table,file_nbr= in_fileNbr,
-                                                     disp_id= in_dispID,parcel_id= in_prclID,
-                                                     def_query= def_query,geom_col= geom_col, radius= radius)
+                    query_buf= sql ['buffer'].format (cols=cols,tab=table,def_query=def_query,
+                                                      geom_col=geom_col,radius=radius)
+                    bvars_buf = {'file_nbr':in_fileNbr,
+                                 'disp_id':in_dispID,'parcel_id': in_prclID,}
     
                 else:
-                    query_buf = sql ['buffer_wkt'].format(cols= cols,table= table,wkt= wkt,
-                                                          srid=srid,def_query= def_query,
-                                                          geom_col= geom_col,radius= radius)
+                    query_buf = sql ['buffer_wkb'].format (cols=cols,tab=table,def_query=def_query,
+                                                           geom_col=geom_col,radius=radius)
+                    cursor.setinputsizes(wkb=cx_Oracle.BLOB) # set the WKB as oracle BLOB
+                    bvars_buf = {'wkb':wkb,'srid':srid}
                 
-                df_buf = read_query(connection,query_buf)
+                df_buf = read_query(connection,cursor,query_buf, bvars_buf)
                 df_buf ['OVERLAY RESULT'] = 'WITHIN {} m'.format(str(radius))   
                 
                 df_all =  pd.concat([df_intr, df_buf])
@@ -586,4 +582,3 @@ def execute_status ():
               
 
 results = execute_status()
-
