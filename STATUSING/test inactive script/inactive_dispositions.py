@@ -1,6 +1,7 @@
 import os
 import pyodbc
 import pandas as pd
+import arcpy
 from tantalis_bigQuery import load_sql
 
 
@@ -38,7 +39,7 @@ def read_query(connection,query):
             cursor.close()
 
 
-def execute_process ():
+def execute_process(parcel_list,bcgw_user,bcgw_pwd):
     """Generates a csv of inactive Lands dispositions"""
     
     print ('Connecting to BCGW.')
@@ -48,10 +49,10 @@ def execute_process ():
     dbq= 'idwprod1'
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     #username = os.getenv('bcgw_user')
-    username = 'XXXX'
+    #username = 'XXXX'
     #password = os.getenv('bcgw_pwd')
-    password = 'XXXX'
-    connection= connect_to_DB (driver,server,port,dbq,username,password)
+    #password = 'XXXX'
+    connection= connect_to_DB (driver,server,port,dbq,bcgw_user,bcgw_pwd)
     
     print ('Loading SQL queries.')
     sql = load_sql ()
@@ -63,23 +64,66 @@ def execute_process ():
     # something like this:
     # parcel_list = [row[0] for row in arcpy.da.SearchCursor(intersection_fc,['INTRID_SID'])]
         
-    parcel_list = [830449,141190,837133,837134,64966,830915,854869,839652]
+    #parcel_list = [830449,141190,837133,837134,64966,830915,854869,839652]
     
-    parcels = ",".join(str(x) for x in parcel_list) # convert the python list to SQL format
-    
-    query = sql['inactive'].format (prcl= parcels)# add the parcels list to the SQL query
-    
+
+    # Split the parcels list into chunks (Oracle SQL doesent support IN clauses with more thatn 1000 entry)
+    # create chunks of size 1000
+    n = 999
+    array = [parcel_list[i:i + n] for i in range(0, len(parcel_list), n)]
+
+    #Construct SQL string
+    first_str = "("
+    middle_str  = ''
+    last_str = ")"
+
+    for i, value in enumerate (array):
+        joined = '(' + ','.join(str(x) for x in value) + ')'
+        add_string = 'mm.intrid_sid IN ' + str(joined)
+
+        if i < len(array)-1:
+            add_string = add_string + ' OR '
+        else:
+            pass
+        
+        middle_str += add_string
+
+    parcels_q_str = first_str + middle_str +  last_str
+
+
+
+    query = sql['inactive'].format (prcl= parcels_q_str)# add the parcels list to the SQL query
+ 
     df = read_query(connection,query) #execute the query and store results in a dataframe
-    
-    
+
     print ('Export a csv of inactive dispositions.')
     # export the dataframe to csv.
     # the csv is then fed into the main AST/UOT script to replace ILRR report ???
-    out_file = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\inactive_query\incative.csv'
+    out_file = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\inactive_query\inactives_largeAOI.csv'
     df.to_csv (out_file, index=False)
 
     return df # just to inspect results
 
-    
-df = execute_process ()
-    
+if __name__==__name__:
+    #parcel_list = [830449,141190,837133,837134,64966,830915,854869,839652]
+    #bcgw_user = os.getenv('bcgw_user')
+    bcgw_user = 'XXX'
+    #bcgw_pwd = os.getenv('bcgw_pwd')
+    bcgw_pwd = 'XXX'
+    #execute_process(parcel_list,bcgw_user,bcgw_pwd)
+
+    #aoi = r"\\spatialfiles.bcgov\work\srm\wml\Workarea\arcproj\!Williams_Lake_Toolbox_Development\automated_status_ARCPRO\steve\test_files\TEST_shape.shp"
+    aoi = r"\\spatialfiles.bcgov\work\srm\wml\Workarea\arcproj\!Williams_Lake_Toolbox_Development\automated_status_ARCPRO\steve\test_files\TEST_district.shp"
+    sde = r"h:\arcpro\bcgw.sde"
+    parcel_fc = os.path.join(sde, r'WHSE_TANTALIS.TA_INTEREST_PARCEL_SHAPES')
+    clip_parcel = arcpy.Clip_analysis(parcel_fc, aoi, r"memory\parcel_clip")
+    result = int(arcpy.GetCount_management(clip_parcel).getOutput(0))
+    print('{} has {} records'.format("Tantalis Parcels", result))
+    if result > 0:
+        parcel_list = [row[0] for row in arcpy.da.SearchCursor(clip_parcel,['INTRID_SID'])]
+        print(len(parcel_list))
+
+        execute_process(parcel_list,bcgw_user,bcgw_pwd)
+
+    else:
+        print("No interest parcels returned!")
