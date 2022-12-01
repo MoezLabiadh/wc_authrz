@@ -3,7 +3,7 @@ def load_sql ():
     
     sql = {}
     
-    sql['inactive'] = """
+    sql['inactive_lands'] = """
                 select
                       cast(mm.intrid_sid as number) intrid_sid,
                       cast(mm.disposition_transaction_sid as number) disposition_transaction_sid,
@@ -11,18 +11,18 @@ def load_sql ():
                       nn.stage_nme,
                       nn.dts_activation_cde,
                       nn.status_nme,
-                      mm.expiry_dat,
+                      --mm.expiry_dat,
                       nn.purpose_nme,
                       nn.subpurpose_nme,
                       nn.type_nme,
                       nn.subtype_nme,
                       nn.location_dsc,
                       nn.ORGANIZATIONS_LEGAL_NAME as holder_organnsation_name,
-                      nn.INDIVIDUALS_FIRST_NAME || ' ' || nn.INDIVIDUALS_LAST_NAME as holder_individual_name,
-                      nn.CITY as holder_city,
-                      nn.REGION_CDE as holder_region,
-                      nn.COUNTRY_CDE as holder_country,
-                      nn.WORK_AREA_CODE || nn.WORK_EXTENSION_NUMBER|| nn.WORK_PHONE_NUMBER as holder_phone    
+                      nn.INDIVIDUALS_FIRST_NAME || ' ' || nn.INDIVIDUALS_LAST_NAME as holder_individual_name
+                      --nn.CITY as holder_city,
+                      --nn.REGION_CDE as holder_region,
+                      --nn.COUNTRY_CDE as holder_country,
+                      --nn.WORK_AREA_CODE || nn.WORK_EXTENSION_NUMBER|| nn.WORK_PHONE_NUMBER as holder_phone   
               from (select
                    cast(jj.disposition_transaction_sid as number) disposition_transaction_sid,
                    cast(jj.disposition_sid as number) disposition_sid,
@@ -154,7 +154,7 @@ def load_sql ():
                     """
     
     
-    sql['inactive_wkb'] = """
+    sql['inactive_lands_wkb'] = """
                 select
                       cast(mm.intrid_sid as number) intrid_sid,
                       cast(mm.disposition_transaction_sid as number) disposition_transaction_sid,
@@ -162,18 +162,18 @@ def load_sql ():
                       nn.stage_nme,
                       nn.dts_activation_cde,
                       nn.status_nme,
-                      mm.expiry_dat,
+                      --mm.expiry_dat,
                       nn.purpose_nme,
                       nn.subpurpose_nme,
                       nn.type_nme,
                       nn.subtype_nme,
                       nn.location_dsc,
                       nn.ORGANIZATIONS_LEGAL_NAME as holder_organnsation_name,
-                      nn.INDIVIDUALS_FIRST_NAME || ' ' || nn.INDIVIDUALS_LAST_NAME as holder_individual_name,
-                      nn.CITY as holder_city,
-                      nn.REGION_CDE as holder_region,
-                      nn.COUNTRY_CDE as holder_country,
-                      nn.WORK_AREA_CODE || nn.WORK_EXTENSION_NUMBER|| nn.WORK_PHONE_NUMBER as holder_phone    
+                      nn.INDIVIDUALS_FIRST_NAME || ' ' || nn.INDIVIDUALS_LAST_NAME as holder_individual_name
+                      --nn.CITY as holder_city,
+                      --nn.REGION_CDE as holder_region,
+                      --nn.COUNTRY_CDE as holder_country,
+                      --nn.WORK_AREA_CODE || nn.WORK_EXTENSION_NUMBER|| nn.WORK_PHONE_NUMBER as holder_phone      
               from (select
                    cast(jj.disposition_transaction_sid as number) disposition_transaction_sid,
                    cast(jj.disposition_sid as number) disposition_sid,
@@ -301,14 +301,16 @@ def load_sql ():
                 nn.dts_activation_cde = 'INACT' and  
                 nn.stage_nme != 'APPLICATION' and
               
-                SDO_RELATE (xx.SHAPE, SDO_GEOMETRY(:wkb_aoi, :srid_aoi),'mask=ANYINTERACT') = 'TRUE' and         
+                SDO_RELATE (xx.SHAPE, SDO_GEOMETRY(:wkb_aoi, :srid_aoi),'mask=ANYINTERACT') = 'TRUE' and             
      
                 nn.file_chr NOT IN (select ten.CROWN_LANDS_FILE
                                      from WHSE_TANTALIS.TA_CROWN_TENURES_VW ten
-                                     where ten.TENURE_STATUS IN ('DISPOSITION IN GOOD STANDING', 'OFFERED', 'OFFER ACCEPTED'));
+                                     where ten.TENURE_STATUS IN ('DISPOSITION IN GOOD STANDING', 'OFFERED', 'OFFER ACCEPTED'))
  
                           """    
 
-  
+
+
+    
     return sql
     
