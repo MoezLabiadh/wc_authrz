@@ -39,6 +39,34 @@ def read_query(connection,query):
             cursor.close()
 
 
+def format_parcels_list(parcel_list):
+    """Split the parcels list into chunks of 1000 items.
+       (Oracle SQL doesn't support IN clauses with more than 1000 entry)"""
+    
+    n = 1000
+    array = [parcel_list[i:i + n] for i in range(0, len(parcel_list), n)]
+
+    #Construct SQL string
+    first_str = "("
+    middle_str  = ''
+    last_str = ")"
+
+    for i, value in enumerate (array):
+        joined = '(' + ','.join(str(x) for x in value) + ')'
+        add_string = 'mm.intrid_sid IN ' + str(joined)
+
+        if i < len(array)-1:
+            add_string = add_string + ' OR '
+        else:
+            pass
+        
+        middle_str += add_string
+
+    parcels_q_str = first_str + middle_str +  last_str
+
+    return parcels_q_str 
+
+
 def get_inact_info(df_inact_lands):
     """Harmonizes column names of inactive dfs as per ILRR schema and returns values Lists.
        Only Inactive Lands df is provided for now. Add others as required."""  
@@ -92,35 +120,13 @@ def execute_process(parcel_list,bcgw_user,bcgw_pwd):
     sql = load_sql ()
     
     print ('Execute the query.')
-  
-    # Split the parcels list into chunks (Oracle SQL doesent support IN clauses with more than 1000 entry)
-    # create chunks of size 1000
-    n = 1000
-    array = [parcel_list[i:i + n] for i in range(0, len(parcel_list), n)]
-
-    #Construct SQL string
-    first_str = "("
-    middle_str  = ''
-    last_str = ")"
-
-    for i, value in enumerate (array):
-        joined = '(' + ','.join(str(x) for x in value) + ')'
-        add_string = 'mm.intrid_sid IN ' + str(joined)
-
-        if i < len(array)-1:
-            add_string = add_string + ' OR '
-        else:
-            pass
-        
-        middle_str += add_string
-
-    parcels_q_str = first_str + middle_str +  last_str
+    parcels_q_str = format_parcels_list(parcel_list)
 
     query = sql['inactive_lands'].format (prcl= parcels_q_str)# add the parcels list to the SQL query
  
     df_inact_lands = read_query(connection,query) #execute the query and store results in a dataframe
 
-    print ('Retireving Inactive info.')
+    print ('Retireve Inactive info.')
     ilrr_info = get_inact_info(df_inact_lands)
 
     #print ('Export a csv of inactive dispositions.')
@@ -130,8 +136,8 @@ def execute_process(parcel_list,bcgw_user,bcgw_pwd):
 
 if __name__==__name__:
 
-    bcgw_user = 'XXX'
-    bcgw_pwd = 'XXX'
+    bcgw_user = 'xxx'
+    bcgw_pwd = 'xxx'
 
     #aoi = r"\\spatialfiles.bcgov\work\srm\wml\Workarea\arcproj\!Williams_Lake_Toolbox_Development\automated_status_ARCPRO\steve\test_files\TEST_shape.shp"
     aoi = r"\\spatialfiles.bcgov\work\srm\wml\Workarea\arcproj\!Williams_Lake_Toolbox_Development\automated_status_ARCPRO\steve\test_files\TEST_district.shp"
