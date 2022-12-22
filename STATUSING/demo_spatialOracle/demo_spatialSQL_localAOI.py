@@ -130,7 +130,8 @@ def load_queries ():
                                         
                     
     sql ['intersect'] = """
-                    SELECT b.PID, b.OWNER_TYPE, b.PARCEL_CLASS, 
+                    SELECT b.PID, b.OWNER_TYPE, b.PARCEL_CLASS,
+                           ROUND((SDO_GEOM.SDO_AREA(SDO_GEOM.SDO_INTERSECTION(a.SHAPE,b.SHAPE, 0.005), 0.005, 'unit=HECTARE')), 2) OVERLAP_HECTARE,
                            SDO_UTIL.TO_WKTGEOMETRY(b.SHAPE) SHAPE
                     
                     FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, 
@@ -148,6 +149,7 @@ def load_queries ():
                         
     sql ['buffer'] = """
                     SELECT b.PID, b.OWNER_TYPE, b.PARCEL_CLASS, 
+                           ROUND(SDO_GEOM.SDO_DISTANCE(a.SHAPE, b.SHAPE, 0.005),2) DISTANCE_METER,
                            SDO_UTIL.TO_WKTGEOMETRY(b.SHAPE) SHAPE
                     
                     FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, 
@@ -159,6 +161,7 @@ def load_queries ():
                         AND b.OWNER_TYPE = 'Private'
                     
                         AND SDO_WITHIN_DISTANCE (b.SHAPE, SDO_GEOMETRY(:wkb_aoi, :srid),'distance = 500') = 'TRUE'
+                        AND SDO_GEOM.SDO_DISTANCE(b.SHAPE, SDO_GEOMETRY(:wkb_aoi, :srid), 0.005) > 0
                          
                     """ 
                     
@@ -187,8 +190,11 @@ df_intr = read_query(connection, cursor, sql['intersect'],bvars)
 cursor.setinputsizes(wkb_aoi=cx_Oracle.BLOB) 
 df_buff = read_query(connection, cursor, sql['buffer'],bvars)
 
+df_intr['QUERY'] = "INTERSECT"
+df_buff['QUERY'] = "WITHIN 500m"
+
 df_results = pd.concat([df_intr,df_buff])
-df_results.drop_duplicates(subset=['PID'],inplace=True)
+#df_results.drop_duplicates(subset=['PID'],inplace=True)
 
 
 print ('Create a Geodataframe of results.')
