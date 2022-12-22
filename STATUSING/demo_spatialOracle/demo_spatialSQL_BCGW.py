@@ -4,6 +4,8 @@ import pandas as pd
 import geopandas as gpd
 import folium
 
+
+
 def connect_to_DB (username,password,hostname):
     """ Returns a connection and cursor to Oracle database"""
     try:
@@ -106,6 +108,7 @@ def load_queries ():
                         AND b.OWNER_TYPE = 'Private'
                     
                         AND SDO_WITHIN_DISTANCE (b.SHAPE, a.SHAPE,'distance = 500') = 'TRUE'
+                        AND SDO_GEOM.SDO_DISTANCE(a.SHAPE, b.SHAPE, 0.005) > 0
                          
                     """ 
                     
@@ -126,8 +129,12 @@ df_aoi = read_query(connection, cursor, sql['aoi'])
 df_intr = read_query(connection, cursor, sql['intersect'])
 df_buff = read_query(connection, cursor, sql['buffer'])
 
+df_intr['QUERY'] = "INTERSECT"
+df_buff['QUERY'] = "WITHIN 500m"
+
+
 df_results = pd.concat([df_intr,df_buff])
-df_results.drop_duplicates(subset=['PID'],inplace=True)
+#df_results.drop_duplicates(subset=['PID'],inplace=True)
 
 
 print ('Create a Geodataframe of results.')
@@ -136,4 +143,4 @@ gdf_rsl = df_2_gdf (df_results, 3005)
 
 print ('Make an interactive map.')
 workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\demo'
-make_status_map (gdf_aoi, gdf_rsl, 'PID', 'Private_Parcels', workspace)
+make_status_map (gdf_aoi, gdf_rsl, 'PID', 'Private Parcels within 500m', workspace)
