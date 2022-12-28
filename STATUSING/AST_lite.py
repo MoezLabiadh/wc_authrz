@@ -8,9 +8,7 @@ Notes        The script supports AOIs in TANTALIS Crown Tenure spatial view
                
              The script generates a spreadhseet of conflicts and 
              Interactive HTML maps showing the AOI and ovelappng features
-               
-             The script does not support ILRR reports (for now!)
-               
+                             
 Arguments:   - Output location (workspace)
              - BCGW username
              - BCGW password
