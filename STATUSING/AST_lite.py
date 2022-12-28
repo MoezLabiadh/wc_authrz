@@ -3,16 +3,15 @@ Name:        Automatic Status Tool - LITE version! DRAFT
 Purpose:     This script checks for overlaps between an AOI and datasets
              specified in the AST datasets spreadsheets (common and region specific). 
              
-Notes        - The script supports AOIs in TANTALIS Crown Tenure spatial view 
-               and User defined AOIs (shp, featureclass).
+Notes        The script supports AOIs in TANTALIS Crown Tenure spatial view 
+             and User defined AOIs (shp, featureclass).
                
-             - The script returns a Dictionnary containing the overlap results -  Functions will 
-               be added to support writing results to spreadsheet.
+             The script generates a spreadhseet of conflicts and 
+             Interactive HTML maps showing the AOI and ovelappng features
                
-             - The script does not support ILRR reports (for now!)
+             The script does not support ILRR reports (for now!)
                
-             - The script creates Interactive HTML maps showing the AOI and ovelappng features.
-Arguments:   - workspace location
+Arguments:   - Output location (workspace)
              - BCGW username
              - BCGW password
              - Region (west coast, skeena...)
@@ -22,7 +21,7 @@ Arguments:   - workspace location
                     - Parcel ID
                 
 Author:      Moez Labiadh
-Created:     2022-11-22
+Created:     2022-12-28
 """
 
 
@@ -124,27 +123,6 @@ def get_wkb_srid (gdf):
     if geom.has_z:
         wkb_aoi = wkb.dumps(geom, output_dimension=2)
         
-    
-    '''
-    print ('......Original WKT size is {}'.format(len(wkt_i)))
-
-    if len(wkt_i) < 4000:
-        print ('......FULL WKT returned: within Oracle VARCHAR limit') 
-        wkt = wkt_i
-        
-    else:
-        print ('......Geometry will be Simplified - beyond Oracle VARCHAR limit')
-        s = 10
-        wkt_sim = gdf['geometry'].simplify(s).wkt
-
-        while len(wkt_sim) > 4000:
-            s += 50
-            wkt_sim = gdf['geometry'].simplify(s).wkt
-
-        print ('......Geometry Simplified with Tolerance {} m'.format (s))            
-        wkt= wkt_sim 
-    '''            
-    
     
     return wkb_aoi, srid
 
@@ -294,6 +272,7 @@ def load_queries ():
                         AND a.INTRID_SID = :parcel_id
                         
                         AND SDO_WITHIN_DISTANCE (b.{geom_col}, a.SHAPE,'distance = {radius}') = 'TRUE'
+                        AND SDO_GEOM.SDO_DISTANCE(b.{geom_col}, a.SHAPE, 0.005) > 0
                         
                         {def_query}  
                     """ 
@@ -305,6 +284,7 @@ def load_queries ():
                     
                     WHERE SDO_RELATE (b.{geom_col}, 
                                       SDO_GEOMETRY(:wkb_aoi, :srid),'mask=ANYINTERACT') = 'TRUE'
+                    AND SDO_GEOM.SDO_DISTANCE(b.SHAPE, SDO_GEOMETRY(:wkb_aoi, :srid), 0.005) > 0
                         {def_query}  
                         """
                         
@@ -335,35 +315,95 @@ def get_geom_colname (connection,cursor,table,geomQuery):
 
 
 
-def make_status_map (gdf_aoi, gdf_intr, col_lbl, item,workspace):
+def make_status_map (gdf_aoi, gdf_intr, col_lbl, item, workspace):
     """ Generates HTML Interactive maps of AOI and intersection geodataframes"""
-    m = gdf_aoi.explore(
+    
+    m = folium.Map(tiles='openstreetmap')
+    xmin,ymin,xmax,ymax = gdf_aoi.to_crs(4326)['geometry'].total_bounds
+    m.fit_bounds([[ymin, xmin], [ymax, xmax]])
+
+    gdf_aoi.explore(
+         m=m,
          tooltip= False,
          style_kwds=dict(fill= False, color="red", weight=3),
          name="AOI")
 
     gdf_intr.explore(
          m=m,
-         column= col_lbl, # make choropleth based on rhis column
-         tooltip= col_lbl, # show column value in tooltip (on hover)
-         popup=True, # show all values in popup (on click)
+         column= col_lbl, 
+         tooltip= col_lbl, 
+         popup=True, 
          cmap="Dark2",  
-         style_kwds=dict(color="gray"), # use black outline
+         style_kwds=dict(color="gray"),
          name=item)
 	
     folium.TileLayer('stamenterrain', control=True).add_to(m)
     folium.LayerControl().add_to(m)
     
-    out_html = os.path.join(workspace,item + '.html')
+    maps_dir = os.path.join(workspace,'maps')
+    if not os.path.exists(maps_dir):
+        os.makedirs(maps_dir)
+        
+    out_html = os.path.join(maps_dir, item +'.html')
     m.save(out_html)
  
+
+
+def write_xlsx (results,df_stat,workspace):
+    """Writes results to a spreadsheet"""
+    df_res= df_stat[['Category', 'Featureclass_Name(valid characters only)']]   
+    df_res.rename(columns={'Featureclass_Name(valid characters only)': 'item'}, inplace=True)
+    df_res['List of conflicts'] = ""
+    df_res['Map'] = ""
     
+    for index, row in df_res.iterrows():
+        for k, v in  results.items():
+            if row['item'] == k and v.shape[0]>0:
+                v = v.drop('OVERLAY RESULT', axis=1)
+                v['Result'] = v[v.columns].apply(lambda row: ','.join(row.values.astype(str)), axis=1)
+                res_all = " ; ".join (str(x) for x in v['Result'].to_list()) 
+                df_res.loc[index, 'List of conflicts'] = res_all
+                df_res.loc[index, 'Map'] = '=HYPERLINK("{}", "View Map")'.format(os.path.join(workspace,'maps',k+'.html'))
+
+    filename = os.path.join(workspace, 'AST_lite_TAB3.xlsx')
+    sheetname = 'Conflicts & Constraints'
+    writer = pd.ExcelWriter(filename, engine='xlsxwriter')        
+    df_res.to_excel(writer, sheet_name=sheetname, index=False, startrow=0 , startcol=0)
+    
+    workbook=writer.book
+    worksheet = writer.sheets[sheetname]
+    
+    txt_format = workbook.add_format({'text_wrap': True})
+    lnk_format = workbook.add_format({'underline': True, 'font_color': 'blue'})
+    worksheet.set_column(0, 0, 30)
+    worksheet.set_column(1, 1, 60)
+    worksheet.set_column(2, 2, 80, txt_format)
+    worksheet.set_column(3, 3, 20)
+    
+    worksheet.conditional_format('D2:D{}'.format (df_res.shape[0]+1), 
+                                 {'type': 'cell',
+                                  'criteria' : 'equal to', 
+                                  'value' : '"View Map"',
+                                  'format' : lnk_format})
+    
+    col_names = [{'header': col_name} for col_name in df_res.columns]
+    worksheet.add_table(0, 0, df_res.shape[0]+1, df_res.shape[1]-1,{'columns': col_names})
+    
+    writer.save()
+    writer.close()
+
+
     
 def execute_status ():
     """Executes the AST light process """
     start_t = timeit.default_timer() #start time
     
+    #user inputs
     workspace = r"\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\results_demo"
+    aoi = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\test_data\aoi_test.shp'
+    input_src = 'TANTALIS' # Possible values are "TANTALIS" and AOI
+    
+    
     print ('Connecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
@@ -377,11 +417,9 @@ def execute_status ():
     
     
     print ('\nReading User inputs: AOI.')
-    input_src = 'TANTALIS' # **************USER INPUT: Possible values are "TANTALIS" and AOI*************
     
     if input_src == 'AOI':
         print('....Reading the AOI file')
-        aoi = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\test_data\aoi_test.shp'
         gdf_aoi = esri_to_gdf (aoi)
     
         if gdf_aoi.shape[0] > 1:
@@ -434,16 +472,6 @@ def execute_status ():
         
         print ('.....getting table and column names')
         table, cols, col_lbl = get_table_cols (item_index,df_stat)
-        
-        '''
-        if isinstance(cols, list) == True:
-            if col_lbl not in cols:
-                cols.append(col_lbl)
-        else:
-            if col_lbl not in cols:
-               cols = cols + ',' +  col_lbl
-            
-        '''
         
         print ('.....getting definition query (if any)')
         def_query = get_def_query (item_index,df_stat)
@@ -544,19 +572,8 @@ def execute_status ():
     
         cols.append('OVERLAY RESULT')
         
-        '''
-        if col_lbl in cols:
-            cols_res = cols.remove(col_lbl)    
-            df_all_res = df_all[cols_res]  
-        else:
-            df_all_res = df_all[cols]  
-    
-        '''
         df_all_res = df_all[cols]  
         
-        #df_all.sort_values(by='OVERLAY RESULT', ascending=True, inplace = True)
-        #df_cols = list(df_all.columns)
-        #df_all.drop_duplicates(subset=df_cols, keep='first', inplace=True)
         
         ov_nbr = df_all_res.shape[0]
         print ('.....number of overlay Features: {}'.format(ov_nbr))
@@ -586,13 +603,16 @@ def execute_status ():
         
         counter += 1
     
+    print ('\nWriting Results to spreadsheet')
+    write_xlsx (results,df_stat,workspace)
+    
     finish_t = timeit.default_timer() #finish time
     t_sec = round(finish_t-start_t)
     mins = int (t_sec/60)
     secs = int (t_sec%60)
     print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
         
-        return results
+    return results
               
 
 results = execute_status()
