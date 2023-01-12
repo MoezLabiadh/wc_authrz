@@ -245,6 +245,12 @@ def load_queries ():
                         AND table_name = :tab_name
                         
                     """                   
+
+    sql ['srid'] = """
+                    SELECT s.{geom_col}.sdo_srid SP_REF
+                    FROM {tab} s
+                    WHERE rownum = 1
+                   """
                     
     sql ['intersect'] = """
                     SELECT {cols}, SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
@@ -282,7 +288,7 @@ def load_queries ():
                     
                     WHERE SDO_RELATE (b.{geom_col}, 
                                       SDO_GEOMETRY(:wkb_aoi, :srid),'mask=ANYINTERACT') = 'TRUE'
-                    AND SDO_GEOM.SDO_DISTANCE(b.SHAPE, SDO_GEOMETRY(:wkb_aoi, :srid), 0.005) > 0
+                    
                         {def_query}  
                         """
                         
@@ -292,7 +298,8 @@ def load_queries ():
                     FROM {tab} b
                     
                     WHERE SDO_WITHIN_DISTANCE (b.{geom_col}, 
-                                               SDO_GEOMETRY(:wkb_aoi, :srid),'mask=ANYINTERACT') = 'TRUE'
+                                               SDO_GEOMETRY(:wkb_aoi, :srid),'distance = {radius}') = 'TRUE'
+                    AND SDO_GEOM.SDO_DISTANCE(b.{geom_col}, SDO_GEOMETRY(:wkb_aoi, {srid_t}), 0.5) > 0
                         {def_query}   
                     """ 
     return sql
@@ -310,6 +317,18 @@ def get_geom_colname (connection,cursor,table,geomQuery):
     geom_col = df_g['GEOM_NAME'].iloc[0]
 
     return geom_col
+
+
+
+def get_geom_srid (connection,cursor,table,geom_col,sridQuery):
+    """ Returns the SRID of the BCGW table"""
+
+    sridQuery = sridQuery.format(tab=table,geom_col=geom_col)
+    df_s = read_query(connection,cursor,sridQuery,{})
+    
+    srid_t = df_s['SP_REF'].iloc[0]
+
+    return srid_t
 
 
 
@@ -399,7 +418,7 @@ def execute_status ():
     #user inputs
     workspace = r"\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\results_demo"
     aoi = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\test_data\aoi_test.shp'
-    input_src = 'TANTALIS' # Possible values are "TANTALIS" and AOI
+    input_src = 'AOI' # Possible values are "TANTALIS" and AOI
     
     
     print ('Connecting to BCGW.')
@@ -427,9 +446,9 @@ def execute_status ():
         
         
     elif input_src == 'TANTALIS':
-        in_fileNbr = '1415320'
-        in_dispID = 944973
-        in_prclID = 978528
+        in_fileNbr = '1413583'
+        in_dispID = 892661
+        in_prclID = 911845
         print ('....input File Number: {}'.format(in_fileNbr))
         print ('....input Disposition ID: {}'.format(in_dispID))
         print ('....input Parcel ID: {}'.format(in_prclID))
@@ -481,7 +500,13 @@ def execute_status ():
         
         if table.startswith('WHSE') or table.startswith('REG'): 
             geomQuery = sql ['geomCol']
+            sridQuery = sql ['srid']
             geom_col = get_geom_colname (connection,cursor,table,geomQuery)
+            
+            try:
+                srid_t = get_geom_srid (connection,cursor,table,geom_col,sridQuery) 
+            except:
+                srid_t = 3005
             
             if input_src == 'TANTALIS':
                 query= sql ['intersect'].format (cols=cols,tab=table,
@@ -507,7 +532,7 @@ def execute_status ():
     
                 else:
                     query_buf = sql ['buffer_wkb'].format (cols=cols,tab=table,def_query=def_query,
-                                                           geom_col=geom_col,radius=radius)
+                                                           geom_col=geom_col,radius=radius,srid_t=srid_t)
                     cursor.setinputsizes(wkb_aoi=cx_Oracle.BLOB) # set the WKB as oracle BLOB
                     bvars_buf = {'wkb_aoi':wkb_aoi,'srid':srid}
                 
