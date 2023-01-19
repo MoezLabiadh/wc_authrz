@@ -1,33 +1,31 @@
 
 import os
 import timeit
-import pyodbc
+import cx_Oracle
 import pandas as pd
 
 
-def connect_to_DB (connection_string):
-    """ Returns a connection to Oracle database"""
+def connect_to_DB (username,password,hostname):
+    """ Returns a connection and cursor to Oracle database"""
     try:
-        connection = pyodbc.connect(connection_string)
-        print  ("...Successffuly connected to the database")
+        connection = cx_Oracle.connect(username, password, hostname, encoding="UTF-8")
+        cursor = connection.cursor()
+        print  ("....Successffuly connected to the database")
     except:
-        raise Exception('...Connection failed! Please check your connection parameters')
+        raise Exception('....Connection failed! Please check your login parameters')
 
-    return connection
+    return connection, cursor
 
 
-def read_query(connection,query):
+
+def read_query(connection,cursor,query):
     "Returns a df containing SQL Query results"
-    cursor = connection.cursor()
-    try:
-        cursor.execute(query)
-        cols = [x[0] for x in cursor.description]
-        rows = cursor.fetchall()
-        return pd.DataFrame.from_records(rows, columns=cols)
+    cursor.execute(query)
+    names = [x[0] for x in cursor.description]
+    rows = cursor.fetchall()
+    df = pd.DataFrame(rows, columns=names)
     
-    finally:
-        if cursor is not None:
-            cursor.close()
+    return df
 
 
 
@@ -68,31 +66,31 @@ def load_queries ():
             SELECT a.CROWN_LANDS_FILE, a.DISPOSITION_TRANSACTION_SID, a.INTRID_SID, a.TENURE_STAGE, a.TENURE_STATUS, 
                    a.APPLICATION_TYPE_CDE, a.TENURE_TYPE, a.TENURE_SUBTYPE, a.TENURE_PURPOSE, a.TENURE_SUBPURPOSE, a.TENURE_EXPIRY, a.TENURE_LOCATION,
                    b.CONSERVANCY_AREA_NAME,
-                   ROUND((SDO_GEOM.SDO_AREA(SDO_GEOM.SDO_INTERSECTION(a.SHAPE,b.SHAPE, 5), 5, 'unit=SQ_M')/ 
-                          a.FEATURE_AREA_SQM)*100, 2) OVERLAP_PERCENT
+                   ROUND((SDO_GEOM.SDO_AREA(SDO_GEOM.SDO_INTERSECTION(a.SHAPE,b.SHAPE, 0.05), 0.05, 'unit=HECTARE')/ 
+                          SDO_GEOM.SDO_AREA(a.SHAPE, 0.05, 'unit=HECTARE'))*100, 0.05) OVERLAP_PERCENT
                           
             FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, 
                  WHSE_TANTALIS.TA_CONSERVANCY_AREAS_SVW b
             
             WHERE a.RESPONSIBLE_BUSINESS_UNIT = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION'
                  AND a.TENURE_TYPE in ('LICENCE', 'LEASE')
-                 AND SDO_RELATE (b.SHAPE, a.SHAPE ,'mask=ANYINTERACT') = 'TRUE'
+                 AND SDO_RELATE (a.SHAPE, b.SHAPE ,'mask=ANYINTERACT') = 'TRUE'
                 """   
                 
     sql['park'] = """
     
-            SELECT a.CROWN_LANDS_FILE, a.DISPOSITION_TRANSACTION_SID, a.INTRID_SID, a.TENURE_STAGE, a.TENURE_STATUS, 
-                   a.APPLICATION_TYPE_CDE, a.TENURE_TYPE, a.TENURE_SUBTYPE, a.TENURE_PURPOSE, a.TENURE_SUBPURPOSE, a.TENURE_EXPIRY, a.TENURE_LOCATION,
-                   b.PROTECTED_LANDS_DESIGNATION, b.PROTECTED_LANDS_NAME, b.PARK_CLASS,
-                   ROUND((SDO_GEOM.SDO_AREA(SDO_GEOM.SDO_INTERSECTION(a.SHAPE,b.SHAPE, 5), 5, 'unit=SQ_M')/ 
-                          a.FEATURE_AREA_ SQM)*100, 2) OVERLAP_PERCENT
-                   
-            FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, 
-                 WHSE_TANTALIS.TA_PARK_ECORES_PA_SVW b
-            
-            WHERE a.RESPONSIBLE_BUSINESS_UNIT = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION'
-                 AND a.TENURE_TYPE in ('LICENCE', 'LEASE')
-                 AND SDO_RELATE (b.SHAPE, a.SHAPE ,'mask=ANYINTERACT') = 'TRUE'
+                SELECT a.CROWN_LANDS_FILE, a.DISPOSITION_TRANSACTION_SID, a.INTRID_SID, a.TENURE_STAGE, a.TENURE_STATUS, 
+                    a.APPLICATION_TYPE_CDE, a.TENURE_TYPE, a.TENURE_SUBTYPE, a.TENURE_PURPOSE, a.TENURE_SUBPURPOSE, a.TENURE_EXPIRY, a.TENURE_LOCATION,
+                    b.PROTECTED_LANDS_DESIGNATION, b.PROTECTED_LANDS_NAME, b.PARK_CLASS,
+                    ROUND((SDO_GEOM.SDO_AREA(SDO_GEOM.SDO_INTERSECTION(a.SHAPE,b.SHAPE, 0.05), 0.05, 'unit=HECTARE')/ 
+                            SDO_GEOM.SDO_AREA(a.SHAPE, 0.05, 'unit=HECTARE'))*100, 0.05) OVERLAP_PERCENT
+                    
+                FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, 
+                    WHSE_TANTALIS.TA_PARK_ECORES_PA_SVW b
+
+                WHERE a.RESPONSIBLE_BUSINESS_UNIT = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION'
+                    AND a.TENURE_TYPE in ('LICENCE', 'LEASE')
+                    AND SDO_RELATE (a.SHAPE, b.SHAPE ,'mask=ANYINTERACT') = 'TRUE'
                 """                 
 
 
@@ -148,37 +146,25 @@ def create_report (df_list, sheet_list,filename):
         
 start_t = timeit.default_timer() #start time
                
-print (" Connect to BCGW")    
-driver = 'Oracle in OraClient12Home1'
-server = 'bcgw.bcgov'
-port= '1521'
-dbq= 'idwprod1'
+print ('Connecting to BCGW.')
 hostname = 'bcgw.bcgov/idwprod1.bcgov'
-bcgw_user = 'XXX'
-bcgw_pwd = 'XXX'
-connection_string ="""
-            DRIVER={driver};
-            SERVER={server}:{port};
-            DBQ={dbq};
-            Uid={uid};
-            Pwd={pwd}
-                """.format(driver=driver,server=server, port=port,
-                            dbq=dbq,uid=bcgw_user,pwd=bcgw_pwd)
-connection = connect_to_DB (connection_string)
+bcgw_user = os.getenv('bcgw_user')
+bcgw_pwd = os.getenv('bcgw_pwd')
+connection, cursor = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
 
 print ("Load Queries")
 sql = load_queries ()
 
 print ("Execute The Conservancies Query")
-df_cons = read_query(connection,sql['cons'])
+df_cons = read_query(connection,cursor,sql['cons'])
 df_cons = df_cons.loc[df_cons['OVERLAP_PERCENT'] > 0]
 
 print ("Execute The Parks Query")
-df_park = read_query(connection,sql['park'])
+df_park = read_query(connection,cursor,sql['park'])
 df_park = df_park.loc[df_park['OVERLAP_PERCENT'] > 0]
 
 print ("Execute The Expired Tenures Query")
-df_expr= read_query(connection,sql['expr'])
+df_expr= read_query(connection,cursor,sql['expr'])
 expr_list = df_expr['CROWN_LANDS_FILE'].to_list()
 
 print ('Set Expired tenures')
