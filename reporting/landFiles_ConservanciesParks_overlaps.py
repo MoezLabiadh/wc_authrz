@@ -77,7 +77,7 @@ def load_queries ():
                  AND SDO_RELATE (a.SHAPE, b.SHAPE ,'mask=ANYINTERACT') = 'TRUE'
                 """   
                 
-    sql['park'] = """
+    sql['provpark'] = """
     
                 SELECT a.CROWN_LANDS_FILE, a.DISPOSITION_TRANSACTION_SID, a.INTRID_SID, a.TENURE_STAGE, a.TENURE_STATUS, 
                     a.APPLICATION_TYPE_CDE, a.TENURE_TYPE, a.TENURE_SUBTYPE, a.TENURE_PURPOSE, a.TENURE_SUBPURPOSE, a.TENURE_EXPIRY, a.TENURE_LOCATION,
@@ -90,9 +90,26 @@ def load_queries ():
 
                 WHERE a.RESPONSIBLE_BUSINESS_UNIT = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION'
                     AND a.TENURE_TYPE in ('LICENCE', 'LEASE')
+                    AND PROTECTED_LANDS_DESIGNATION = 'PROVINCIAL PARK'
                     AND SDO_RELATE (a.SHAPE, b.SHAPE ,'mask=ANYINTERACT') = 'TRUE'
                 """                 
 
+    sql['natpark'] = """
+    
+                SELECT a.CROWN_LANDS_FILE, a.DISPOSITION_TRANSACTION_SID, a.INTRID_SID, a.TENURE_STAGE, a.TENURE_STATUS, 
+                       a.APPLICATION_TYPE_CDE, a.TENURE_TYPE, a.TENURE_SUBTYPE, a.TENURE_PURPOSE, a.TENURE_SUBPURPOSE, a.TENURE_EXPIRY, a.TENURE_LOCATION,
+                       b.ENGLISH_NAME, b.LOCAL_NAME,
+                       ROUND((SDO_GEOM.SDO_AREA(SDO_GEOM.SDO_INTERSECTION(a.SHAPE,b.GEOMETRY, 0.05), 0.05, 'unit=HECTARE')/ 
+                             SDO_GEOM.SDO_AREA(a.SHAPE, 0.05, 'unit=HECTARE'))*100, 0.05) OVERLAP_PERCENT
+                       
+                FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, 
+                     WHSE_ADMIN_BOUNDARIES.CLAB_NATIONAL_PARKS b
+                
+                WHERE a.RESPONSIBLE_BUSINESS_UNIT = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION'
+                     AND a.TENURE_TYPE in ('LICENCE', 'LEASE')
+                     AND SDO_RELATE (a.SHAPE, b.GEOMETRY ,'mask=ANYINTERACT') = 'TRUE'
+                """ 
+                
 
     sql['expr'] = """
     
@@ -143,48 +160,55 @@ def create_report (df_list, sheet_list,filename):
 
       
 
-        
-start_t = timeit.default_timer() #start time
-               
-print ('Connecting to BCGW.')
-hostname = 'bcgw.bcgov/idwprod1.bcgov'
-bcgw_user = os.getenv('bcgw_user')
-bcgw_pwd = os.getenv('bcgw_pwd')
-connection, cursor = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-
-print ("Load Queries")
-sql = load_queries ()
-
-print ("Execute The Conservancies Query")
-df_cons = read_query(connection,cursor,sql['cons'])
-df_cons = df_cons.loc[df_cons['OVERLAP_PERCENT'] > 0]
-
-print ("Execute The Parks Query")
-df_park = read_query(connection,cursor,sql['park'])
-df_park = df_park.loc[df_park['OVERLAP_PERCENT'] > 0]
-
-print ("Execute The Expired Tenures Query")
-df_expr= read_query(connection,cursor,sql['expr'])
-expr_list = df_expr['CROWN_LANDS_FILE'].to_list()
-
-print ('Set Expired tenures')
-expr_list = df_expr['CROWN_LANDS_FILE'].to_list()
-df_cons['APPLICATION_TYPE_CDE'][df_cons['CROWN_LANDS_FILE'].isin(expr_list)==True] = 'REP - EXPIRED'
-df_park['APPLICATION_TYPE_CDE'][df_park['CROWN_LANDS_FILE'].isin(expr_list)==True] = 'REP - EXPIRED'
-
-
-print ("Export report")
-dfs = [df_cons,df_park]
-sheets = ['Conservancies Overlaps','Parks Overlaps']
-filename = 'landFiles_ConservanciesParks_overlaps_20230118'
-workspace= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230118_tenures_conservancies_shawn'
-
-generate_report (workspace, dfs, sheets,filename)
-
-
-finish_t = timeit.default_timer() #finish time
-t_sec = round(finish_t-start_t)
-mins = int (t_sec/60)
-secs = int (t_sec%60)
-print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
+ def main():       
+    start_t = timeit.default_timer() #start time
+                   
+    print ('Connecting to BCGW.')
+    hostname = 'bcgw.bcgov/idwprod1.bcgov'
+    bcgw_user = os.getenv('bcgw_user')
+    bcgw_pwd = os.getenv('bcgw_pwd')
+    connection, cursor = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
+    print ("Load Queries")
+    sql = load_queries ()
+    
+    print ("Execute The Conservancies Query")
+    df_cons = read_query(connection,cursor,sql['cons'])
+    df_cons = df_cons.loc[df_cons['OVERLAP_PERCENT'] > 0]
+    
+    print ("Execute the Provincial Parks Query")
+    df_provpark = read_query(connection,cursor,sql['provpark'])
+    df_provpark = df_provpark.loc[df_provpark['OVERLAP_PERCENT'] > 0]
+    
+    print ("Execute the National Parks Query")
+    df_natpark = read_query(connection,cursor,sql['natpark'])
+    df_natpark= df_natpark.loc[df_natpark['OVERLAP_PERCENT'] > 0]
+    
+    
+    print ("Execute The Expired Tenures Query")
+    df_expr= read_query(connection,cursor,sql['expr'])
+    expr_list = df_expr['CROWN_LANDS_FILE'].to_list()
+    
+    print ('Set Expired tenures')
+    expr_list = df_expr['CROWN_LANDS_FILE'].to_list()
+    df_cons['APPLICATION_TYPE_CDE'][df_cons['CROWN_LANDS_FILE'].isin(expr_list)==True] = 'REP - EXPIRED'
+    df_provpark['APPLICATION_TYPE_CDE'][df_provpark['CROWN_LANDS_FILE'].isin(expr_list)==True] = 'REP - EXPIRED'
+    df_natpark['APPLICATION_TYPE_CDE'][df_natpark['CROWN_LANDS_FILE'].isin(expr_list)==True] = 'REP - EXPIRED'
+    
+    
+    print ("Export report")
+    dfs = [df_cons,df_provpark,df_natpark]
+    sheets = ['Conservancies Overlaps','Provincial Parks Overlaps', 'National Parks Overlaps']
+    filename = 'landFiles_ConservanciesParks_overlaps_20230118'
+    workspace= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230118_tenures_conservancies_shawn'
+    
+    generate_report (workspace, dfs, sheets,filename)
+    
+    
+    finish_t = timeit.default_timer() #finish time
+    t_sec = round(finish_t-start_t)
+    mins = int (t_sec/60)
+    secs = int (t_sec%60)
+    print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
+    
+main()
