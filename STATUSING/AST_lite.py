@@ -19,7 +19,7 @@ Arguments:   - Output location (workspace)
                     - Parcel ID
                 
 Author:      Moez Labiadh
-Created:     2022-12-28
+Created:     2023-01-12
 """
 
 
@@ -244,30 +244,24 @@ def load_queries ():
                     WHERE owner = :owner
                         AND table_name = :tab_name
                         
-                    """                   
-
+          
+                    """    
+                    
     sql ['srid'] = """
                     SELECT s.{geom_col}.sdo_srid SP_REF
                     FROM {tab} s
                     WHERE rownum = 1
                    """
+                           
+    sql ['overlay'] = """
+                    SELECT {cols},
                     
-    sql ['intersect'] = """
-                    SELECT {cols}, SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
-                    
-                    FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, {tab} b
-                    
-                    WHERE a.CROWN_LANDS_FILE = :file_nbr
-                        AND a.DISPOSITION_TRANSACTION_SID = :disp_id
-                        AND a.INTRID_SID = :parcel_id
-                        
-                        AND SDO_RELATE (b.{geom_col}, a.SHAPE,'mask=ANYINTERACT') = 'TRUE'
-                        
-                        {def_query}
-                        """
-                        
-    sql ['buffer'] = """
-                    SELECT {cols}, SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
+                           CASE WHEN SDO_GEOM.SDO_DISTANCE(b.{geom_col}, a.SHAPE, 0.5) = 0 
+                            THEN 'INTERSECT' 
+                             ELSE 'Within ' || TO_CHAR({radius}) || ' m'
+                              END AS RESULT,
+                              
+                           SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
                     
                     FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW a, {tab} b
                     
@@ -276,30 +270,24 @@ def load_queries ():
                         AND a.INTRID_SID = :parcel_id
                         
                         AND SDO_WITHIN_DISTANCE (b.{geom_col}, a.SHAPE,'distance = {radius}') = 'TRUE'
-                        AND SDO_GEOM.SDO_DISTANCE(b.{geom_col}, a.SHAPE, 0.005) > 0
                         
                         {def_query}  
                     """ 
+                                       
+    sql ['overlay_wkb'] = """
+                    SELECT {cols},
                     
-    sql ['intersect_wkb'] = """
-                    SELECT {cols}, SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
-                    
-                    FROM {tab} b
-                    
-                    WHERE SDO_RELATE (b.{geom_col}, 
-                                      SDO_GEOMETRY(:wkb_aoi, :srid),'mask=ANYINTERACT') = 'TRUE'
-                    
-                        {def_query}  
-                        """
-                        
-    sql ['buffer_wkb'] = """
-                    SELECT {cols}, SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
+                           CASE WHEN SDO_GEOM.SDO_DISTANCE(b.{geom_col}, SDO_GEOMETRY(:wkb_aoi, :srid_t), 0.5) = 0 
+                            THEN 'INTERSECT' 
+                             ELSE 'Within ' || TO_CHAR({radius}) || ' m'
+                              END AS RESULT,
+                              
+                           SDO_UTIL.TO_WKTGEOMETRY(b.{geom_col}) SHAPE
                     
                     FROM {tab} b
                     
                     WHERE SDO_WITHIN_DISTANCE (b.{geom_col}, 
                                                SDO_GEOMETRY(:wkb_aoi, :srid),'distance = {radius}') = 'TRUE'
-                    AND SDO_GEOM.SDO_DISTANCE(b.{geom_col}, SDO_GEOMETRY(:wkb_aoi, {srid_t}), 0.5) > 0
                         {def_query}   
                     """ 
     return sql
@@ -376,7 +364,7 @@ def write_xlsx (results,df_stat,workspace):
     for index, row in df_res.iterrows():
         for k, v in  results.items():
             if row['item'] == k and v.shape[0]>0:
-                v = v.drop('OVERLAY RESULT', axis=1)
+                v = v.drop('RESULT', axis=1)
                 v['Result'] = v[v.columns].apply(lambda row: ','.join(row.values.astype(str)), axis=1)
                 res_all = " ; ".join (str(x) for x in v['Result'].to_list()) 
                 df_res.loc[index, 'List of conflicts'] = res_all
@@ -509,43 +497,19 @@ def execute_status ():
                 srid_t = 3005
             
             if input_src == 'TANTALIS':
-                query= sql ['intersect'].format (cols=cols,tab=table,
+                query= sql ['overlay'].format (cols=cols,tab=table,radius=radius,
                                                  geom_col=geom_col,def_query=def_query)
                 bvars_intr = {'file_nbr':in_fileNbr,
                               'disp_id':in_dispID,'parcel_id': in_prclID}
             else:
-                query= sql ['intersect_wkb'].format (cols=cols,tab=table,
+                query= sql ['overlay_wkb'].format (cols=cols,tab=table,radius=radius,
                                                      geom_col=geom_col,def_query=def_query)
                 cursor.setinputsizes(wkb_aoi=cx_Oracle.BLOB) # set the WKB as oracle BLOB
-                bvars_intr = {'wkb_aoi':wkb_aoi,'srid':srid}
+                bvars_intr = {'wkb_aoi':wkb_aoi,'srid':srid,'srid_t':str(srid_t)}
                 
-            df_intr = read_query(connection,cursor,query,bvars_intr) 
-    
-            df_intr ['OVERLAY RESULT'] = 'INTERSECT'
+            df_all= read_query(connection,cursor,query,bvars_intr) 
             
-            if radius > 0:
-                if input_src == 'TANTALIS':
-                    query_buf= sql ['buffer'].format (cols=cols,tab=table,def_query=def_query,
-                                                      geom_col=geom_col,radius=radius)
-                    bvars_buf = {'file_nbr':in_fileNbr,
-                                 'disp_id':in_dispID,'parcel_id': in_prclID,}
-    
-                else:
-                    query_buf = sql ['buffer_wkb'].format (cols=cols,tab=table,def_query=def_query,
-                                                           geom_col=geom_col,radius=radius,srid_t=srid_t)
-                    cursor.setinputsizes(wkb_aoi=cx_Oracle.BLOB) # set the WKB as oracle BLOB
-                    bvars_buf = {'wkb_aoi':wkb_aoi,'srid':srid}
                 
-                df_buf = read_query(connection,cursor,query_buf, bvars_buf)
-                df_buf ['OVERLAY RESULT'] = 'WITHIN {} m'.format(str(radius))   
-                
-                df_all =  pd.concat([df_intr, df_buf])
-    
-                
-            else:
-                df_all = df_intr
-                
-        
         else:
             try:
                 gdf_trg = esri_to_gdf (table)
@@ -565,7 +529,7 @@ def execute_status ():
                     cols.append(gdf_trg.columns[0])
                  
                 df_intr = pd.DataFrame(gdf_intr)
-                df_intr ['OVERLAY RESULT'] = 'INTERSECT'
+                df_intr ['RESULT'] = 'INTERSECT'
                 
                 if radius > 0:
                     aoi_buf = gdf_aoi.buffer(radius)
@@ -575,7 +539,7 @@ def execute_status ():
                     gdf_buf= gpd.overlay(gdf_aoi_buf_ext, gdf_trg, how='intersection')
                     
                     df_buf = pd.DataFrame(gdf_buf)
-                    df_buf ['OVERLAY RESULT'] = 'WITHIN {} m'.format(str(radius))   
+                    df_buf ['RESULT'] = 'WITHIN {} m'.format(str(radius))   
                     
                     df_all =  pd.concat([df_intr, df_buf])
                     
@@ -593,20 +557,20 @@ def execute_status ():
             l = cols.split(",")
             cols = [x[2:] for x in l]
     
-        cols.append('OVERLAY RESULT')
+        cols.append('RESULT')
         
         df_all_res = df_all[cols]  
         
         
         ov_nbr = df_all_res.shape[0]
-        print ('.....number of overlay Features: {}'.format(ov_nbr))
+        print ('.....number of overlaps: {}'.format(ov_nbr))
         
         # add the dataframe to the resuls dictionnary
         results[item] =  df_all_res
     
     
-        print ('.....generating a map.')
         if ov_nbr > 0:
+            print ('.....generating a map.')
             gdf_intr = df_2_gdf (df_all, 3005)
             
             # FIX FOR MISSING LABEL COLUMN NAME
