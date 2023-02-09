@@ -113,6 +113,20 @@ def load_queries ():
     return sql
          
 
+def filter_TITAN (titan_report):
+    """Returns a df of filtered TITAN report"""
+    #Read TITAN report into df
+    df = pd.read_excel(titan_report, 'TITAN_RPT012',
+                       converters={'FILE #':str})
+    df.loc[df['PURPOSE'] == 'AQUACULTURE', 'DISTRICT OFFICE'] = 'AQUACULTURE'
+    df['DISTRICT OFFICE'] = df['DISTRICT OFFICE'].fillna(value='NANAIMO')
+    
+    df.drop_duplicates(subset="FILE #", keep='first', inplace=True)
+    df = df[['DISTRICT OFFICE', 'FILE #']]
+    
+    return df
+
+
            
 def generate_report (workspace, df_list, sheet_list,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
@@ -239,9 +253,29 @@ def main():
     df_b.drop('SHAPE', axis=1, inplace=True)
     
     df_c = pd.concat([df_a_em,df_b_em])
+    df_c['PARCEL_HECTARE'] = 0
+    df_c['SHAPE'] = 'None'
+    
+    
+    print ('Exporting report')
+    titan_report = os.path.join(workspace, 'TITAN_RPT012.xlsx')
+    df_o = filter_TITAN (titan_report)
+    
+    
+    
+    df_c = pd.merge(df_o,df_c, how='right',right_on='CROWN_LANDS_FILE', left_on='FILE #')
+    df_c.drop('FILE #', axis=1, inplace=True)
+    
+    df_a = pd.merge(df_o,df_a, how='right',right_on='CROWN_LANDS_FILE', left_on='FILE #')
+    df_a.drop('FILE #', axis=1, inplace=True)
+    
+    df_b = pd.merge(df_o,df_b, how='right',right_on='CROWN_LANDS_FILE', left_on='FILE #')
+    df_b.drop('FILE #', axis=1, inplace=True)
+    
+    
     df_list = [df_a,df_b,df_c]
-    sheet_list = ['Files - 2 Parcels', 'Files - > 2 Parcels', 'Files - Empty Parcels']
-    filename = 'query_cleanup_diles_parcels'
+    sheet_list = ['Files with 2 Parcels', 'Files  with >2 Parcels', 'Files with Empty Parcels']
+    filename = '20230209_queryCleanup_landfilesParcels'
     generate_report (workspace, df_list, sheet_list,filename)
 
 main()
