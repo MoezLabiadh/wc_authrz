@@ -130,6 +130,10 @@ def main():
     print ('Export results')
     df = df.loc[df['WITHIN_KFN']== 'YES']
     
+    df['UNIQUE_ID'] = df['FILE_NUMBER']
+    df['UNIQUE_ID'].fillna(df['ATS_NUMBER'], inplace=True)
+    df = df[ ['UNIQUE_ID'] + [ col for col in df.columns if col != 'UNIQUE_ID' ]]
+    
     create_report ([df], ['Water Applics - KFN territory'],'20230215_waterApplics_KFN')
 
 main()
