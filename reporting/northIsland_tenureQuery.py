@@ -3,8 +3,6 @@ import cx_Oracle
 import datetime
 import pandas as pd
 
-
-
 def connect_to_DB (username,password,hostname):
     """ Returns a connection and cursor to Oracle database"""
     try:
@@ -14,7 +12,8 @@ def connect_to_DB (username,password,hostname):
         raise Exception('....Connection failed! Please check your login parameters')
 
     return connection
-    
+
+
 sql= """
 SELECT
       DI.DISTRICT_NAME,
@@ -69,7 +68,7 @@ FROM WHSE_TANTALIS.TA_DISPOSITION_TRANSACTIONS DT
     AND DT.COMMENCEMENT_DAT BETWEEN TO_DATE('01/01/2018', 'DD/MM/YYYY') AND TO_DATE('31/12/2022', 'DD/MM/YYYY')
     AND SG.STAGE_NME = 'TENURE'
     AND SP.SUBPURPOSE_NME <> 'LOG HANDLING/STORAGE'
-    AND EXTRACT(YEAR FROM DT.EXPIRY_DAT) - EXTRACT(YEAR FROM DT.COMMENCEMENT_DAT) < 10
+    AND EXTRACT(YEAR FROM DT.EXPIRY_DAT) - EXTRACT(YEAR FROM DT.COMMENCEMENT_DAT) <= 10
 
 ORDER BY DT.COMMENCEMENT_DAT DESC
 """
@@ -103,28 +102,27 @@ def create_report (df_list, sheet_list,filename):
     
     
 def main():    
+    print ('Connecting to BCGW.')
+    hostname = 'bcgw.bcgov/idwprod1.bcgov'
+    bcgw_user = os.getenv('bcgw_user')
+    #bcgw_user = 'XXXX'
+    bcgw_pwd = os.getenv('bcgw_pwd')
+    #bcgw_pwd = 'XXXX'
+    connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
 
-  print ('Connecting to BCGW.')
-  hostname = 'bcgw.bcgov/idwprod1.bcgov'
-  bcgw_user = os.getenv('bcgw_user')
-  #bcgw_user = 'XXXX'
-  bcgw_pwd = os.getenv('bcgw_pwd')
-  #bcgw_pwd = 'XXXX'
-  connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-
-  print ('Running the Query')
-  df = pd.read_sql(sql,connection)
-  df['EXPIRY_DATE'] =  pd.to_datetime(df['EXPIRY DATE'],
-                                      infer_datetime_format=True,
-                                      errors = 'coerce').dt.date
+    print ('Running the Query')
+    df = pd.read_sql(sql,connection)
+    df['EXPIRY_DATE'] =  pd.to_datetime(df['EXPIRY_DATE'],
+                                        infer_datetime_format=True,
+                                        errors = 'coerce').dt.date
 
 
-  df['COMMENCEMENT_DATE'] =  pd.to_datetime(df['COMMENCEMENT DATE'],
-                                      infer_datetime_format=True,
-                                      errors = 'coerce').dt.date
+    df['COMMENCEMENT_DATE'] =  pd.to_datetime(df['COMMENCEMENT_DATE'],
+                                        infer_datetime_format=True,
+                                        errors = 'coerce').dt.date
 
-  print ('Export report')
-  create_report ([df], ['result'],'20230217_northIsland_tenureQuery')
+    print ('Export report')
+    create_report ([df], ['result'],'20230217_northIsland_tenureQuery')
 
 
 main()
