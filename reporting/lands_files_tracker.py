@@ -451,7 +451,17 @@ def compute_stats (dfs_f,df_00):
     df_grs_o['REPORT ID'] = rpt_ids[1:]
     
     df_stats = pd.merge(df_00,df_grs_o, how='left',on='REPORT ID')
+   
+    df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
+                  'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
     
+    # create a plot
+    df_pl = df_pl = df_pl[1:]
+    
+    ax = df_pl.plot.bar(x= 'REPORT ID',stacked=True, rot=0,figsize=(15, 8))
+    ax.set_ylabel("Nbr of Files")
+    ax.set_xlabel("Report ID")
+
     return df_stats
 
    
