@@ -439,7 +439,7 @@ def create_summary_rpt (dfs_f):
 def compute_stats (dfs_f,df_00):
     """Compute stats: Number of files per region and report"""
     df_grs = []
-    for df in dfs_f[2:]:
+    for df in dfs_f[1:]:
         df_gr = df.groupby('DISTRICT OFFICE')['REGION NAME'].count().reset_index()
         df_gr.sort_values(by=['DISTRICT OFFICE'], inplace = True)
         df_gr_pv = pd.pivot_table(df_gr, values='REGION NAME',
@@ -448,7 +448,7 @@ def compute_stats (dfs_f,df_00):
     
     df_grs_o = pd.concat(df_grs).reset_index(drop=True)
     df_grs_o.fillna(0, inplace=True)
-    df_grs_o['REPORT ID'] = rpt_ids[2:]
+    df_grs_o['REPORT ID'] = rpt_ids[1:]
     
     df_stats = pd.merge(df_00,df_grs_o, how='left',on='REPORT ID')
     
