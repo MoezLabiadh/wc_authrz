@@ -80,6 +80,7 @@ def import_titan (tnt_f):
             pass
             
     df.loc[df['PURPOSE'] == 'AQUACULTURE', 'DISTRICT OFFICE'] = 'AQUACULTURE'
+    df.loc[df['DISTRICT OFFICE'] == 'COURTENAY', 'DISTRICT OFFICE'] = 'AQUACULTURE'
     df['DISTRICT OFFICE'] = df['DISTRICT OFFICE'].fillna(value='NANAIMO')
     
     return df
@@ -430,10 +431,30 @@ def create_summary_rpt (dfs_f):
     df_00 = pd.DataFrame({'REPORT ID': rpt_ids,
                            'REPORT TITLE' : rpt_nmes,
                            'REPORT GENERATED' : rpt_gen,
-                           'NBR OF FILES IDENTIFIED': rpt_fls})
+                           'TOTAL NBR OF FILES': rpt_fls})
     
     return df_00, rpt_ids
+ 
     
+def compute_stats (dfs_f,df_00):
+    """Compute stats: Number of files per region and report"""
+    df_grs = []
+    for df in dfs_f[2:]:
+        df_gr = df.groupby('DISTRICT OFFICE')['REGION NAME'].count().reset_index()
+        df_gr.sort_values(by=['DISTRICT OFFICE'], inplace = True)
+        df_gr_pv = pd.pivot_table(df_gr, values='REGION NAME',
+                        columns=['DISTRICT OFFICE'], fill_value=0)
+        df_grs.append (df_gr_pv)
+    
+    df_grs_o = pd.concat(df_grs).reset_index(drop=True)
+    df_grs_o.fillna(0, inplace=True)
+    df_grs_o['REPORT ID'] = rpt_ids[2:]
+    
+    df_stats = pd.merge(df_00,df_grs_o, how='left',on='REPORT ID')
+    
+    return df_stats
+
+   
 
 def create_report (df_list, sheet_list,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
@@ -470,8 +491,7 @@ def main():
     bcgw_user = os.getenv('bcgw_user')
     bcgw_pwd = os.getenv('bcgw_pwd')
     connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-    
-    
+
     print ('\nReading Input files')
     print('...ats report')
     ats_f = 'ats_20230306.xlsx'
@@ -479,67 +499,65 @@ def main():
     df_ats = import_ats (ats_f)
     tnt_f = 'TITAN_RPT009.xlsx'
     df_tnt = import_titan (tnt_f)
-    
-    
+
     print('\nCreating Reports.')
     dfs = []
-    
+
     print('...report 01')
     df_01 = create_rpt_01 (df_tnt,df_ats)
     dfs.append(df_01)
-    
+
     print('...report 02')
     df_02 = create_rpt_02 (df_tnt,df_ats)
     dfs.append(df_02)
-    
+
     print('...report 03')
     df_03 = create_rpt_03 (df_tnt,df_ats,connection)
     dfs.append(df_03)
-    
+
     print('...report 04')
     df_04 = create_rpt_04 (df_tnt,df_ats)
     dfs.append(df_04)
-    
+
     print('...report 05')
     df_05 = create_rpt_05 (df_tnt,df_ats)
     dfs.append(df_05)
-    
+
     print('...report 06')
     df_06 = create_rpt_06 (df_tnt,df_ats)
     dfs.append(df_06)
-    
+
     print('...report 07')
     df_07 = create_rpt_07 (df_tnt,df_ats)
     dfs.append(df_07)
-    
+
     print('...report 08')
     df_08 = create_rpt_08 (df_tnt,df_ats)
     dfs.append(df_08)
-    
+
     print('...report 09')
     df_09 = create_rpt_09 (df_tnt,df_ats)
     dfs.append(df_09)
-    
+
     print('...report 10')
     df_10 = create_rpt_10 (df_tnt,df_ats)
     dfs.append(df_10)
-    
-    
-    
-    
+
     print('\nFormatting Report columns')
     dfs_f = set_rpt_colums (df_ats, dfs)
-    
+
     print('\nCreating a Summary Report')
     df_00, rpt_ids = create_summary_rpt (dfs_f)
-    
+    df_stats = compute_stats (dfs_f,df_00)
+
+
     print('\nExporting the Final Report')
-    dfs_f.insert(0, df_00)
+    dfs_f.insert(0, df_stats)
     rpt_ids.insert(0, 'Summary')
-    
+
     today = date.today().strftime("%Y%m%d")
     filename = today + '_landFiles_tracker_betaVersion'
-    
+
     create_report (dfs_f, rpt_ids,filename)
 
 main()
