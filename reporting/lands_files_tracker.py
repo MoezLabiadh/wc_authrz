@@ -1,3 +1,19 @@
+
+#-------------------------------------------------------------------------------
+# Name:        Lands Files Tracker
+#
+# Purpose:     This script generates lands files tracking reports: backlog
+#               and active files.
+#
+# Input(s):    (1) ATS processing time report (excel).
+#              (2) Titan workledger report (excel) - RPT009
+#
+# Author:      Moez Labiadh - FCBC, Nanaimo
+#
+# Created:     09-03-2023
+# Updated:
+#-------------------------------------------------------------------------------
+
 import warnings
 warnings.simplefilter(action='ignore')
 
@@ -451,19 +467,20 @@ def compute_stats (dfs_f,df_00):
     df_grs_o['REPORT ID'] = rpt_ids[1:]
     
     df_stats = pd.merge(df_00,df_grs_o, how='left',on='REPORT ID')
-   
-    df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
-                  'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
     
-    # create a plot
+    return df_stats
+
+
+def compute_plot (df_stats):
+    """Computes a barplot of number of nbr applications per rpt_id and office """
+    df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
+                      'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
+    
     df_pl = df_pl = df_pl[1:]
     
     ax = df_pl.plot.bar(x= 'REPORT ID',stacked=True, rot=0,figsize=(15, 8))
     ax.set_ylabel("Nbr of Files")
-    ax.set_xlabel("Report ID")
-
-    return df_stats
-
+    ax.set_xlabel("Report ID")    
    
 
 def create_report (df_list, sheet_list,filename):
@@ -492,7 +509,9 @@ def create_report (df_list, sheet_list,filename):
 
     writer.save()
     writer.close()    
-    
+
+
+
     
 def main():
 
@@ -509,6 +528,7 @@ def main():
     df_ats = import_ats (ats_f)
     tnt_f = 'TITAN_RPT009.xlsx'
     df_tnt = import_titan (tnt_f)
+
 
     print('\nCreating Reports.')
     dfs = []
@@ -568,6 +588,7 @@ def main():
     today = date.today().strftime("%Y%m%d")
     filename = today + '_landFiles_tracker_betaVersion'
 
+    compute_plot (df_stats)
     create_report (dfs_f, rpt_ids,filename)
 
 main()
