@@ -1,211 +1,482 @@
+
 #-------------------------------------------------------------------------------
-# Name:        FN Replacements
+# Name:        Lands Files Tracker
 #
-# Purpose:     This script generates reports and spatial data for FN replacements.
+# Purpose:     This script generates lands files tracking reports: backlog
+#               and active files.
 #
-# Input(s):    (1) Workspace (folder) where outputs will be generated.
-#              (2) Titan report (excel file) - TITAN_RPT012
-#              (3) Fiscal Year (e.g 2022)
-#              (4) BCGW connection parameters - will be prompt during
-#                  script execution
+# Input(s):    (1) ATS processing time report (excel).
+#              (2) Titan workledger report (excel) - RPT009
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     20-07-2021
+# Created:     09-03-2023
 # Updated:
 #-------------------------------------------------------------------------------
 
+import warnings
+warnings.simplefilter(action='ignore')
+
 import os
-import ast
-import arcpy
+import cx_Oracle
 import pandas as pd
-import numpy as np
-import datetime
+from datetime import date
 
-#Hide pandas warning
-pd.set_option('mode.chained_assignment', None)
 
-def create_dir (path, dir):
-    """ Creates new folder and returns path"""
+def connect_to_DB (username,password,hostname):
+    """ Returns a connection and cursor to Oracle database"""
     try:
-      os.makedirs(os.path.join(path,dir))
+        connection = cx_Oracle.connect(username, password, hostname, encoding="UTF-8")
+        print  ("....Successffuly connected to the database")
+    except:
+        raise Exception('....Connection failed! Please check your login parameters')
 
-    except OSError:
-        print('Folder {} already exists!'.format(dir))
-        pass
-
-    return os.path.join(path,dir)
-
-
-def get_titan_report_date (titan_report):
-    """ Returns the date of the input TITAN report"""
-    df = pd.read_excel(titan_report,'Info')
-    titan_date = df.columns[1]
-
-    return titan_date
+    return connection
 
 
-def filter_TITAN (titan_report, fiscal):
-    """Returns a df of filtered TITAN report"""
-    #Read TITAN report into df
-    df = pd.read_excel(titan_report, 'TITAN_RPT012',
-                       converters={'FILE #':str})
-    # Convert expiry date column to datetime format
-    df['EXPIRY DATE'] =  pd.to_datetime(df['EXPIRY DATE'],
-                                    infer_datetime_format=True,
-                                    errors = 'coerce').dt.date
+def import_ats (ats_f):
+    """Reads the ATS report into a df"""
+    df = pd.read_excel(ats_f)
+    
+    df['File Number'] = df['File Number'].fillna(0)
+    df['File Number'] = df['File Number'].astype(str)
+    
+    df.rename(columns={'Comments': 'ATS Comments'}, inplace=True)
+    
+    df.loc[(df['Accepted Date'].isnull()) & 
+       (df['Rejected Date'].isnull()) & 
+       (df['Submission Review Complete Date'].notnull()),
+       'Accepted Date'] = df['Submission Review Complete Date']
+    
+    for index,row in df.iterrows():
+        z_nbr = 7 - len(str(row['File Number']))
+        df.loc[index, 'File Number'] = z_nbr * '0' + str(row['File Number'])
+        
+    for col in df:
+        if 'Date' in col:
+            df[col] =  pd.to_datetime(df[col],
+                                   infer_datetime_format=True,
+                                   errors = 'coerce').dt.date
+        elif 'Unnamed' in col:
+            df.drop(col, axis=1, inplace=True)
+        
+        else:
+            pass
+            
+    
+    return df
 
-    # Filter the needed data: tenures expiring during fiscal year
-    df = df.loc [(df['STAGE'] == 'TENURE') &
-                 (df['EXPIRY DATE'] >= datetime.date(fiscal,4,1)) &
-                 (df['EXPIRY DATE'] <= datetime.date(fiscal+1,3,31))]
 
-    # Convert commencement date column to datetime format
-    df['COMMENCEMENT DATE'] =  pd.to_datetime(df['COMMENCEMENT DATE'],
-                                    infer_datetime_format=True,
-                                    errors = 'coerce').dt.date
-    #Calculate Tenure Length
-    df ['diff'] = ((df['EXPIRY DATE'] - df['COMMENCEMENT DATE'] )\
-                                  / np.timedelta64(1,'Y'))
-    df['TENURE LENGTH'] = df['diff'].fillna(0).round().astype(int)
-
-
-    #Remove spaces from column names, remove special characters
-    df.sort_values(by = ['EXPIRY DATE'], inplace = True)
-    df['EXPIRY DATE'] = df['EXPIRY DATE'].astype(str)
-    df['COMMENCEMENT DATE'] = df['COMMENCEMENT DATE'].astype(str)
+def import_titan (tnt_f):
+    """Reads the Titan work ledger report into a df"""
+    df = pd.read_excel(tnt_f,'TITAN_RPT009',
+                       converters={'FILE NUMBER':str})
+    
+    tasks = ['NEW APPLICATION','REPLACEMENT APPLICATION','AMENDMENT','ASSIGNMENT']
+    df = df.loc[df['TASK DESCRIPTION'].isin(tasks)]
+    
+    df.rename(columns={'COMMENTS': 'TANTALIS COMMENTS'}, inplace=True)
+ 
+    del_col = ['ORG. UNIT','MANAGING AGENCY','BCGS','LEGAL DESCRIPTION',
+              'FDISTRICT','ADDRESS LINE 1','ADDRESS LINE 2','ADDRESS LINE 3',
+              'CITY','PROVINCE','POSTAL CODE','COUNTRY','STATE','ZIP CODE']
+    
+    for col in df:
+        if 'DATE' in col:
+            df[col] =  pd.to_datetime(df[col],
+                                   infer_datetime_format=True,
+                                   errors = 'coerce').dt.date
+        elif 'Unnamed' in col:
+            df.drop(col, axis=1, inplace=True)
+        
+        elif col in del_col:
+            df.drop(col, axis=1, inplace=True)
+            
+        else:
+            pass
+            
     df.loc[df['PURPOSE'] == 'AQUACULTURE', 'DISTRICT OFFICE'] = 'AQUACULTURE'
+    df.loc[df['DISTRICT OFFICE'] == 'COURTENAY', 'DISTRICT OFFICE'] = 'AQUACULTURE'
     df['DISTRICT OFFICE'] = df['DISTRICT OFFICE'].fillna(value='NANAIMO')
-    df.rename(columns={'FILE #':'FILE_NBR'}, inplace=True)
-    df.columns = df.columns.str.replace(' ', '_')
-
+    
     return df
 
-def add_max_term (df, terms_file):
-    """Add the Maximum tenure term column to the datataframe"""
-    df_terms = pd.read_excel(terms_file)
-    df_tn = pd.merge(df, df_terms,  how='left',
-                     left_on=['PURPOSE', 'SUBPURPOSE', 'TYPE', 'SUBTYPE'],
-                     right_on=['PURPOSE', 'SUBPURPOSE', 'TYPE', 'SUBTYPE'])
+def create_rpt_01(df_tnt,df_ats):
+    """ Creates Report 01- New Files in FCBC, not accepted"""
+    ats_a = df_ats.loc[df_ats['Authorization Status'] == 'Active']
+    #active = ats_a['File Number'].to_list()
+    
+    df_01= ats_a.loc[(ats_a['Received Date'].notnull()) & (ats_a['Accepted Date'].isnull())]
+    
+     
+    df_01['tempo_join_date']= df_01['Accepted Date'].astype('datetime64[Y]')
+    df_tnt['tempo_join_date']= df_tnt['CREATED DATE'].astype('datetime64[Y]')
+    
+    df_01 = pd.merge(df_01, df_tnt, how='left',
+                     left_on=['File Number','tempo_join_date'],
+                     right_on=['FILE NUMBER','tempo_join_date'])
+    
+    df_01.sort_values(by=['Received Date'], ascending=False, inplace=True)
+    df_01.reset_index(drop = True, inplace = True)
 
-    return df_tn
-
-def df2gdb (df):
-    """Converts a pandas df to a gbd table"""
-
-    #Turn dataframe into a simple np series
-    arr = np.array(np.rec.fromrecords(df.values))
-
-    #Create a list of field names from the dataframe
-    colnames = [name.encode('UTF8') for name in df.dtypes.index.tolist()]
-
-    #Update column names in structured array
-    arr.dtype.names = tuple(colnames)
-    #print (arr.dtype)
-
-    #Create the GDB table
-    table = 'in_memory\df_table'
-    arcpy.da.NumPyArrayToTable(arr, table)
-
-    return table
+    return df_01
 
 
-def create_bcgw_connection(workspace, bcgw_user_name,bcgw_password):
-    """Returns a BCGW connnection file"""
-
-    name = 'Temp_BCGW'
-    database_platform = 'ORACLE'
-    account_authorization  = 'DATABASE_AUTH'
-    instance = 'bcgw.bcgov/idwprod1.bcgov'
-    username = bcgw_user_name
-    password = bcgw_password
-    bcgw_conn_path = os.path.join(workspace,'Temp_BCGW.sde')
-    if not arcpy.Exists(bcgw_conn_path):
-        arcpy.CreateDatabaseConnection_management (workspace,name, database_platform,instance,account_authorization,
-                                               username ,password, 'DO_NOT_SAVE_USERNAME')
-    else:
-        pass
-
-    return bcgw_conn_path
-
-
-def get_layers (table, bcgw_conn_path, req_fields):
-    """Returns layers of FN consultation areas and Expiring tenures"""
-    tenure_layer = os.path.join(bcgw_conn_path, 'WHSE_TANTALIS.TA_CROWN_TENURES_SVW')
-    tenureLayer = 'tenure_layer'
-    arcpy.MakeFeatureLayer_management (tenure_layer, tenureLayer)
-    arcpy.AddJoin_management(tenureLayer, 'DISPOSITION_TRANSACTION_SID', table, 'DTID','KEEP_COMMON')
-
-    join_tenures = 'in_memory\_join_tenures'
-    arcpy.CopyFeatures_management(tenureLayer, join_tenures)
-
-    expiring_tenures = 'in_memory\_expiring_tenures'
-    arcpy.Dissolve_management (join_tenures, expiring_tenures, req_fields,[['TENURE_AREA_IN_HECTARES', "SUM"]])
-
-    FN_layer = os.path.join(bcgw_conn_path, 'WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP')
-    consult_layer = 'consult_layer'
-    arcpy.MakeFeatureLayer_management(FN_layer, consult_layer)
-    arcpy.SelectLayerByLocation_management(consult_layer, 'intersect', expiring_tenures)
-
-    consult_areas = 'in_memory\_consult_areas'
-    arcpy.Dissolve_management (consult_layer, consult_areas, 'CNSLTN_AREA_NAME')
-
-    return expiring_tenures, consult_layer, consult_areas
+def create_rpt_02(df_tnt,df_ats):
+    """ Creates Report 02- New Files accepted by FCBC, not assigned to a Land Officer"""
+    ats_r = df_ats.loc[df_ats['Authorization Status'].isin(['Closed', 'On Hold'])]
+    notactive = ats_r['File Number'].to_list()
+    
+    df_02= df_tnt.loc[(df_tnt['TASK DESCRIPTION'] == 'NEW APPLICATION') &
+                      (~df_tnt['FILE NUMBER'].isin(notactive)) &
+                      (df_tnt['USERID ASSIGNED TO'].isnull()) &
+                      (df_tnt['STATUS'] == 'ACCEPTED')]
+      
+    df_02['tempo_join_date']= df_02['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+    
+    df_02 = pd.merge(df_02, df_ats, how='left',
+                     left_on=['FILE NUMBER','tempo_join_date'],
+                     right_on=['File Number','tempo_join_date'])
+    
+    df_02.sort_values(by=['CREATED DATE'], ascending=False, inplace=True)
+    df_02.reset_index(drop = True, inplace = True)
+    
+    return df_02
 
 
-def intersect_FN (expiring_tenures,consult_areas):
-    """Returns intersection layer of FN consultation areas and Epiring Tenures"""
-    intersect = 'in_memory\_intersect'
-    arcpy.SpatialJoin_analysis(expiring_tenures, consult_areas, intersect, 'JOIN_ONE_TO_MANY')
+def create_rpt_03(df_tnt,df_ats,connection):
+    """ Creates Report 03- Expired Tenures autogenerated as replacement application 
+                           and not assigned to an LO for Replacement"""
+    
+    sql = """
+     SELECT CROWN_LANDS_FILE
+     FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW
+     WHERE RESPONSIBLE_BUSINESS_UNIT = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION' 
+      AND TENURE_STATUS = 'ACCEPTED'
+      AND APPLICATION_TYPE_CDE = 'REP'
+      AND CROWN_LANDS_FILE NOT IN (SELECT CROWN_LANDS_FILE 
+                                   FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW
+                                   WHERE TENURE_STATUS = 'DISPOSITION IN GOOD STANDING')
+    """
 
-    return intersect
-
-def fc2df (fc, fields):
-    """Returns a df based on a Feature Class"""
-    arr = arcpy.da.FeatureClassToNumPyArray(
-                in_table=fc,
-                field_names=fields,
-                skip_nulls=False,
-                null_value=-99999)
-
-    df = pd.DataFrame (arr)
-
-    return df
-
-
-def summarize_data (df):
-    """ Returns Summary of Number of Expiring Files per Consultation Area"""
-
-    df['FILE_NBR'] = df['FILE_NBR'].astype(str)
-    groups = df.groupby(['DISTRICT_OFFICE', 'CNSLTN_AREA_NAME'])['FILE_NBR'].apply(list)
-    sum_nbr_files = pd.DataFrame(groups)
-
-    sum_nbr_files ['Number of files'] = sum_nbr_files['FILE_NBR'].str.len()
-
-    sum_nbr_files.reset_index(inplace = True)
-    sum_nbr_files.index = sum_nbr_files.index + 1
-
-    sum_nbr_files.rename(columns={'FILE_NBR':'List of files',
-                        'CNSLTN_AREA_NAME':'Consultation Areas'}, inplace=True)
-
-    cols = ['DISTRICT_OFFICE', 'Consultation Areas','Number of files', 'List of files']
-    sum_nbr_files = sum_nbr_files[cols]
-
-    for index, row in sum_nbr_files.iterrows():
-        list_tenures = ast.literal_eval(str(row['List of files']))
-        str_tenures = ', '.join(x for x in list_tenures)
-        sum_nbr_files.loc[index, 'List of files'] = str_tenures
-
-    return sum_nbr_files
+    df_q = pd.read_sql(sql,connection)
+    rep_l = df_q['CROWN_LANDS_FILE'].to_list()
+    
+    ats_r = df_ats.loc[df_ats['Authorization Status'].isin(['Closed', 'On Hold'])]
+    
+    files_r = ats_r['File Number'].to_list()
+    
+    df_03= df_tnt.loc[(df_tnt['TASK DESCRIPTION']== 'REPLACEMENT APPLICATION') &
+                      (df_tnt['FILE NUMBER'].isin(rep_l)) &
+                      (~df_tnt['FILE NUMBER'].isin(files_r)) &
+                      (df_tnt['USERID ASSIGNED TO'].isnull())]
+    
+    df_03['tempo_join_date']= df_03['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+        
+        
+    df_03 = pd.merge(df_03, df_ats, how='left',
+                     left_on=['FILE NUMBER','tempo_join_date'],
+                     right_on=['File Number','tempo_join_date'])
+        
+    df_03.sort_values(by=['RECEIVED DATE'], ascending=False, inplace=True)
+    df_03.reset_index(drop = True, inplace = True)
+    
+    return df_03
 
 
-def generate_report (workspace, df_list, fiscal):
+def create_rpt_04(df_tnt,df_ats):
+    """ Creates Report 04- Unassigned Assignments"""
+    ats_r = df_ats.loc[df_ats['Authorization Status'].isin(['Closed', 'On Hold'])]
+    notactive = ats_r['File Number'].to_list()
+    
+    df_04= df_tnt.loc[(df_tnt['TASK DESCRIPTION'] == 'ASSIGNMENT') &
+                      (~df_tnt['FILE NUMBER'].isin(notactive)) &
+                      (df_tnt['USERID ASSIGNED TO'].isnull()) &
+                      (df_tnt['STATUS'] == 'ACCEPTED')]
+      
+    df_04['tempo_join_date']= df_04['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+    
+    df_04 = pd.merge(df_04, df_ats, how='left',
+                     left_on=['FILE NUMBER','tempo_join_date'],
+                     right_on=['File Number','tempo_join_date'])
+    
+    df_04.sort_values(by=['CREATED DATE'], ascending=False, inplace=True)
+    df_04.reset_index(drop = True, inplace = True)
+    
+    return df_04
+
+
+def create_rpt_05 (df_tnt,df_ats):
+    """ Creates Report 05- Files Assigned to LO, work in progress"""
+    df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
+    
+    df_05= df_tnt.loc[(df_tnt['USERID ASSIGNED TO'].notnull()) &
+                      (df_tnt['REPORTED DATE'].isnull()) &
+                      (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
+                      (df_tnt['STATUS'] == 'ACCEPTED')]
+
+    df_05['tempo_join_date']= df_05['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+    
+    df_05 = pd.merge(df_05, df_ats, how='left',
+                     left_on=['FILE NUMBER','tempo_join_date'],
+                     right_on=['File Number','tempo_join_date'])
+    
+    df_05.sort_values(by=['CREATED DATE'], ascending=False, inplace=True)
+    df_05.reset_index(drop = True, inplace = True)
+    
+    return df_05
+
+
+def create_rpt_06 (df_tnt,df_ats):
+    """ Creates Report 06- Files placed on hold by an LO"""
+    df_ats = df_ats.loc[(df_ats['Authorization Status']== 'On Hold') &
+                        (df_ats['Accepted Date'].notnull())]
+    hold_l = df_ats['File Number'].to_list()
+    
+    df_06= df_tnt.loc[(df_tnt['STATUS'] == 'ACCEPTED') & 
+                      (df_tnt['FILE NUMBER'].isin(hold_l))]
+
+    df_06['tempo_join_date']= df_06['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+    
+    df_06 = pd.merge(df_06, df_ats, how='left',
+                     left_on=['FILE NUMBER'],
+                     right_on=['File Number'])
+    
+    df_06.sort_values(by=['CREATED DATE'], ascending=False, inplace=True)
+    df_06.reset_index(drop = True, inplace = True)
+    
+    return df_06
+
+
+def create_rpt_07 (df_tnt,df_ats):
+    """ Creates Report 07- Files with LUR Complete, awaiting approval of recommendation"""
+    df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
+    
+    df_07= df_tnt.loc[(df_tnt['REPORTED DATE'].notnull()) &
+                    (df_tnt['ADJUDICATED DATE'].isnull()) &
+                    (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &
+                    (df_tnt['STATUS'] == 'ACCEPTED')]
+
+    df_07['tempo_join_date']= df_07['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+    
+    df_07 = pd.merge(df_07, df_ats, how='left',
+                     left_on=['FILE NUMBER','tempo_join_date'],
+                     right_on=['File Number','tempo_join_date'])
+    
+    df_07.sort_values(by=['REPORTED DATE'], ascending=False, inplace=True)
+    df_07.reset_index(drop = True, inplace = True)
+    
+    return df_07
+
+
+def create_rpt_08 (df_tnt,df_ats):
+    """ Creates Report 08- Files with decision made, awaiting offer"""
+    df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
+    
+    df_08= df_tnt.loc[(df_tnt['ADJUDICATED DATE'].notnull()) &
+                     (df_tnt['OFFERED DATE'].isnull()) &
+                     (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
+                     (df_tnt['STATUS'] == 'ACCEPTED')]
+
+    df_08['tempo_join_date']= df_08['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+    
+    df_08 = pd.merge(df_08, df_ats, how='left',
+                     left_on=['FILE NUMBER','tempo_join_date'],
+                     right_on=['File Number','tempo_join_date'])
+    
+    df_08.sort_values(by=['ADJUDICATED DATE'], ascending=False, inplace=True)
+    df_08.reset_index(drop = True, inplace = True)
+    
+    return df_08
+
+
+def create_rpt_09 (df_tnt,df_ats):
+    """ Creates Report 09- Files with offer made, awaiting acceptance"""
+    df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
+    df_09= df_tnt.loc[(df_tnt['OFFERED DATE'].notnull()) &
+                      (df_tnt['OFFER ACCEPTED DATE'].isnull())&
+                      (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &                      
+                      (df_tnt['STATUS'] == 'OFFERED')]
+    
+    df_09['tempo_join_date']= df_09['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+    
+    df_09 = pd.merge(df_09, df_ats, how='left',
+                     left_on=['FILE NUMBER','tempo_join_date'],
+                     right_on=['File Number','tempo_join_date'])
+    
+    df_09.sort_values(by=['OFFERED DATE'], ascending=False, inplace=True)
+    df_09.reset_index(drop = True, inplace = True)
+    
+    return df_09
+
+
+def create_rpt_10 (df_tnt,df_ats):
+    """ Creates Report 10- Files with offer accepted"""
+    df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
+    df_10= df_tnt.loc[(df_tnt['OFFER ACCEPTED DATE'].notnull()) &
+                     (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &                      
+                      (df_tnt['STATUS'] == 'OFFER ACCEPTED')]
+    
+    df_10['tempo_join_date']= df_10['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+    
+    df_10 = pd.merge(df_10, df_ats, how='left',
+                     left_on=['FILE NUMBER','tempo_join_date'],
+                     right_on=['File Number','tempo_join_date'])
+    
+    df_10.sort_values(by=['OFFER ACCEPTED DATE'], ascending=False, inplace=True)
+    df_10.reset_index(drop = True, inplace = True)
+    
+    return df_10
+
+
+def set_rpt_colums (df_ats, dfs):
+    """ Set the report columns"""
+    cols = ['Region Name',
+         'Business Area',
+         'DISTRICT OFFICE',
+         'FILE NUMBER',
+         'TYPE',
+         'SUBTYPE',
+         'PURPOSE',
+         'SUBPURPOSE',
+         'Authorization Status',
+         'STATUS',
+         'TASK DESCRIPTION',
+         'FCBC Assigned To',
+         'USERID ASSIGNED TO',
+         'OTHER EMPLOYEES ASSIGNED TO',
+         'FN Consultation Lead',
+         'Adjudication Lead',
+         'PRIORITY CODE',
+         'Received Date',
+         'RECEIVED DATE',
+         'Accepted Date',
+         'CREATED DATE',
+         'Acceptance Complete Net Processing Time',
+         'Submission Review Complete Date',
+         'Submission Review Net Processing Time',
+         'LAND STATUS DATE',
+         'First Nation Start Date',
+         'First Nation Completion Date',
+         'FN Consultation Net Time',
+         'Technical Review Complete Date',
+         'REPORTED DATE',
+         'Technical Review Complete Net Processing Time',
+         'ADJUDICATED DATE',
+         'OFFERED DATE',
+         'OFFER ACCEPTED DATE',
+         'Total Processing Time',
+         'Total On Hold Time',
+         'Net Processing Time',
+         'CLIENT NAME',
+         'LOCATION',
+         'TANTALIS COMMENTS',
+         'ATS Comments']
+    
+    dfs[0] = dfs[0][list(df_ats.columns)[:14]]
+    dfs[0].columns = [x.upper() for x in dfs[0].columns]
+    
+    dfs_f = [dfs[0]]   
+    
+    for df in dfs[1:]:
+        df = df[cols]
+        df['Region Name'] = 'WEST COAST'
+        df['Business Area'] = 'LANDS'
+
+        df.rename({'Authorization Status': 'ATS STATUS', 
+                   'STATUS': 'TANTALIS STATUS',
+                   'TASK DESCRIPTION': 'APPLICATION TYPE',
+                   'USERID ASSIGNED TO': 'EMPLOYEE ASSIGNED TO',
+                   'Received Date': 'ATS RECEIVED DATE',
+                   'RECEIVED DATE': 'TANTALIS RECEIVED DATE'}, 
+                  axis=1, inplace=True)
+
+        df.columns = [x.upper() for x in df.columns]
+        
+        dfs_f.append (df)
+    
+    return dfs_f
+        
+
+def create_summary_rpt (dfs_f):
+    """Creates a summary report - 1st page"""
+    rpt_ids = ['rpt_01',
+               'rpt_02',
+               'rpt_03',
+               'rpt_04',
+               'rpt_05',
+               'rpt_06',
+               'rpt_07',
+               'rpt_08',
+               'rpt_09',
+               'rpt_10']
+    
+    rpt_nmes = ['New Files in FCBC, not accepted',
+                'New Files accepted by FCBC, not assigned to a Land Officer',
+                'Expired Tenures autogenerated as replacement applications, not assigned to an LO',
+                'Unassigned Assignments',
+                'Files Assigned to LO, work in progress',
+                'Files placed on hold by an LO',
+                'Files with LUR Complete, awaiting approval of recommendation',
+                'Files with decision made, awaiting offer',
+                'Files with offer made, awaiting acceptance',
+                'Files with offer accepted']
+    
+    rpt_gen = ['Y',
+               'Y',
+               'Y',
+               'Y',
+               'Y',
+               'Y',
+               'Y',
+               'Y',
+               'Y',
+               'Y']
+    
+    rpt_fls = [df.shape[0] for df in dfs_f]
+    
+    df_00 = pd.DataFrame({'REPORT ID': rpt_ids,
+                           'REPORT TITLE' : rpt_nmes,
+                           'REPORT GENERATED' : rpt_gen,
+                           'TOTAL NBR OF FILES': rpt_fls})
+    
+    return df_00, rpt_ids
+ 
+    
+def compute_stats (dfs_f,df_00):
+    """Compute stats: Number of files per region and report"""
+    df_grs = []
+    for df in dfs_f[1:]:
+        df_gr = df.groupby('DISTRICT OFFICE')['REGION NAME'].count().reset_index()
+        df_gr.sort_values(by=['DISTRICT OFFICE'], inplace = True)
+        df_gr_pv = pd.pivot_table(df_gr, values='REGION NAME',
+                        columns=['DISTRICT OFFICE'], fill_value=0)
+        df_grs.append (df_gr_pv)
+    
+    df_grs_o = pd.concat(df_grs).reset_index(drop=True)
+    df_grs_o.fillna(0, inplace=True)
+    df_grs_o['REPORT ID'] = rpt_ids[1:]
+    
+    df_stats = pd.merge(df_00,df_grs_o, how='left',on='REPORT ID')
+    
+    return df_stats
+
+   
+
+def create_report (df_list, sheet_list,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
-    sheet_list = ["Master List- Expring Tenures", "Master List- FN overlap",
-                  "Summary- Files per office & FN", "FN Contact info"]
-    file_name = os.path.join(workspace, 'FN_replacements_Fiscal' + str(fiscal) +'.xlsx')
 
-    writer = pd.ExcelWriter(file_name,engine='xlsxwriter')
+    
+    writer = pd.ExcelWriter(filename+'.xlsx',engine='xlsxwriter')
 
     for dataframe, sheet in zip(df_list, sheet_list):
         dataframe = dataframe.reset_index(drop=True)
@@ -220,165 +491,108 @@ def generate_report (workspace, df_list, fiscal):
 
         col_names = [{'header': col_name} for col_name in dataframe.columns[1:-1]]
         col_names.insert(0,{'header' : dataframe.columns[0], 'total_string': 'Total'})
-        if 'Master List' in sheet:
-            col_names.append ({'header' : dataframe.columns[-1], 'total_function': 'count'})
-        else:
-            col_names.append ({'header' : dataframe.columns[-1], 'total_function': 'sum'})
-
+        col_names.append ({'header' : dataframe.columns[-1], 'total_function': 'count'})
         worksheet.add_table(0, 0, dataframe.shape[0]+1, dataframe.shape[1]-1, {
             'total_row': True,
             'columns': col_names})
 
     writer.save()
-    writer.close()
+    writer.close()    
+    
+    
+#def main():
+
+print ('\nConnecting to BCGW.')
+hostname = 'bcgw.bcgov/idwprod1.bcgov'
+bcgw_user = os.getenv('bcgw_user')
+bcgw_pwd = os.getenv('bcgw_pwd')
+connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
 
 
-def export_shapes (df,fc,fiscal,spatial_path):
-    """Exports  KML and SHP replacement files for each FN"""
-    office_list = list (set(df['DISTRICT_OFFICE'].tolist()))
-    for office in office_list:
-        print ('Exporting Spatial Files for {} office'.format (office))
-        office_path = create_dir (spatial_path, office)
-        df_office = df.loc[df['DISTRICT_OFFICE'] == office]
-
-        counter = 1
-        for index, row in df_office.iterrows():
-            fn_name = str(row['Consultation Areas'])
-            print ('..Consultation area {} of {}: {}'.format(counter,df_office.shape[0],fn_name))
-            list_ten = str(row['List of files']).split(",")
-            list_strip = [x.strip() for x in list_ten]
-            str_tenures = ",".join("'" + x + "'" for x in list_strip)
-
-            where_clause = """ FILE_NBR in ({}) """.format (str_tenures)
-            arcpy.MakeFeatureLayer_management (fc, "tenures_lyr")
-            arcpy.SelectLayerByAttribute_management ("tenures_lyr", "NEW_SELECTION", where_clause)
-
-            export_name = fn_name + '_rep_FY' + str(fiscal)
-            change_str = ["'", ' ',"-","/", "(", ")","Final_Agreement_Areas"]
-            for c in change_str:
-                if c in export_name:
-                    if c == "Final_Agreement_Areas":
-                        export_name = export_name.replace(c,"FAA")
-                    elif c == "'":
-                        export_name = export_name.replace(c,"")
-                    else:
-                        export_name = export_name.replace(c,"_")
-                else:
-                    pass
-
-            export_name = export_name.replace('__','_')
-            fn_path = create_dir (office_path, export_name)
-            txt_file = os.path.join(fn_path, 'tenures_list.txt')
-            if os.path.isfile(txt_file) == False:
-                with open(txt_file, 'w') as f:
-                   f.write(export_name + '\n')
-                   for file in list_strip:
-                      f.write('{}\n'.format(str(file)))
-            else:
-                pass
-
-            print ('...exporting KML')
-            kml_path = create_dir (fn_path, 'KML')
-            kml_name = os.path.join(kml_path,export_name+'.kmz')
-            if not os.path.isfile(kml_name):
-                arcpy.LayerToKML_conversion("tenures_lyr", kml_name)
-            else:
-                print ('KML already exists!')
-                pass
-
-            print ('...exporting SHP')
-            shp_path = create_dir (fn_path, 'SHP')
-            shp_name = os.path.join(shp_path,export_name+'.shp')
-            if not os.path.isfile(shp_name):
-                arcpy.CopyFeatures_management("tenures_lyr", os.path.join(shp_path,export_name))
-            else:
-                print ('SHP already exists!')
-                pass
-
-            for root, dirs, files in os.walk(kml_path):
-                for file in files:
-                    if file.endswith(".metadata.xml"):
-                     os.remove(os.path.join(root,file))
-
-            arcpy.Delete_management("tenures_lyr")
-            counter += 1
+print ('\nReading Input files')
+print('...ats report')
+ats_f = 'ats_20230306.xlsx'
+print('...titan report')
+df_ats = import_ats (ats_f)
+tnt_f = 'TITAN_RPT009.xlsx'
+df_tnt = import_titan (tnt_f)
 
 
-def main():
-    """Runs the program"""
-    arcpy.env.overwriteOutput = True
-    arcpy.env.qualifiedFieldNames = False
-    workspace = r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Moez\WORKSPACE\20210707_FN_replacements_2022_23'
-    titan_report = os.path.join(workspace, 'TITAN_RPT012.xlsx')
+print('\nCreating Reports.')
+dfs = []
 
-    titan_date = get_titan_report_date (titan_report)
-    print 'Titan report date/time is: {}'.format (titan_date)
+print('...report 01')
+df_01 = create_rpt_01 (df_tnt,df_ats)
+dfs.append(df_01)
 
-    print ("Filtering TITAN report...")
-    fiscal = 2022
-    df_filter = filter_TITAN (titan_report,fiscal)
+print('...report 02')
+df_02 = create_rpt_02 (df_tnt,df_ats)
+dfs.append(df_02)
 
-    print ("Adding Max term Column...")
-    terms_file = r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Moez\DATASETS\Tenure_Terms\max_tenure_terms.xlsx'
-    req_fields = ['DISTRICT_OFFICE','FDISTRICT','FILE_NBR', 'DTID', 'COMMENCEMENT_DATE',
-          'EXPIRY_DATE', 'TENURE_LENGTH','MAX_TENURE_TERM','STAGE', 'STATUS', 'APPLICATION_TYPE',
-          'TYPE', 'SUBTYPE', 'PURPOSE', 'SUBPURPOSE','LOCATION',
-          'CLIENT_NAME', 'ADDRESS_LINE_1', 'ADDRESS_LINE_2','ADDRESS_LINE_3','CITY', 'PROVINCE', 'POSTAL_CODE',
-          'COUNTRY','STATE','ZIP_CODE']
+print('...report 03')
+df_03 = create_rpt_03 (df_tnt,df_ats,connection)
+dfs.append(df_03)
 
-    df_ten= add_max_term (df_filter, terms_file)
-    df_ten = df_ten[req_fields]
+print('...report 04')
+df_04 = create_rpt_04 (df_tnt,df_ats)
+dfs.append(df_04)
 
-    print ("Converting df to GBD table...")
-    table = df2gdb (df_ten)
+print('...report 05')
+df_05 = create_rpt_05 (df_tnt,df_ats)
+dfs.append(df_05)
 
-    print ('Connecting to BCGW...PLease enter your credentials')
+print('...report 06')
+df_06 = create_rpt_06 (df_tnt,df_ats)
+dfs.append(df_06)
 
-    bcgw_user_name = raw_input("Enter your BCGW username:")
-    bcgw_password = raw_input("Enter your BCGW password:")
-    bcgw_conn_path = create_bcgw_connection(workspace, bcgw_user_name,bcgw_password)
+print('...report 07')
+df_07 = create_rpt_07 (df_tnt,df_ats)
+dfs.append(df_07)
 
-    print ('Creating Layers: Consultation areas and Expring Tenures')
-    expiring_tenures, consult_layer, consult_areas = get_layers (table, bcgw_conn_path, req_fields)
+print('...report 08')
+df_08 = create_rpt_08 (df_tnt,df_ats)
+dfs.append(df_08)
 
-    print('Intersecting Expiring tenures and FN areas...')
-    intersect = intersect_FN (expiring_tenures,consult_areas)
+print('...report 09')
+df_09 = create_rpt_09 (df_tnt,df_ats)
+dfs.append(df_09)
 
-    print('Exporting result to dataframe...')
-
-    req_fields.insert(15,'SUM_TENURE_AREA_IN_HECTARES')
-    df_exp = fc2df (expiring_tenures, req_fields)
-    df_exp.rename(columns={'SUM_TENURE_AREA_IN_HECTARES': 'AREA_HA'}, inplace=True)
-
-    fields_inter = req_fields[:]
-    fields_inter.insert(4,'CNSLTN_AREA_NAME')
-    df_inter = fc2df (intersect, fields_inter)
-    df_inter.rename(columns={'SUM_TENURE_AREA_IN_HECTARES': 'AREA_HA'}, inplace=True)
+print('...report 10')
+df_10 = create_rpt_10 (df_tnt,df_ats)
+dfs.append(df_10)
 
 
-    # FN contact info
-    fields = ['CNSLTN_AREA_NAME','CONTACT_ORGANIZATION_NAME','CONTACT_NAME','ORGANIZATION_TYPE','CONTACT_UPDATE_DATE',
-              'CONTACT_TITLE', 'CONTACT_ADDRESS','CONTACT_CITY','CONTACT_PROVINCE','CONTACT_POSTAL_CODE',
-              'CONTACT_FAX_NUMBER','CONTACT_PHONE_NUMBER','CONTACT_EMAIL_ADDRESS']
-    df_fn = fc2df (consult_layer, fields)
-    df_fn.sort_values(by=[fields[0],fields[1]], inplace = True)
-
-    print('Creating Summary Statistics...')
-    sum_nbr_files = summarize_data(df_inter)
-
-    out_path = create_dir (workspace, 'OUTPUTS')
-    spatial_path = create_dir (out_path, 'SPATAL')
-    excel_path = create_dir (out_path, 'SPREADSHEET')
 
 
-    print('Exporting Results...')
-    generate_report (excel_path, [df_exp, df_inter,sum_nbr_files,df_fn], fiscal)
-    export_shapes (sum_nbr_files,expiring_tenures,fiscal,spatial_path)
+print('\nFormatting Report columns')
+dfs_f = set_rpt_colums (df_ats, dfs)
 
-    arcpy.Delete_management('in_memory')
+print('\nCreating a Summary Report')
+df_00, rpt_ids = create_summary_rpt (dfs_f)
+df_stats = compute_stats (dfs_f,df_00)
 
-    print ('Processing completed! Check Output folder for results!')
+
+print('\nExporting the Final Report')
+dfs_f.insert(0, df_stats)
+rpt_ids.insert(0, 'Summary')
+
+today = date.today().strftime("%Y%m%d")
+filename = today + '_landFiles_tracker_betaVersion'
 
 
-if __name__ == "__main__":
-    main()
+
+df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
+                  'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
+
+df_pl = df_pl = df_pl[1:]
+
+ax = df_pl.plot.bar(x= 'REPORT ID',stacked=True, rot=0,figsize=(15, 8))
+ax.set_ylabel("Nbr of Files")
+ax.set_xlabel("Report ID")
+
+
+
+
+#create_report (dfs_f, rpt_ids,filename)
+
+#main()
