@@ -53,16 +53,22 @@ WHERE TN.UNIT_NAME = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION'
   AND TN.STATUS = 'EXPIRED'
   
   AND TN.FILE_NBR IN (SELECT CROWN_LANDS_FILE 
-                      FROM WHSE_TANTALIS.TA_CROWN_TENURES_VW
-                      WHERE TENURE_STATUS = 'ACCEPTED'
-                        AND APPLICATION_TYPE_CDE = 'REP') 
-  
+                      FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW
+                      WHERE RESPONSIBLE_BUSINESS_UNIT = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION' 
+                        AND TENURE_STATUS = 'ACCEPTED'
+                        AND APPLICATION_TYPE_CDE = 'REP'
+                        AND CROWN_LANDS_FILE NOT IN (SELECT CROWN_LANDS_FILE 
+                             FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW
+                             WHERE TENURE_STATUS = 'DISPOSITION IN GOOD STANDING')) 
+ 
+                                
   AND TN.EXPIRY_DATE = (SELECT MAX(TG.EXPIRY_DATE)
                         FROM (SELECT
                                   CAST(IP.INTRID_SID AS NUMBER) INTRID_SID,
                                   CAST(DT.DISPOSITION_TRANSACTION_SID AS NUMBER) DISPOSITION_TRANSACTION_SID,
                                   DS.FILE_CHR AS FILE_NBR,
-                                  DT.EXPIRY_DAT AS EXPIRY_DATE
+                                  DT.EXPIRY_DAT AS EXPIRY_DATE,
+                                  TT.STATUS_NME AS STATUS
     
                               FROM WHSE_TANTALIS.TA_DISPOSITION_TRANSACTIONS DT 
                                 JOIN WHSE_TANTALIS.TA_INTEREST_PARCELS IP 
@@ -90,7 +96,9 @@ WHERE TN.UNIT_NAME = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION'
                                  JOIN WHSE_TANTALIS.TA_ORGANIZATION_UNITS OU 
                                   ON OU.ORG_UNIT_SID = DT.ORG_UNIT_SID)TG
                                   
-                                WHERE TN.FILE_NBR = TG.FILE_NBR
-                          GROUP BY TN.FILE_NBR)
+                                WHERE TG.STATUS = 'EXPIRED'
+                               AND  TG.FILE_NBR = TN.FILE_NBR
+                                
+                          GROUP BY TG.FILE_NBR)
 
-ORDER BY TN.EXPIRY_DATE DESC,TN.FILE_NBR;
+ORDER BY TN.EXPIRY_DATE DESC;
