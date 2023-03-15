@@ -452,7 +452,7 @@ def create_summary_rpt (dfs_f):
     return df_00, rpt_ids
  
     
-def compute_stats (dfs_f,df_00):
+def compute_stats (dfs_f,df_00,rpt_ids):
     """Compute stats: Number of files per region and report"""
     df_grs = []
     for df in dfs_f[1:]:
@@ -471,7 +471,7 @@ def compute_stats (dfs_f,df_00):
     return df_stats
 
 
-def compute_plot (df_stats):
+def compute_plot (df_stats,filename):
     """Computes a barplot of number of nbr applications per rpt_id and office """
     df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
                       'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
@@ -480,7 +480,10 @@ def compute_plot (df_stats):
     
     ax = df_pl.plot.bar(x= 'REPORT ID',stacked=True, rot=0,figsize=(15, 8))
     ax.set_ylabel("Nbr of Files")
-    ax.set_xlabel("Report ID")    
+    ax.set_xlabel("Report ID")  
+    
+    fig = ax.get_figure()
+    fig.savefig(filename+'_plot')
    
 
 def create_report (df_list, sheet_list,filename):
@@ -509,17 +512,14 @@ def create_report (df_list, sheet_list,filename):
 
     writer.save()
     writer.close()    
-
-
-
-    
+   
 def main():
-
     print ('\nConnecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
     bcgw_pwd = os.getenv('bcgw_pwd')
     connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
+
 
     print ('\nReading Input files')
     print('...ats report')
@@ -578,8 +578,7 @@ def main():
 
     print('\nCreating a Summary Report')
     df_00, rpt_ids = create_summary_rpt (dfs_f)
-    df_stats = compute_stats (dfs_f,df_00)
-
+    df_stats = compute_stats (dfs_f,df_00,rpt_ids)
 
     print('\nExporting the Final Report')
     dfs_f.insert(0, df_stats)
@@ -588,7 +587,7 @@ def main():
     today = date.today().strftime("%Y%m%d")
     filename = today + '_landFiles_tracker_betaVersion'
 
-    compute_plot (df_stats)
+    compute_plot (df_stats,filename)
     create_report (dfs_f, rpt_ids,filename)
 
 main()
