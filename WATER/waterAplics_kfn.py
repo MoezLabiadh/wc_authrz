@@ -23,9 +23,10 @@ def prep_data(f_eug,f_new):
     df_eug = pd.read_excel(f_eug, 'Existing Use Applications2', usecols="A:AG")
     df_new = pd.read_excel(f_new, 'Active Applications',converters={'File Number':str})
     
-
-    types= ['Water Licence - Ground','Water Licence',
-            'Water Licence - Surface','Water Licence - Ground / Surface']
+    df_new.dropna(subset=['Application Type'],inplace=True)
+    types = [x for x in df_new['Application Type'].unique() if 'Cancellation' not in x]
+    #types= ['Water Licence - Ground','Water Licence',
+     #       'Water Licence - Surface','Water Licence - Ground / Surface']
     
     df_new = df_new.loc[df_new['Application Type'].isin(types)]
     
@@ -105,6 +106,7 @@ def add_aquifer_info(df,connection,sql):
     for index, row in df.iterrows():
         print('...working on row {}'.format(index))
         app_typ = row['APPLICATION_TYPE']
+        
         if app_typ in ('Existing Use - Groundwater', 'Water Licence - Ground'):
             long = row['LONGITUDE']
             lat = row['LATITUDE']
@@ -174,7 +176,6 @@ def main():
     f_new = 'workingCopy_Water Application Ledger.xlsx'
     df = prep_data(f_eug,f_new)
     
-    
     print ('Connecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
@@ -201,8 +202,8 @@ def main():
     df = df[ ['UNIQUE_ID'] + [ col for col in df.columns if col != 'UNIQUE_ID' ]]
     
     print ("Overlaying with South KFN boundary")
-    shp = r'\\...\KFN_Southern_Core_Area.shp'
-    add_southKFN_info (df, shp)
+    shp_skfn = r'\\...\KFN_Southern_Core_Area.shp'
+    add_southKFN_info (df, shp_skfn)
     
     
     print ('Exporting report')
