@@ -18,7 +18,6 @@ def connect_to_DB (username,password,hostname):
     return connection
 
 
-
 def prep_data(f_eug,f_new):
     df_eug = pd.read_excel(f_eug, 'Existing Use Applications2', usecols="A:AG")
     df_new = pd.read_excel(f_new, 'Active Applications',converters={'File Number':str})
@@ -107,7 +106,8 @@ def add_aquifer_info(df,connection,sql):
         print('...working on row {}'.format(index))
         app_typ = row['APPLICATION_TYPE']
         
-        if app_typ in ('Existing Use - Groundwater', 'Water Licence - Ground'):
+        if app_typ in ('Existing Use - Groundwater', 'Water Licence - Ground', 
+                       'Abandon - Ground', 'Amendment - Ground'):
             long = row['LONGITUDE']
             lat = row['LATITUDE']
             
@@ -204,7 +204,6 @@ def main():
     print ("Overlaying with South KFN boundary")
     shp_skfn = r'\\...\KFN_Southern_Core_Area.shp'
     add_southKFN_info (df, shp_skfn)
-    
     
     print ('Exporting report')
     df = df.drop('geometry', axis=1)
