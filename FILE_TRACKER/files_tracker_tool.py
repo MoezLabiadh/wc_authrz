@@ -6,38 +6,69 @@ import sys
 import cx_Oracle
 import pandas as pd
 from datetime import date
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QFileDialog, QLabel, QVBoxLayout, QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QFileDialog, QLabel, QVBoxLayout, QMessageBox,QLineEdit,QSpacerItem,QSizePolicy
 
 
 
 class LandsTracker(QWidget):
+    
     def __init__(self):
         super().__init__()
+        
+        self.step1_lbl = QLabel('STEP-1: Connect to BCGW')
+        self.step1_lbl.setStyleSheet("font-weight: bold")
 
-        # Create a label to display the selected file paths
+        self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText('Enter BCGW username...')
+        
+        self.password_input = QLineEdit()
+        self.password_input.setEchoMode(QLineEdit.Password)
+        self.password_input.setPlaceholderText('Enter BCGW password...')  
+        
+        self.login_button = QPushButton('Login')
+        self.login_button.clicked.connect(self.connect_to_DB)
+        
+        self.step2_lbl = QLabel('STEP-2: Provide input spreadsheets')
+        self.step2_lbl.setStyleSheet("font-weight: bold")
+        
+
         self.path_label_tnt = QLabel('No file selected')
         self.path_label_ats = QLabel('No file selected')
 
-        # Create a button to select the first Excel file
-        self.select_button1 = QPushButton('Select a TITAN 009 Report')
-        self.select_button1.clicked.connect(lambda: self.select_file(1))
+        self.titan_button = QPushButton('Select a TITAN 009 Report')
+        self.titan_button.clicked.connect(lambda: self.select_file(1))
 
-        # Create a button to select the second Excel file
-        self.select_button2 = QPushButton('Select an ATS Processing Time Report')
-        self.select_button2.clicked.connect(lambda: self.select_file(2))
 
-        # Create a button to read the selected Excel files
+        self.ats_button = QPushButton('Select an ATS Processing Time Report')
+        self.ats_button.clicked.connect(lambda: self.select_file(2))
+
+
+        self.step3_lbl = QLabel('STEP-3: Run the tool')
+        self.step3_lbl.setStyleSheet("font-weight: bold")
+        
         self.exec_button = QPushButton('Generate a Tracking Report!')
         self.exec_button.clicked.connect(self.execute_program)
 
+        self.spacer = QSpacerItem(10, 13, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        
         # Create a vertical layout for the widgets
         self.layout = QVBoxLayout()
-        self.layout.addWidget(self.select_button1)
-        self.layout.addWidget(self.path_label_tnt)
-        self.layout.addWidget(self.select_button2)
-        self.layout.addWidget(self.path_label_ats)
-        self.layout.addWidget(self.exec_button)
+        self.layout.addWidget(self.step1_lbl)
+        self.layout.addWidget(self.username_input)
+        self.layout.addWidget(self.password_input)
+        self.layout.addWidget(self.login_button)
 
+        self.layout.addItem(self.spacer)
+        
+        self.layout.addWidget(self.step2_lbl)
+        self.layout.addWidget(self.titan_button)
+        self.layout.addWidget(self.path_label_tnt)
+        self.layout.addWidget(self.ats_button)
+        self.layout.addWidget(self.path_label_ats)
+        self.layout.addItem(self.spacer)
+        
+        self.layout.addWidget(self.step3_lbl)
+        self.layout.addWidget(self.exec_button)
 
         # Set the layout for the main window
         self.setLayout(self.layout)
@@ -47,6 +78,32 @@ class LandsTracker(QWidget):
         self.df_ats = None
         
 
+    def connect_to_DB (self,hostname):
+       """ Returns a connection and cursor to Oracle database"""
+       print ('\nConnecting to BCGW.')
+       #username = self.username_input.text()
+       #password = self.password_input.text()
+       username = os.getenv('bcgw_user')
+       password = os.getenv('bcgw_pwd')
+       hostname = 'bcgw.bcgov/idwprod1.bcgov'
+
+       try:
+           self.connection = cx_Oracle.connect(username, password, hostname, encoding="UTF-8")
+           print  ("...Successffuly connected to the database")
+           cnx_rslt = QLabel('BCGW Login Successful!',self)
+           cnx_rslt.setStyleSheet("color: green;")
+           self.layout.addWidget(cnx_rslt)
+           
+       except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
+            cnx_rslt = QLabel('BCGW Login Failed!',self)
+            cnx_rslt.setStyleSheet("color: red;")
+            self.layout.addWidget(cnx_rslt)
+           #raise Exception('...Connection failed! Please check your login parameters')
+           
+       return self.connection 
+   
+    
     def select_file(self, file_num):
         # Open a file dialog to select the Excel file
         options = QFileDialog.Options()
@@ -66,12 +123,7 @@ class LandsTracker(QWidget):
         """Executes the main Program"""
         
         try:
-            print ('\nConnecting to BCGW.')
-            hostname = 'bcgw.bcgov/idwprod1.bcgov'
-            bcgw_user = os.getenv('bcgw_user')
-            bcgw_pwd = os.getenv('bcgw_pwd')
-            connection = self.connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-
+            
             print ('\nReading Input files')
             print('...titan report')
             df_tnt =  self.import_titan ()
@@ -90,7 +142,7 @@ class LandsTracker(QWidget):
             dfs.append(df_02)
             
             print('...report 03')
-            df_03 = self.create_rpt_03 (df_tnt,df_ats,connection)
+            df_03 = self.create_rpt_03 (df_tnt,df_ats,self.connection)
             dfs.append(df_03)
             
             print('...report 04')
@@ -151,20 +203,7 @@ class LandsTracker(QWidget):
             self.layout.addWidget(proc_rslt)
             
     
-  
-    
-    
-    def connect_to_DB (self,username,password,hostname):
-       """ Returns a connection and cursor to Oracle database"""
-       try:
-           connection = cx_Oracle.connect(username, password, hostname, encoding="UTF-8")
-           print  ("....Successffuly connected to the database")
-       except:
-           raise Exception('....Connection failed! Please check your login parameters')
-    
-       return connection   
-        
-        
+
     def import_titan (self):
         """Reads the Titan work ledger report into a df"""
         # Get the selected file paths
