@@ -189,15 +189,15 @@ class LandsTracker(QWidget):
             
             self.compute_plot (df_stats,filename)
             self.create_report (dfs_f, rpt_ids,filename)
-            
-            
+
+            print('\nProgram Completed Successfully!')
             proc_rslt = QLabel('Program Completed Successfully!',self)
             proc_rslt.setStyleSheet("color: green;")
             self.layout.addWidget(proc_rslt)
              
-    
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
+            print('\nProgram Failed!')
             proc_rslt = QLabel('Program Failed!',self)
             proc_rslt.setStyleSheet("color: red;")
             self.layout.addWidget(proc_rslt)
