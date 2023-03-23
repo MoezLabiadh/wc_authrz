@@ -631,16 +631,7 @@ class LandsTracker(QWidget):
                     'Files with offer made, awaiting acceptance',
                     'Files with offer accepted']
         
-        rpt_gen = ['Y',
-                   'Y',
-                   'Y',
-                   'Y',
-                   'Y',
-                   'Y',
-                   'Y',
-                   'Y',
-                   'Y',
-                   'Y']
+        rpt_gen = ['Y']* len(rpt_nmes)
         
         rpt_fls = [df.shape[0] for df in dfs_f]
         
