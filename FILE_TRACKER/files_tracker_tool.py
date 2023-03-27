@@ -1,3 +1,18 @@
+#-------------------------------------------------------------------------------
+# Name:        Lands Files Tracker
+#
+# Purpose:     This tool generates lands files tracking reports: backlog
+#               and active files.
+#
+# Input(s):    (1) ATS processing time report (excel).
+#              (2) Titan workledger report (excel) - RPT009
+#
+# Author:      Moez Labiadh - FCBC, Nanaimo
+#
+# Created:     22-03-2023
+# Updated:
+#-------------------------------------------------------------------------------
+
 import warnings
 warnings.simplefilter(action='ignore')
 
@@ -189,12 +204,13 @@ class LandsTracker(QWidget):
             
             self.compute_plot (df_stats,filename)
             self.create_report (dfs_f, rpt_ids,filename)
-
+            
             print('\nProgram Completed Successfully!')
             proc_rslt = QLabel('Program Completed Successfully!',self)
             proc_rslt.setStyleSheet("color: green;")
             self.layout.addWidget(proc_rslt)
              
+    
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
             print('\nProgram Failed!')
@@ -703,10 +719,6 @@ class LandsTracker(QWidget):
     
         writer.save()
         writer.close()    
-
-
-
-
 
 
 
