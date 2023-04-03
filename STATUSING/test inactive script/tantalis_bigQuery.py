@@ -55,9 +55,7 @@ def load_sql ():
                 WHERE    
                       TT.ACTIVATION_CDE = 'INACT' AND  
                       SG.STAGE_NME = 'TENURE' AND
-
                       {prcl} AND 
-
                       DS.FILE_CHR NOT IN (SELECT TEN.CROWN_LANDS_FILE
                                            FROM WHSE_TANTALIS.TA_CROWN_TENURES_VW TEN
                                            WHERE TEN.TENURE_STATUS IN ('DISPOSITION IN GOOD STANDING', 'OFFERED', 'OFFER ACCEPTED'))
