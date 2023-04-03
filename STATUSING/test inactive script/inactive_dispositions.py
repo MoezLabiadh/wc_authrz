@@ -53,7 +53,7 @@ def format_parcels_list(parcel_list):
 
     for i, value in enumerate (array):
         joined = '(' + ','.join(str(x) for x in value) + ')'
-        add_string = 'mm.intrid_sid IN ' + str(joined)
+        add_string = 'IP.INTRID_SID IN ' + str(joined)
 
         if i < len(array)-1:
             add_string = add_string + ' OR '
