@@ -3,9 +3,9 @@ This function creates a HTML map for each Feature classe stored
 in the one_status_common_datasets geodatabase
 '''
 
-import os
 import timeit
 
+import os
 import geopandas as gpd
 import numpy  as np
 import fiona #can replace with arcpy
@@ -41,15 +41,15 @@ def generate_html_maps(status_gdb):
             # Replace this with the label column from the tool inputs
             label_col = gdf_fc.columns[gdf_fc.columns.get_loc('label_field') + 1] 
         
-            # Datetime columns are causing errors when plotting in folium. Converting them to str
-            for col in gdf_fc.columns:
-                if gdf_fc[col].dtype == 'datetime64[ns]':
-                    gdf_fc[col] = gdf_fc[col].astype(str)
-            
             # Remove the Geometry column from the popup window. 
             # Popup columns can be set to the list of columns pulled from the AST input spreadsheets
             popup_cols = list(gdf_fc.columns)                     
-            popup_cols.remove('geometry')  
+            popup_cols.remove('geometry') 
+            
+            # Format the popup columns for better visulization
+            for col in popup_cols:
+                gdf_fc[col] = gdf_fc[col].astype(str)
+                gdf_fc[col] = gdf_fc[col].str.wrap(width=20).str.replace('\n','<br>')
             
             # Initiate a Map object and set extent based on the layer 
             map_obj = folium.Map(tiles='openstreetmap')
@@ -68,19 +68,17 @@ def generate_html_maps(status_gdb):
                 color = '#'+''.join(color).upper()
                 gdf_fc.at[x, 'color'] = color
                 
-            # Create a style function for the main layer 
-            def style (feature):
-                return {'fillColor': feature['properties']['color'],
-                        'color': feature['properties']['color'],
-                        'weight': 2}
-            
             # Add the main layer to the folium map
             folium.GeoJson(data=gdf_fc,
                            name=fc,
-                           style_function= style,
-                           tooltip=folium.features.GeoJsonTooltip(fields=[label_col], labels=True),
-                           popup=folium.features.GeoJsonPopup(fields=popup_cols, sticky=False)).add_to(map_obj)
-            
+                           style_function= lambda x: {'fillColor': x['properties']['color'],
+                                                      'color': x['properties']['color'],
+                                                      'weight': 2},
+                           tooltip=folium.features.GeoJsonTooltip(fields=[label_col], 
+                                                                  labels=True),
+                           popup=folium.features.GeoJsonPopup(fields=popup_cols, 
+                                                              sticky=False,
+                                                              max_width=380)).add_to(map_obj)
             # add layer controls to the map
             folium.LayerControl().add_to(map_obj)
             
@@ -130,17 +128,18 @@ def generate_html_maps(status_gdb):
 
 
 
-# Execute the function and track processing time
-start_t = timeit.default_timer() #start time
-
-
-# This is an example of a one_status_common_datasets geodatabase
-status_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414630\one_status_common_datasets_aoi.gdb'
-
-generate_html_maps(status_gdb)
-
-finish_t = timeit.default_timer() #finish time
-t_sec = round(finish_t-start_t)
-mins = int (t_sec/60)
-secs = int (t_sec%60)
-print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
+if __name__==__name__:
+    # Execute the function and track processing time
+    start_t = timeit.default_timer() #start time
+    
+    
+    # This is an example of a one_status_common_datasets geodatabase
+    status_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414630\one_status_common_datasets_aoi.gdb'
+    
+    generate_html_maps(status_gdb)
+    
+    finish_t = timeit.default_timer() #finish time
+    t_sec = round(finish_t-start_t)
+    mins = int (t_sec/60)
+    secs = int (t_sec%60)
+    print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
