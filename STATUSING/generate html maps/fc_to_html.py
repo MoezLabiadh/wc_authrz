@@ -6,6 +6,7 @@ in the one_status_common_datasets geodatabase
 import timeit
 
 import os
+import sys
 import geopandas as gpd
 import numpy  as np
 import fiona #can replace with arcpy
@@ -13,10 +14,22 @@ import fiona #can replace with arcpy
 import folium
 
 
+def add_proj_lib ():
+    """
+    FIX: Geopandas not pointing to pyproj library.
+    Checks if pyproj is in env path. if not, add it.
+    """
+    proj_lib = os.path.join(sys.executable[:-10], r'Library\share\proj')
+    if proj_lib not in os.environ['path']:
+        os.environ["proj_lib"] = proj_lib
+    else:
+        pass
+
+
 def generate_html_maps(status_gdb):
     """Creates a HTML map for each feature class in gdb"""
     # List all feature classes
-    #can replace with arcpy.ListFeatureClasses()
+    # Can replace with arcpy.ListFeatureClasses(). Fiona is faster!
     fc_list = fiona.listlayers(status_gdb)
     #arcpy.env.workspace = status_gdb
     #fc_list = arcpy.ListFeatureClasses()
@@ -79,6 +92,7 @@ def generate_html_maps(status_gdb):
                            popup=folium.features.GeoJsonPopup(fields=popup_cols, 
                                                               sticky=False,
                                                               max_width=380)).add_to(map_obj)
+            
             # add layer controls to the map
             folium.LayerControl().add_to(map_obj)
             
@@ -126,13 +140,14 @@ def generate_html_maps(status_gdb):
         counter += 1
 
 
-
-
 if __name__==__name__:
     # Execute the function and track processing time
     start_t = timeit.default_timer() #start time
     
-    
+    add_proj_lib ()
+
+    print (os.environ['path'])
+
     # This is an example of a one_status_common_datasets geodatabase
     status_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414630\one_status_common_datasets_aoi.gdb'
     
