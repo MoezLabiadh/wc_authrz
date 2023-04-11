@@ -4,15 +4,8 @@ in the one_status_common_datasets geodatabase
 '''
 
 import timeit
-
 import os
 import sys
-import geopandas as gpd
-import numpy  as np
-import fiona #can replace with arcpy
-#import arcpy
-import folium
-
 
 def add_proj_lib ():
     """
@@ -28,6 +21,11 @@ def add_proj_lib ():
 
 def generate_html_maps(status_gdb):
     """Creates a HTML map for each feature class in gdb"""
+    # Import required libraries
+    import geopandas as gpd
+    import numpy  as np
+    import fiona #can replace with arcpy
+    import folium
     # List all feature classes
     # Can replace with arcpy.ListFeatureClasses(). Fiona is faster!
     fc_list = fiona.listlayers(status_gdb)
@@ -145,8 +143,6 @@ if __name__==__name__:
     start_t = timeit.default_timer() #start time
     
     add_proj_lib ()
-
-    print (os.environ['path'])
 
     # This is an example of a one_status_common_datasets geodatabase
     status_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414630\one_status_common_datasets_aoi.gdb'
