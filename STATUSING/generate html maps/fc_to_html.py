@@ -1,5 +1,5 @@
 '''
-This function creates a HTML map for each Feature classe stored
+This script creates a HTML map for each Feature classe stored
 in the one_status_common_datasets geodatabase
 '''
 
