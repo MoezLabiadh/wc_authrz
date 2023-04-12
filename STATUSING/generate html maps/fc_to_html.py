@@ -1,11 +1,13 @@
 '''
-This script creates a HTML map for each Feature classe stored
-in the one_status_common_datasets geodatabase
+This script loops through the Feature classes stored
+in the one_status_common_datasets geodatabase 
+and export a HTML map for each layer
 '''
 
 import timeit
 import os
 import sys
+#import arcpy
 
 def add_proj_lib ():
     """
@@ -23,11 +25,11 @@ def generate_html_maps(status_gdb):
     """Creates a HTML map for each feature class in gdb"""
     # Import required libraries
     import geopandas as gpd
-    import numpy  as np
-    import fiona #can replace with arcpy
+    import numpy as np
+    import fiona
     import folium
     # List all feature classes
-    # Can replace with arcpy.ListFeatureClasses(). Fiona is faster!
+    # Can replace with arcpy.ListFeatureClasses(). Fiona is faster?
     fc_list = fiona.listlayers(status_gdb)
     #arcpy.env.workspace = status_gdb
     #fc_list = arcpy.ListFeatureClasses()
@@ -53,7 +55,7 @@ def generate_html_maps(status_gdb):
             label_col = gdf_fc.columns[gdf_fc.columns.get_loc('label_field') + 1] 
         
             # Remove the Geometry column from the popup window. 
-            # Popup columns can be set to the list of columns pulled from the AST input spreadsheets
+            # Popup columns can be set to the list of columns from the tool inputs (summarize columns)
             popup_cols = list(gdf_fc.columns)                     
             popup_cols.remove('geometry') 
             
@@ -131,7 +133,7 @@ def generate_html_maps(status_gdb):
             map_obj.get_root().html.add_child(folium.Element(legend_html))
             
         
-            # Save the interavtive map to html file
+            # Save the interactive map to html file
             out_loc = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\fc_to_html\maps'
             map_obj.save(os.path.join(out_loc, fc+'.html'))
             
@@ -139,7 +141,7 @@ def generate_html_maps(status_gdb):
 
 
 if __name__==__name__:
-    # Execute the function and track processing time
+    # Execute the functions and track processing time
     start_t = timeit.default_timer() #start time
     
     add_proj_lib ()
