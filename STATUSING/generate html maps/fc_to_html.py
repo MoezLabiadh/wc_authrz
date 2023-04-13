@@ -74,15 +74,14 @@ def generate_html_maps(status_gdb):
             
             # Add the GeoBC basemap to the map
             wms_url = 'https://maps.gov.bc.ca/arcgis/rest/services/province/web_mercator_cache/MapServer/tile/{z}/{y}/{x}'
-            wms_attribution = 'GeoBC, DataBC, TomTom, OpenStreetMap Contributors'
+            wms_attribution = 'GeoBC, DataBC, TomTom, © OpenStreetMap Contributors'
             folium.TileLayer(
                 tiles=wms_url,
                 name='GeoBC Basemap',
                 attr=wms_attribution,
                 overlay=False,
                 control=True,
-                transparent=True,
-                format='image/png').add_to(map_obj)
+                transparent=True).add_to(map_obj)
 
             # Add a satellite basemap to the map
             satellite_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
