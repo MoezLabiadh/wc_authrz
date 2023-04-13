@@ -1,6 +1,7 @@
 '''
-This script creates a HTML map for each Feature classe stored
-in the one_status_common_datasets geodatabase
+This script loops through the Feature classes stored
+in the one_status_common_datasets geodatabase 
+and export a HTML map for each layer
 '''
 
 import timeit
@@ -57,7 +58,7 @@ def generate_html_maps(status_gdb):
             label_col = gdf_fc.columns[gdf_fc.columns.get_loc('label_field') + 1] 
         
             # Remove the Geometry column from the popup window. 
-            # Popup columns can be set to the list of columns pulled from the AST input spreadsheets
+            # Popup columns can be set to the list of columns from the tool inputs (summarize columns)
             popup_cols = list(gdf_fc.columns)                     
             popup_cols.remove('geometry') 
             
@@ -67,9 +68,31 @@ def generate_html_maps(status_gdb):
                 gdf_fc[col] = gdf_fc[col].str.wrap(width=20).str.replace('\n','<br>')
             
             # Initiate a Map object and set extent based on the layer 
-            map_obj = folium.Map(tiles='openstreetmap')
+            map_obj = folium.Map()
             xmin,ymin,xmax,ymax = gdf_fc.to_crs(4326)['geometry'].total_bounds
             map_obj.fit_bounds([[ymin, xmin], [ymax, xmax]])
+            
+            # Add the GeoBC basemap to the map
+            wms_url = 'https://maps.gov.bc.ca/arcgis/rest/services/province/web_mercator_cache/MapServer/tile/{z}/{y}/{x}'
+            wms_attribution = 'GeoBC, DataBC, TomTom, OpenStreetMap Contributors'
+            folium.TileLayer(
+                tiles=wms_url,
+                name='GeoBC Basemap',
+                attr=wms_attribution,
+                overlay=False,
+                control=True,
+                transparent=True,
+                format='image/png').add_to(map_obj)
+
+            # Add a satellite basemap to the map
+            satellite_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+            satellite_attribution = 'Tiles &copy; Esri'
+            folium.TileLayer(
+                tiles=satellite_url,
+                name='Imagery Basemap',
+                attr=satellite_attribution,
+                overlay=False,
+                control=True).add_to(map_obj)
                     
             # Add the AOI layer to the folium map
             folium.GeoJson(data=gdf_aoi, name='AOI',
