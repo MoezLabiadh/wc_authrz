@@ -9,7 +9,7 @@
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     22-03-2023
+# Created:     17-04-2023
 # Updated:
 #-------------------------------------------------------------------------------
 
@@ -21,7 +21,7 @@ import sys
 import cx_Oracle
 import pandas as pd
 from datetime import date
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QFileDialog, QLabel, QVBoxLayout, QMessageBox,QLineEdit,QSpacerItem,QSizePolicy
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QFileDialog, QLabel, QVBoxLayout, QMessageBox,QSpacerItem,QSizePolicy
 
 
 
@@ -30,59 +30,39 @@ class LandsTracker(QWidget):
     def __init__(self):
         super().__init__()
         
-        self.step1_lbl = QLabel('STEP-1: Connect to BCGW')
+
+        self.step1_lbl = QLabel('STEP-1: Provide input spreadsheets')
         self.step1_lbl.setStyleSheet("font-weight: bold")
-
-        self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText('Enter BCGW username...')
         
-        self.password_input = QLineEdit()
-        self.password_input.setEchoMode(QLineEdit.Password)
-        self.password_input.setPlaceholderText('Enter BCGW password...')  
-        
-        self.login_button = QPushButton('Login')
-        self.login_button.clicked.connect(self.connect_to_DB)
-        
-        self.step2_lbl = QLabel('STEP-2: Provide input spreadsheets')
-        self.step2_lbl.setStyleSheet("font-weight: bold")
-        
-
         self.path_label_tnt = QLabel('No file selected')
         self.path_label_ats = QLabel('No file selected')
 
         self.titan_button = QPushButton('Select a TITAN 009 Report')
         self.titan_button.clicked.connect(lambda: self.select_file(1))
 
-
         self.ats_button = QPushButton('Select an ATS Processing Time Report')
         self.ats_button.clicked.connect(lambda: self.select_file(2))
 
-
-        self.step3_lbl = QLabel('STEP-3: Run the tool')
-        self.step3_lbl.setStyleSheet("font-weight: bold")
+        self.step2_lbl = QLabel('STEP-2: Run the tool')
+        self.step2_lbl.setStyleSheet("font-weight: bold")
         
         self.exec_button = QPushButton('Generate a Tracking Report!')
         self.exec_button.clicked.connect(self.execute_program)
+
 
         self.spacer = QSpacerItem(10, 13, QSizePolicy.Minimum, QSizePolicy.Expanding)
         
         # Create a vertical layout for the widgets
         self.layout = QVBoxLayout()
+ 
         self.layout.addWidget(self.step1_lbl)
-        self.layout.addWidget(self.username_input)
-        self.layout.addWidget(self.password_input)
-        self.layout.addWidget(self.login_button)
-
-        self.layout.addItem(self.spacer)
-        
-        self.layout.addWidget(self.step2_lbl)
         self.layout.addWidget(self.titan_button)
         self.layout.addWidget(self.path_label_tnt)
         self.layout.addWidget(self.ats_button)
         self.layout.addWidget(self.path_label_ats)
         self.layout.addItem(self.spacer)
         
-        self.layout.addWidget(self.step3_lbl)
+        self.layout.addWidget(self.step2_lbl)
         self.layout.addWidget(self.exec_button)
 
         # Set the layout for the main window
@@ -133,9 +113,17 @@ class LandsTracker(QWidget):
             elif file_num == 2:
                 self.path_label_ats.setText(file_path)
 
-    
+ 
+
+         
     def execute_program(self):
         """Executes the main Program"""
+        proc_label = QLabel(self)
+        proc_label.setText('Processing... ')
+        proc_label.setStyleSheet("color: blue;")
+        self.layout.addWidget(proc_label)
+        
+        QApplication.processEvents()
         
         try:
             
@@ -157,7 +145,7 @@ class LandsTracker(QWidget):
             dfs.append(df_02)
             
             print('...report 03')
-            df_03 = self.create_rpt_03 (df_tnt,df_ats,self.connection)
+            df_03 = self.create_rpt_03 (df_tnt,df_ats)
             dfs.append(df_03)
             
             print('...report 04')
@@ -206,17 +194,17 @@ class LandsTracker(QWidget):
             self.create_report (dfs_f, rpt_ids,filename)
             
             print('\nProgram Completed Successfully!')
-            proc_rslt = QLabel('Program Completed Successfully!',self)
-            proc_rslt.setStyleSheet("color: green;")
-            self.layout.addWidget(proc_rslt)
+            proc_label.setText('Program Completed Successfully!')
+            proc_label.setStyleSheet("color: green;")
+            self.layout.addWidget(proc_label)
              
     
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
             print('\nProgram Failed!')
-            proc_rslt = QLabel('Program Failed!',self)
-            proc_rslt.setStyleSheet("color: red;")
-            self.layout.addWidget(proc_rslt)
+            proc_label.setText('Program Failed!')
+            proc_label.setStyleSheet("color: green;")
+            self.layout.addWidget(proc_label)
             
     
 
@@ -361,30 +349,16 @@ class LandsTracker(QWidget):
         return df_02
     
     
-    def create_rpt_03(self,df_tnt,df_ats,connection):
+    def create_rpt_03(self,df_tnt,df_ats):
         """ Creates Report 03- Expired Tenures autogenerated as replacement application 
                                and not assigned to an LO for Replacement"""
-        
-        sql = """
-         SELECT CROWN_LANDS_FILE
-         FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW
-         WHERE RESPONSIBLE_BUSINESS_UNIT = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION' 
-          AND TENURE_STATUS = 'ACCEPTED'
-          AND APPLICATION_TYPE_CDE = 'REP'
-          AND CROWN_LANDS_FILE NOT IN (SELECT CROWN_LANDS_FILE 
-                                       FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW
-                                       WHERE TENURE_STATUS = 'DISPOSITION IN GOOD STANDING')
-        """
-    
-        df_q = pd.read_sql(sql,connection)
-        rep_l = df_q['CROWN_LANDS_FILE'].to_list()
         
         ats_r = df_ats.loc[df_ats['Authorization Status'].isin(['Closed', 'On Hold'])]
         
         files_r = ats_r['File Number'].to_list()
         
         df_03= df_tnt.loc[(df_tnt['TASK DESCRIPTION']== 'REPLACEMENT APPLICATION') &
-                          (df_tnt['FILE NUMBER'].isin(rep_l)) &
+                          (df_tnt['STATUS']== 'ACCEPTED') &
                           (~df_tnt['FILE NUMBER'].isin(files_r)) &
                           (df_tnt['USERID ASSIGNED TO'].isnull())]
         
@@ -647,13 +621,12 @@ class LandsTracker(QWidget):
                     'Files with offer made, awaiting acceptance',
                     'Files with offer accepted']
         
-        rpt_gen = ['Y']* len(rpt_nmes)
+        #rpt_gen = ['Y']* len(rpt_nmes)
         
         rpt_fls = [df.shape[0] for df in dfs_f]
         
         df_00 = pd.DataFrame({'REPORT ID': rpt_ids,
                                'REPORT TITLE' : rpt_nmes,
-                               'REPORT GENERATED' : rpt_gen,
                                'TOTAL NBR OF FILES': rpt_fls})
         
         return df_00, rpt_ids
