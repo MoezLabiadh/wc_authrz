@@ -30,13 +30,14 @@ class LandsTracker(QWidget):
     
     def __init__(self):
         super().__init__()
-        
 
         self.step1_lbl = QLabel('STEP-1: Provide input spreadsheets')
         self.step1_lbl.setStyleSheet("font-weight: bold")
         
         self.path_label_tnt = QLabel('No file selected')
+        self.path_label_tnt.setStyleSheet("color: blue;")
         self.path_label_ats = QLabel('No file selected')
+        self.path_label_ats.setStyleSheet("color: blue;")
 
         self.titan_button = QPushButton('Select a TITAN 009 Report')
         self.titan_button.clicked.connect(lambda: self.select_file(1))
@@ -49,7 +50,6 @@ class LandsTracker(QWidget):
         
         self.exec_button = QPushButton('Generate a Tracking Report!')
         self.exec_button.clicked.connect(self.execute_program)
-
 
         self.spacer = QSpacerItem(10, 13, QSizePolicy.Minimum, QSizePolicy.Expanding)
         
@@ -68,6 +68,7 @@ class LandsTracker(QWidget):
 
         # Set the layout for the main window
         self.setLayout(self.layout)
+        self.setGeometry(100, 100, 280, 190)
 
         # Initialize the DataFrames
         self.df_tnt = None
@@ -104,8 +105,8 @@ class LandsTracker(QWidget):
         # Open a file dialog to select the Excel file
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        file_path, _ = QFileDialog.getOpenFileName(self, f'Select Excel File {file_num}', ''
-                                                   , 'Excel Files (*.xlsx *.xls)', options=options)
+        file_path, _ = QFileDialog.getOpenFileName(self, f'Select Excel File {file_num}', '',
+                                                   'Excel Files (*.xlsx *.xls)', options=options)
 
         # Update the label to show the selected file path
         if file_path:
@@ -115,13 +116,11 @@ class LandsTracker(QWidget):
                 self.path_label_ats.setText(file_path)
 
  
-
-         
     def execute_program(self):
         """Executes the main Program"""
         proc_label = QLabel(self)
         proc_label.setText('Processing... ')
-        proc_label.setStyleSheet("color: blue;")
+        proc_label.setStyleSheet("color: green;")
         self.layout.addWidget(proc_label)
         
         QApplication.processEvents()
