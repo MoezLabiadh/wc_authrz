@@ -18,6 +18,7 @@ warnings.simplefilter(action='ignore')
 
 import os
 import sys
+import time
 import cx_Oracle
 import pandas as pd
 from datetime import date
@@ -126,64 +127,191 @@ class LandsTracker(QWidget):
         QApplication.processEvents()
         
         try:
-            
+            time.sleep(1) 
             print ('\nReading Input files')
-            print('...titan report')
+            rd_label = QLabel(self)
+            rd_label.setText('Reading Input files')
+            rd_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rd_label)
+            
+            QApplication.processEvents()
+            
+            time.sleep(1) 
+            print ('...TITAN report')
+            tnt_label = QLabel(self)
+            tnt_label.setText('...TITAN spreadsheet')
+            tnt_label.setStyleSheet("color: black;")
+            self.layout.addWidget(tnt_label)
+            
+            QApplication.processEvents()
+            
             df_tnt =  self.import_titan ()
-            print('...ats report')
+            
+            print ('...ATS report')
+            ats_label = QLabel(self)
+            ats_label.setText('...ATS spreadsheet')
+            ats_label.setStyleSheet("color: black;")
+            self.layout.addWidget(ats_label)
+            
+            QApplication.processEvents()
+            
             df_ats= self.import_ats ()
             
+            time.sleep(1) 
             print('\nCreating Reports.')
+            crt_label = QLabel(self)
+            crt_label.setText('Creating Reports')
+            crt_label.setStyleSheet("color: black;")
+            self.layout.addWidget(crt_label)
+            
+            QApplication.processEvents()
+            
             dfs = []
             
+            time.sleep(1) 
             print('...report 01')
+            rp1_label = QLabel(self)
+            rp1_label.setText('...report 01')
+            rp1_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp1_label)
+            
+            QApplication.processEvents()
+            
             df_01 = self.create_rpt_01 (df_tnt,df_ats)
             dfs.append(df_01)
             
+            time.sleep(1) 
             print('...report 02')
+            rp2_label = QLabel(self)
+            rp2_label.setText('...report 02')
+            rp2_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp2_label)
+            
+            QApplication.processEvents()
+            
             df_02 = self.create_rpt_02 (df_tnt,df_ats)
             dfs.append(df_02)
             
+            time.sleep(1) 
             print('...report 03')
+            rp3_label = QLabel(self)
+            rp3_label.setText('...report 03')
+            rp3_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp3_label)
+            
+            QApplication.processEvents()
+            
             df_03 = self.create_rpt_03 (df_tnt,df_ats)
             dfs.append(df_03)
             
+            time.sleep(1) 
             print('...report 04')
+            rp4_label = QLabel(self)
+            rp4_label.setText('...report 04')
+            rp4_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp4_label)
+            
+            QApplication.processEvents()
+            
             df_04 = self.create_rpt_04 (df_tnt,df_ats)
             dfs.append(df_04)
             
+            time.sleep(1) 
             print('...report 05')
+            rp5_label = QLabel(self)
+            rp5_label.setText('...report 05')
+            rp5_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp5_label)
+            
+            QApplication.processEvents()
+            
             df_05 = self.create_rpt_05 (df_tnt,df_ats)
             dfs.append(df_05)
             
+            time.sleep(1) 
             print('...report 06')
+            rp6_label = QLabel(self)
+            rp6_label.setText('...report 06')
+            rp6_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp6_label)
+            
+            QApplication.processEvents()
+            
             df_06 = self.create_rpt_06 (df_tnt,df_ats)
             dfs.append(df_06)
             
+            time.sleep(1) 
             print('...report 07')
+            rp7_label = QLabel(self)
+            rp7_label.setText('...report 07')
+            rp7_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp7_label)
+            
+            QApplication.processEvents()
+            
             df_07 = self.create_rpt_07 (df_tnt,df_ats)
             dfs.append(df_07)
             
+            time.sleep(1) 
             print('...report 08')
+            rp8_label = QLabel(self)
+            rp8_label.setText('...report 08')
+            rp8_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp8_label)
+            
+            QApplication.processEvents()
+            
             df_08 = self.create_rpt_08 (df_tnt,df_ats)
             dfs.append(df_08)
             
+            time.sleep(1) 
             print('...report 09')
+            rp9_label = QLabel(self)
+            rp9_label.setText('...report 09')
+            rp9_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp9_label)
+            
+            QApplication.processEvents()
+            
             df_09 = self.create_rpt_09 (df_tnt,df_ats)
             dfs.append(df_09)
             
+            time.sleep(1) 
             print('...report 10')
+            rp10_label = QLabel(self)
+            rp10_label.setText('...report 10')
+            rp10_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp10_label)
+            
+            QApplication.processEvents()
+            
             df_10 = self.create_rpt_10 (df_tnt,df_ats)
             dfs.append(df_10)
             
+            time.sleep(1) 
             print('\nFormatting Report columns')
+            frm_label = QLabel(self)
+            frm_label.setText('Formatting Report columns')
+            frm_label.setStyleSheet("color: black;")
+            self.layout.addWidget(frm_label)
+            
+            QApplication.processEvents()
+            
             dfs_f = self.set_rpt_colums (df_ats, dfs)
             
             print('\nCreating a Summary Report')
             df_00, rpt_ids = self.create_summary_rpt (dfs_f)
             df_stats = self.compute_stats (dfs_f,df_00,rpt_ids)
             
+            time.sleep(1)
             print('\nExporting the Final Report')
+            fnr_label = QLabel(self)
+            fnr_label.setText('Exporting the Final Report')
+            fnr_label.setStyleSheet("color: black;")
+            self.layout.addWidget(fnr_label)
+            
+            QApplication.processEvents()
+            
             dfs_f.insert(0, df_stats)
             rpt_ids.insert(0, 'Summary')
             
@@ -193,6 +321,7 @@ class LandsTracker(QWidget):
             self.compute_plot (df_stats,filename)
             self.create_report (dfs_f, rpt_ids,filename)
             
+            time.sleep(1)
             print('\nProgram Completed Successfully!')
             proc_label.setText('Program Completed Successfully!')
             proc_label.setStyleSheet("color: green;")
@@ -203,7 +332,7 @@ class LandsTracker(QWidget):
             QMessageBox.critical(self, "Error", str(e))
             print('\nProgram Failed!')
             proc_label.setText('Program Failed!')
-            proc_label.setStyleSheet("color: green;")
+            proc_label.setStyleSheet("color: red;")
             self.layout.addWidget(proc_label)
             
     
@@ -301,7 +430,6 @@ class LandsTracker(QWidget):
             else:
                 pass
                 
-        
         return df_ats
     
     
@@ -702,14 +830,8 @@ if __name__ == "__main__":
     window = LandsTracker()
     window.setWindowTitle('Lands Tracker')
     
-    # Set window size
-    #window.setFixedWidth(400)
-    #window.setFixedHeight(150)
-    
     # Show the ExcelReader window
     window.show()
-    
-    
     
     # Run the Qt event loop
     sys.exit(app.exec_())
