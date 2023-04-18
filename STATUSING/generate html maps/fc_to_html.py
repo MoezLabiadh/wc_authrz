@@ -39,7 +39,7 @@ def generate_html_maps(status_gdb):
     
     # Read the AOI feature class into a gdf 
     gdf_aoi = gpd.read_file(filename= status_gdb, layer= 'aoi')
-    
+        
     # Remove the aoi and aoi buffers from the list of feature classes
     fc_list = [x for x in fc_list if 'aoi' not in x]
     
