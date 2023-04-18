@@ -12,9 +12,8 @@ import geopandas as gpd
 import numpy as np
 import fiona
 import folium
-from folium.plugins import MeasureControl
-from folium.plugins import MousePosition
 from folium.features import LatLngPopup
+from folium.plugins import MeasureControl, MousePosition
 
 
 
