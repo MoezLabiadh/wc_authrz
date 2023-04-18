@@ -32,7 +32,7 @@ def add_proj_lib ():
 
 
 def create_map_template():
-    """Returns a folium map object"""
+    """Returns an empty folium map object"""
     
     map_obj = folium.Map()
     
