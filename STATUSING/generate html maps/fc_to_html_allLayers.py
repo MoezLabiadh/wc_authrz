@@ -69,9 +69,8 @@ def create_map_template():
 
     
 def generate_html_maps(status_gdb,map_obj):
-    """Creates a HTML map for each feature class in gdb"""
-
-
+    """Adds layers from the status gdb to the folium map"""
+    
     # List all feature classes
     # Can replace with arcpy.ListFeatureClasses(). Fiona is faster!
     fc_list = fiona.listlayers(status_gdb)
