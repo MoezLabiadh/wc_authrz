@@ -12,8 +12,8 @@ import geopandas as gpd
 import numpy as np
 import fiona
 import folium
-from folium.features import LatLngPopup
 from folium.plugins import MeasureControl, MousePosition
+
 
 
 
@@ -61,9 +61,10 @@ def create_map_template():
     
     # Add mouse psotion to the map
     MousePosition().add_to(map_obj)
+
     
     # Add Lat/Long Popup to the map
-    map_obj.add_child(LatLngPopup())
+    map_obj.add_child(folium.features.LatLngPopup())
     
     return map_obj
 
