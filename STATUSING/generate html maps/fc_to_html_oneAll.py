@@ -17,7 +17,6 @@ from folium.plugins import MeasureControl, MousePosition
 
 
 
-
 def add_proj_lib ():
     """
     FIX: Geopandas not pointing to pyproj library.
@@ -33,10 +32,10 @@ def add_proj_lib ():
 
 def create_map_template():
     """Returns an empty folium map object"""
-    
+    # Create a map object
     map_obj = folium.Map()
     
-    # Add the GeoBC basemap to the map
+    # Add GeoBC basemap to the map
     wms_url = 'https://maps.gov.bc.ca/arcgis/rest/services/province/web_mercator_cache/MapServer/tile/{z}/{y}/{x}'
     wms_attribution = 'GeoBC, DataBC, TomTom, © OpenStreetMap Contributors'
     folium.TileLayer(
@@ -63,7 +62,7 @@ def create_map_template():
     # Add mouse psotion to the map
     MousePosition().add_to(map_obj)
     
-    # Add the LatLngPopup plugin to the map
+    # Add Lat/Long Popup to the map
     map_obj.add_child(LatLngPopup())
     
     return map_obj
@@ -135,8 +134,7 @@ def generate_html_maps(status_gdb):
             # Add the AOI layer to the individual map
             folium.GeoJson(data=gdf_aoi, name='AOI',
                            style_function=lambda x:{'color': 'red',
-                                                    'weight': 3}).add_to(map_all)
-            
+                                                    'weight': 3}).add_to(map_one)
             
             # Zoom the map to the layer extent
             xmin,ymin,xmax,ymax = gdf_fc.to_crs(4326)['geometry'].total_bounds
@@ -154,7 +152,6 @@ def generate_html_maps(status_gdb):
                                popup=folium.features.GeoJsonPopup(fields=popup_cols, 
                                                                   sticky=False,
                                                                   max_width=380)).add_to(mp)
-
             
             # Create a Legend
             #legend colors and names
@@ -191,20 +188,18 @@ def generate_html_maps(status_gdb):
             
             #add the legend to the map
             map_one.get_root().html.add_child(folium.Element(legend_html))
-            
+
             # Add layer controls to the individual map
-    
             lyr_cont_one = folium.LayerControl()
             lyr_cont_one.add_to(map_one)
         
-            
+            # Save the indivdiual map to html file
             out_loc = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\fc_to_html\maps'
             map_one.save(os.path.join(out_loc, fc+'.html'))
             
         counter += 1
     
     # Add layer controls to the all-layers map
-    #del map_one
     lyr_cont_all = folium.LayerControl()
     lyr_cont_all.add_to(map_all)
     
@@ -222,7 +217,6 @@ if __name__==__name__:
     # This is an example of a one_status_common_datasets geodatabase
     status_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414630\one_status_common_datasets_aoi.gdb'
     
-
     generate_html_maps(status_gdb)
     
     finish_t = timeit.default_timer() #finish time
