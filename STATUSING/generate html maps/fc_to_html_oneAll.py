@@ -73,6 +73,7 @@ def create_map_template():
 def generate_html_maps(status_gdb):
     """Creates a HTML map for each feature class in gdb"""
     
+    print ('Preparing Layers for mapping')
     # List all feature classes
     # Can replace with arcpy.ListFeatureClasses(). Fiona is faster!
     fc_list = fiona.listlayers(status_gdb)
@@ -81,29 +82,47 @@ def generate_html_maps(status_gdb):
     
     # Read the AOI feature class into a gdf 
     gdf_aoi = gpd.read_file(filename= status_gdb, layer= 'aoi')
+    # Make a list of layers except aoi and aoi buffers
+    ly_list = [x for x in fc_list if 'aoi' not in x]
+
+    # Make a list of buffered areas
+    #bf_list = [x for x in fc_list if 'aoi_' in x]
+    bf_list = ['aoi_500','aoi_1000','aoi_5000']
     
+    # Create a dict of buffered gdfs
+    bf_gdfs = {}
+    for bf in bf_list:
+        bf_gdfs[bf] = gpd.read_file(filename= status_gdb, layer= bf)
+    
+    print ('Creating a map template')
     # Create an all-layers map
     map_all = create_map_template()
     
     # Add the AOI layer to the all-layers map
     folium.GeoJson(data=gdf_aoi, name='AOI',
-                   style_function=lambda x:{'color': 'red',
+                   style_function=lambda x:{'color': 'red', 
+                                            'fillColor': 'none',
                                             'weight': 3}).add_to(map_all)
     
     # Zoom the all-layers map to the AOI extent
     xmin,ymin,xmax,ymax = gdf_aoi.to_crs(4326)['geometry'].total_bounds
     map_all.fit_bounds([[ymin, xmin], [ymax, xmax]])
     
-    # Remove the aoi and aoi buffers from the list of feature classes
-    fc_list = [x for x in fc_list if 'aoi' not in x]
-    
-    # Loop through the feature classes and make maps
+
+ 
+    # Add buffered areas to the individual maps
+    for k,v in bf_gdfs.items():
+            folium.GeoJson(data=v, name=k, show=False,
+                           style_function=lambda x:{'color': 'orange',
+                                                    'fillColor': 'none',
+                                                    'weight': 3}).add_to(map_all)
+    # Loop through the rest of layers and make maps
     counter = 1
-    for fc in fc_list:
+    for fc in ly_list:
         # Read the feature class into a gdf 
         gdf_fc = gpd.read_file(filename= status_gdb, layer= fc)
         
-        print ("Creating Map {0} of {1}: {2}".format(counter,len(fc_list),fc))
+        print ("Creating Map {0} of {1}: {2}".format(counter,len(ly_list),fc))
         
         # Make sure the layer is not empty
         if gdf_fc.shape[0] > 0:
@@ -135,6 +154,7 @@ def generate_html_maps(status_gdb):
             # Add the AOI layer to the individual map
             folium.GeoJson(data=gdf_aoi, name='AOI',
                            style_function=lambda x:{'color': 'red',
+                                                    'fillColor': 'none',
                                                     'weight': 3}).add_to(map_one)
             
             # Zoom the map to the layer extent
@@ -143,8 +163,7 @@ def generate_html_maps(status_gdb):
                 
             # Add the main layer to the folium maps
             for mp in [map_one, map_all]:
-                folium.GeoJson(data=gdf_fc,
-                               name=fc,
+                folium.GeoJson(data=gdf_fc, name=fc,
                                style_function= lambda x: {'fillColor': x['properties']['color'],
                                                           'color': x['properties']['color'],
                                                           'weight': 2},
@@ -153,7 +172,14 @@ def generate_html_maps(status_gdb):
                                popup=folium.features.GeoJsonPopup(fields=popup_cols, 
                                                                   sticky=False,
                                                                   max_width=380)).add_to(mp)
-            
+
+            # Add buffered areas to the individual maps
+            for k,v in bf_gdfs.items():
+                    folium.GeoJson(data=v, name=k, show=False,
+                                   style_function=lambda x:{'color': 'orange',
+                                                            'fillColor': 'none',
+                                                            'weight': 3}).add_to(map_one)
+
             # Create a Legend
             #legend colors and names
             legend_labels = zip(gdf_fc['color'], gdf_fc[label_col])
@@ -165,12 +191,24 @@ def generate_html_maps(status_gdb):
                         background-color: #fff; padding: 10px; 
                         border-radius: 5px; border: 1px solid grey;">
                         '''
+                        
             #add the AOI item to the legend
             legend_html += '''
                         <div style="display: inline-block; 
-                        margin-right: 10px;background-color: red; 
+                        margin-right: 10px;
+                        background-color: transparent;
+                        border: 2px solid red;
                         width: 15px; height: 15px;"></div>AOI<br>
                         '''
+                        
+            #add the AOI buffer item to the legend
+            legend_html += '''
+                        <div style="display: inline-block; 
+                        margin-right: 10px;background-color: transparent; 
+                        border: 2px solid orange;
+                        width: 15px; height: 15px;"></div>AOI buffers<br>
+                        '''            
+            
             #add a header to the legend            
             legend_html += '''
                         <div style="font-weight: bold; 
@@ -189,7 +227,7 @@ def generate_html_maps(status_gdb):
             
             #add the legend to the map
             map_one.get_root().html.add_child(folium.Element(legend_html))
-
+           
             # Add layer controls to the individual map
             lyr_cont_one = folium.LayerControl()
             lyr_cont_one.add_to(map_one)
@@ -210,11 +248,12 @@ def generate_html_maps(status_gdb):
 
 
 if __name__==__name__:
+
     # Execute the function and track processing time
     start_t = timeit.default_timer() #start time
     
     add_proj_lib ()
-
+    
     # This is an example of a one_status_common_datasets geodatabase
     status_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414630\one_status_common_datasets_aoi.gdb'
     
