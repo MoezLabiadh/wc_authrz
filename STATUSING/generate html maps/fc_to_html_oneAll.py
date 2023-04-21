@@ -1,18 +1,21 @@
 '''
+
 This script generates interavtive HTML maps 
 for the AST/UOT
+
+Version: 2
+
 '''
 
 import timeit
 import os
 import sys
 #import arcpy
-import geopandas as gpd
-import numpy as np
 import fiona
+import numpy as np
+import geopandas as gpd
 import folium
 from folium.plugins import MeasureControl, MousePosition
-
 
 
 
@@ -68,12 +71,14 @@ def create_map_template(map_title='Placeholder for title'):
     map_obj.get_root().html.add_child(folium.Element(title_refresh))
     
     # Add measure controls to the map
-    map_obj.add_child(MeasureControl())
+    map_obj.add_child(MeasureControl(primary_length_unit='meters', 
+                                     secondary_length_unit='kilometers',
+                                     primary_area_unit='hectares', 
+                                     secondary_area_unit='square kilometers'))
     
     # Add mouse psotion to the map
     MousePosition().add_to(map_obj)
 
-    
     # Add Lat/Long Popup to the map
     map_obj.add_child(folium.features.LatLngPopup())
     
@@ -267,7 +272,7 @@ if __name__==__name__:
     
     # This is an example of a one_status_common_datasets geodatabase
     #file_nbr='1414630'
-    status_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\0244548\one_status_common_datasets_aoi.gdb'
+    status_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414630\one_status_common_datasets_aoi.gdb'
     
     generate_html_maps(status_gdb)
     
@@ -276,4 +281,3 @@ if __name__==__name__:
     mins = int (t_sec/60)
     secs = int (t_sec%60)
     print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
- 
