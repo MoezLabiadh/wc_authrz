@@ -1,7 +1,6 @@
 '''
-This script loops through the Feature classes stored
-in the one_status_common_datasets geodatabase 
-and export HTML maps
+This script generates interavtive HTML maps 
+for the AST/UOT
 '''
 
 import timeit
@@ -30,7 +29,7 @@ def add_proj_lib ():
 
 
 
-def create_map_template():
+def create_map_template(map_title='Placeholder for title'):
     """Returns an empty folium map object"""
     # Create a map object
     map_obj = folium.Map()
@@ -55,6 +54,18 @@ def create_map_template():
         attr=satellite_attribution,
         overlay=False,
         control=True).add_to(map_obj)
+    
+    # create a title and button to refresh the map to the initial view
+    title_refresh = """
+    <div style="position: fixed; 
+         top: 8px; left: 70px; width: 150px; height: 70px; 
+         background-color:transparent; border:0px solid grey;z-index: 900;">
+         <h5 style="font-weight:bold;color:#DE1610;white-space:nowrap;">{}</h5>
+        <button style="font-weight:bold; color:#DE1610" 
+                onclick="location.reload()">Refresh View</button>
+    </div>
+    """.format(map_title)
+    map_obj.get_root().html.add_child(folium.Element(title_refresh))
     
     # Add measure controls to the map
     map_obj.add_child(MeasureControl())
@@ -90,13 +101,11 @@ def generate_html_maps(status_gdb):
     bf_list = ['aoi_500','aoi_1000','aoi_5000']
     
     # Create a dict of buffered gdfs
-    bf_gdfs = {}
-    for bf in bf_list:
-        bf_gdfs[bf] = gpd.read_file(filename= status_gdb, layer= bf)
-    
+    bf_gdfs = {bf: gpd.read_file(filename=status_gdb, layer=bf) for bf in bf_list}
+
     print ('Creating a map template')
     # Create an all-layers map
-    map_all = create_map_template()
+    map_all = create_map_template(map_title='Overview Map - All Overlaps')
     
     # Add the AOI layer to the all-layers map
     folium.GeoJson(data=gdf_aoi, name='AOI',
@@ -110,7 +119,7 @@ def generate_html_maps(status_gdb):
     
 
  
-    # Add buffered areas to the individual maps
+    # Add buffered areas to the all-layers maps
     for k,v in bf_gdfs.items():
             folium.GeoJson(data=v, name=k, show=False,
                            style_function=lambda x:{'color': 'orange',
@@ -149,7 +158,8 @@ def generate_html_maps(status_gdb):
                 gdf_fc.at[x, 'color'] = color
                 
             # Create an individual map
-            map_one = create_map_template()
+            map_title = fc.replace('_', ' ')
+            map_one = create_map_template(map_title=map_title)
             
             # Add the AOI layer to the individual map
             folium.GeoJson(data=gdf_aoi, name='AOI',
@@ -163,7 +173,7 @@ def generate_html_maps(status_gdb):
                 
             # Add the main layer to the folium maps
             for mp in [map_one, map_all]:
-                folium.GeoJson(data=gdf_fc, name=fc,
+                folium.GeoJson(data=gdf_fc, name=map_title,
                                style_function= lambda x: {'fillColor': x['properties']['color'],
                                                           'color': x['properties']['color'],
                                                           'weight': 2},
@@ -247,6 +257,7 @@ def generate_html_maps(status_gdb):
 
 
 
+
 if __name__==__name__:
 
     # Execute the function and track processing time
@@ -255,7 +266,8 @@ if __name__==__name__:
     add_proj_lib ()
     
     # This is an example of a one_status_common_datasets geodatabase
-    status_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414630\one_status_common_datasets_aoi.gdb'
+    #file_nbr='1414630'
+    status_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\0244548\one_status_common_datasets_aoi.gdb'
     
     generate_html_maps(status_gdb)
     
@@ -264,3 +276,4 @@ if __name__==__name__:
     mins = int (t_sec/60)
     secs = int (t_sec%60)
     print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
+ 
