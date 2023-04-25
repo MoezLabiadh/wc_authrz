@@ -409,12 +409,16 @@ def set_rpt_colums (df_ats, dfs):
          'TANTALIS COMMENTS',
          'ATS Comments']
     
-    dfs[0] = dfs[0][list(df_ats.columns)]
-    dfs[0].columns = [x.upper() for x in dfs[0].columns]
+    #dfs[0] = dfs[0][list(df_ats.columns)]
+    #dfs[0].columns = [x.upper() for x in dfs[0].columns]
     
-    dfs_f = [dfs[0]]   
+    dfs_f = []   
     
-    for df in dfs[1:]:
+    for df in dfs:
+        for col in cols:
+            if col not in df.columns:
+                df[col] = pd.Series(dtype='object')
+        
         df = df[cols]
         df['Region Name'] = 'WEST COAST'
         df['Business Area'] = 'LANDS'
@@ -536,7 +540,7 @@ def create_report (df_list, sheet_list,filename):
 
     
 def main():
-    
+
     print ('\nConnecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
