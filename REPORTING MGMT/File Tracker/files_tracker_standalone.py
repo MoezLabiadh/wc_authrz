@@ -34,9 +34,36 @@ def connect_to_DB (username,password,hostname):
     return connection
 
 
-def import_ats (ats_f):
+def import_ats_oh (ats_oh_f):
+    df = pd.read_excel(ats_oh_f, skiprows=range(1,14))
+    
+    new_header = df.iloc[0] 
+    df = df[1:] 
+    df.columns = new_header 
+    cols_onh = ['Project Number','On Hold Start Date', 'Reason For Hold']
+    
+    df = df[cols_onh]
+    
+    return df
+
+
+def import_ats_bf (ats_bf_f):
+    df = pd.read_excel(ats_bf_f, skiprows=range(1,13))
+    
+    new_header = df.iloc[0] 
+    df = df[1:] 
+    df.columns = new_header 
+    cols_onh = ['Project Number','Authorization Assigned To', 
+                'Bring Forward Date']
+    
+    df = df[cols_onh]
+    
+    return df
+
+
+def import_ats_pt (ats_pt_f, df_onh,df_bfw):
     """Reads the ATS report into a df"""
-    df = pd.read_excel(ats_f)
+    df = pd.read_excel(ats_pt_f)
     
     df['File Number'] = df['File Number'].fillna(0)
     df['File Number'] = df['File Number'].astype(str)
@@ -52,16 +79,22 @@ def import_ats (ats_f):
         z_nbr = 7 - len(str(row['File Number']))
         df.loc[index, 'File Number'] = z_nbr * '0' + str(row['File Number'])
         
+    #add on-hold cols
+    df = pd.merge(df, df_onh, how='left', on='Project Number')
+    
+    #add bring-forward cols
+    df = pd.merge(df, df_bfw, how='left', on='Project Number')
+    
     for col in df:
         if 'Date' in col:
             df[col] =  pd.to_datetime(df[col],
-                                   infer_datetime_format=True,
-                                   errors = 'coerce').dt.date
+                               infer_datetime_format=True,
+                               errors = 'coerce').dt.date
         elif 'Unnamed' in col:
             df.drop(col, axis=1, inplace=True)
-        
-        else:
-            pass
+    
+    else:
+        pass
             
     
     return df
@@ -342,6 +375,7 @@ def set_rpt_colums (df_ats, dfs):
          'STATUS',
          'TASK DESCRIPTION',
          'FCBC Assigned To',
+         'Authorization Assigned To',
          'OTHER EMPLOYEES ASSIGNED TO',
          'USERID ASSIGNED TO',
          'FN Consultation Lead',
@@ -354,6 +388,7 @@ def set_rpt_colums (df_ats, dfs):
          'Acceptance Complete Net Processing Time',
          'Submission Review Complete Date',
          'Submission Review Net Processing Time',
+         'Bring Forward Date',
          'LAND STATUS DATE',
          'First Nation Start Date',
          'First Nation Completion Date',
@@ -365,6 +400,8 @@ def set_rpt_colums (df_ats, dfs):
          'OFFERED DATE',
          'OFFER ACCEPTED DATE',
          'Total Processing Time',
+         'On Hold Start Date',
+         'Reason For Hold',
          'Total On Hold Time',
          'Net Processing Time',
          'CLIENT NAME',
@@ -372,7 +409,7 @@ def set_rpt_colums (df_ats, dfs):
          'TANTALIS COMMENTS',
          'ATS Comments']
     
-    dfs[0] = dfs[0][list(df_ats.columns)[:14]]
+    dfs[0] = dfs[0][list(df_ats.columns)]
     dfs[0].columns = [x.upper() for x in dfs[0].columns]
     
     dfs_f = [dfs[0]]   
@@ -508,13 +545,22 @@ def main():
 
 
     print ('\nReading Input files')
-    print('...ats report')
-    ats_f = 'ats_20230421.xlsx'
-    df_ats = import_ats (ats_f)
 
     print('...titan report')
     tnt_f = 'TITAN_RPT009.xlsx'
     df_tnt = import_titan (tnt_f)
+
+    print ('...ats report: on-hold')
+    ats_oh_f = 'on_hold_20230421.xlsx'
+    df_onh= import_ats_oh (ats_oh_f)
+
+    print ('...ats report: bring-forward')
+    ats_bf_f = 'bringForward_20230421.xlsx'
+    df_bfw= import_ats_bf (ats_bf_f)
+
+    print('...ats report: processing time')
+    ats_pt_f = 'ats_20230421.xlsx'
+    df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
 
     print('\nCreating Reports.')
     dfs = []
