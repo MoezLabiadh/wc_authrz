@@ -188,7 +188,7 @@ def generate_html_maps(status_gdb):
                                                           'color': x['properties']['color'],
                                                           'weight': 2},
                                tooltip=folium.features.GeoJsonTooltip(fields=tooltip_cols,
-                                                                      aliases=['Layer', label_col],
+                                                                      aliases=['LAYER', label_col],
                                                                       labels=True),
                                popup=folium.features.GeoJsonPopup(fields=popup_cols, 
                                                                   sticky=False,
