@@ -404,6 +404,7 @@ def set_rpt_colums (df_ats, dfs):
          'Reason For Hold',
          'Total On Hold Time',
          'Net Processing Time',
+         'COMPLETED DATE',
          'CLIENT NAME',
          'LOCATION',
          'TANTALIS COMMENTS',
@@ -539,91 +540,91 @@ def create_report (df_list, sheet_list,filename):
 
 
     
-def main():
+#def main():
+    
+print ('\nConnecting to BCGW.')
+hostname = 'bcgw.bcgov/idwprod1.bcgov'
+bcgw_user = os.getenv('bcgw_user')
+bcgw_pwd = os.getenv('bcgw_pwd')
+#connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
 
-    print ('\nConnecting to BCGW.')
-    hostname = 'bcgw.bcgov/idwprod1.bcgov'
-    bcgw_user = os.getenv('bcgw_user')
-    bcgw_pwd = os.getenv('bcgw_pwd')
-    #connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
 
+print ('\nReading Input files')
 
-    print ('\nReading Input files')
+print('...titan report')
+tnt_f = 'TITAN_RPT009.xlsx'
+df_tnt = import_titan (tnt_f)
 
-    print('...titan report')
-    tnt_f = 'TITAN_RPT009.xlsx'
-    df_tnt = import_titan (tnt_f)
+print ('...ats report: on-hold')
+ats_oh_f = 'on_hold_20230421.xlsx'
+df_onh= import_ats_oh (ats_oh_f)
 
-    print ('...ats report: on-hold')
-    ats_oh_f = 'on_hold_20230421.xlsx'
-    df_onh= import_ats_oh (ats_oh_f)
+print ('...ats report: bring-forward')
+ats_bf_f = 'bringForward_20230421.xlsx'
+df_bfw= import_ats_bf (ats_bf_f)
 
-    print ('...ats report: bring-forward')
-    ats_bf_f = 'bringForward_20230421.xlsx'
-    df_bfw= import_ats_bf (ats_bf_f)
+print('...ats report: processing time')
+ats_pt_f = 'ats_20230421.xlsx'
+df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
 
-    print('...ats report: processing time')
-    ats_pt_f = 'ats_20230421.xlsx'
-    df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
+print('\nCreating Reports.')
+dfs = []
 
-    print('\nCreating Reports.')
-    dfs = []
+print('...report 01')
+df_01 = create_rpt_01 (df_tnt,df_ats)
+dfs.append(df_01)
 
-    print('...report 01')
-    df_01 = create_rpt_01 (df_tnt,df_ats)
-    dfs.append(df_01)
+print('...report 02')
+df_02 = create_rpt_02 (df_tnt,df_ats)
+dfs.append(df_02)
 
-    print('...report 02')
-    df_02 = create_rpt_02 (df_tnt,df_ats)
-    dfs.append(df_02)
+print('...report 03')
+df_03 = create_rpt_03 (df_tnt,df_ats)
+dfs.append(df_03)
 
-    print('...report 03')
-    df_03 = create_rpt_03 (df_tnt,df_ats)
-    dfs.append(df_03)
+print('...report 04')
+df_04 = create_rpt_04 (df_tnt,df_ats)
+dfs.append(df_04)
 
-    print('...report 04')
-    df_04 = create_rpt_04 (df_tnt,df_ats)
-    dfs.append(df_04)
+print('...report 05')
+df_05 = create_rpt_05 (df_tnt,df_ats)
+dfs.append(df_05)
 
-    print('...report 05')
-    df_05 = create_rpt_05 (df_tnt,df_ats)
-    dfs.append(df_05)
+print('...report 06')
+df_06 = create_rpt_06 (df_tnt,df_ats)
+dfs.append(df_06)
 
-    print('...report 06')
-    df_06 = create_rpt_06 (df_tnt,df_ats)
-    dfs.append(df_06)
+print('...report 07')
+df_07 = create_rpt_07 (df_tnt,df_ats)
+dfs.append(df_07)
 
-    print('...report 07')
-    df_07 = create_rpt_07 (df_tnt,df_ats)
-    dfs.append(df_07)
+print('...report 08')
+df_08 = create_rpt_08 (df_tnt,df_ats)
+dfs.append(df_08)
 
-    print('...report 08')
-    df_08 = create_rpt_08 (df_tnt,df_ats)
-    dfs.append(df_08)
+print('...report 09')
+df_09 = create_rpt_09 (df_tnt,df_ats)
+dfs.append(df_09)
 
-    print('...report 09')
-    df_09 = create_rpt_09 (df_tnt,df_ats)
-    dfs.append(df_09)
+print('...report 10')
+df_10 = create_rpt_10 (df_tnt,df_ats)
+dfs.append(df_10)
 
-    print('...report 10')
-    df_10 = create_rpt_10 (df_tnt,df_ats)
-    dfs.append(df_10)
+print('\nFormatting Report columns')
+dfs_f = set_rpt_colums (df_ats, dfs)
 
-    print('\nFormatting Report columns')
-    dfs_f = set_rpt_colums (df_ats, dfs)
+print('\nCreating a Summary Report')
+df_00, rpt_ids = create_summary_rpt (dfs_f)
+df_stats = compute_stats (dfs_f,df_00,rpt_ids)
 
-    print('\nCreating a Summary Report')
-    df_00, rpt_ids = create_summary_rpt (dfs_f)
-    df_stats = compute_stats (dfs_f,df_00,rpt_ids)
+print('\nExporting the Final Report')
+dfs_f.insert(0, df_stats)
+rpt_ids.insert(0, 'Summary')
 
-    print('\nExporting the Final Report')
-    dfs_f.insert(0, df_stats)
-    rpt_ids.insert(0, 'Summary')
+today = date.today().strftime("%Y%m%d")
+filename = today + '_landFiles_tracker_betaVersion'
 
-    today = date.today().strftime("%Y%m%d")
-    filename = today + '_landFiles_tracker_betaVersion'
+compute_plot (df_stats,filename)
+create_report (dfs_f, rpt_ids,filename)
 
-    compute_plot (df_stats,filename)
-    create_report (dfs_f, rpt_ids,filename)
-
-main()
+#main()
