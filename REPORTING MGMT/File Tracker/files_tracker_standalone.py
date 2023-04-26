@@ -428,8 +428,8 @@ def set_rpt_colums (df_ats, dfs):
                    'STATUS': 'TANTALIS STATUS',
 
                    'TASK DESCRIPTION': 'APPLICATION TYPE',
-                   'OTHER EMPLOYEES ASSIGNED TO':'FIELD_EMPLOYEE_NAME',
-                   'USERID ASSIGNED TO': 'EXAMINER_NAME',
+                   'OTHER EMPLOYEES ASSIGNED TO':'FIELD EMPLOYEE',
+                   'USERID ASSIGNED TO': 'EXAMINER NAME',
                    'Received Date': 'ATS RECEIVED DATE',
                    'RECEIVED DATE': 'TANTALIS RECEIVED DATE'}, 
                   axis=1, inplace=True)
