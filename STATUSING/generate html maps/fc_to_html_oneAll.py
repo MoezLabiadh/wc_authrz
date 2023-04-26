@@ -68,6 +68,7 @@ def create_map_template(map_title='Placeholder for title'):
                 onclick="location.reload()">Refresh View</button>
     </div>
     """.format(map_title)
+    
     map_obj.get_root().html.add_child(folium.Element(title_refresh))
     
     # Add measure controls to the map
@@ -166,6 +167,10 @@ def generate_html_maps(status_gdb):
             map_title = fc.replace('_', ' ')
             map_one = create_map_template(map_title=map_title)
             
+            # Create a list of columns for the tooltip
+            gdf_fc['map_title'] = map_title
+            tooltip_cols = ['map_title',label_col]
+            
             # Add the AOI layer to the individual map
             folium.GeoJson(data=gdf_aoi, name='AOI',
                            style_function=lambda x:{'color': 'red',
@@ -182,7 +187,8 @@ def generate_html_maps(status_gdb):
                                style_function= lambda x: {'fillColor': x['properties']['color'],
                                                           'color': x['properties']['color'],
                                                           'weight': 2},
-                               tooltip=folium.features.GeoJsonTooltip(fields=[label_col], 
+                               tooltip=folium.features.GeoJsonTooltip(fields=tooltip_cols,
+                                                                      aliases=['Layer', label_col],
                                                                       labels=True),
                                popup=folium.features.GeoJsonPopup(fields=popup_cols, 
                                                                   sticky=False,
