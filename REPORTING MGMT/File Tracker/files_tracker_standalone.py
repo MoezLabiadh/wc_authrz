@@ -532,7 +532,7 @@ def set_rpt_colums (df_ats, dfs):
         
 
 def create_summary_rpt (dfs_f):
-    """Creates a summary report - 1st page"""
+    """Creates a summary report -Nbr of Files - 1st page"""
     rpt_ids = ['rpt_01',
                'rpt_02',
                'rpt_03',
@@ -556,9 +556,59 @@ def create_summary_rpt (dfs_f):
                            'TOTAL NBR OF FILES': rpt_fls})
     
     return df_00, rpt_ids
- 
+
     
-def compute_stats (dfs_f,df_00,rpt_ids):
+def create_summary_mtr(df_mtrs):
+    """Creates a summary report - Nbr of Days - 2nd page"""
+    mtr_ids = ['mtr1',
+               'mtr2',
+               'mtr3',
+               'mtr4',
+               'mtr5',
+               'mtr6',
+               'mtr7',
+               'mtr8',
+               'mtr9',
+               'mtr10',
+               'mtr11',
+               'mtr12',
+               'mtr13',
+               'mtr14',
+               'mtr15']
+    
+    mtr_nmes = ['Current time with FCBC',
+                'Total time with FCBC',
+                'Current time in Queue',
+                'Total time in Queue',
+                'Current time in Consultation ',
+                'Total time in Consultation',
+                'Current time in Active Review',
+                'Total time in Active Review',
+                'Current time waiting for decision',
+                'Total time from LUR complete to Decision',
+                'Current time waiting for Offer to be sent',
+                'Total Time from Decision to Complete',
+                'Total Time for file',
+                'Current time on hold',
+                'Total time on hold']
+    
+    df_mtrs_all = pd.concat(df_mtrs)
+    
+    df_mtr_rpt = pd.DataFrame({'METRIC ID': mtr_ids,
+                               'METRIC TITLE' : mtr_nmes})
+    
+    df_mtr_rpt = pd.merge(df_mtr_rpt,df_mtrs_all,
+                          left_on='METRIC ID',
+                          right_on='Metric id' )
+    
+    df_mtr_rpt.drop(columns=['Metric id'], inplace=True)
+    
+    df_mtr_rpt = df_mtr_rpt.reset_index(drop=True)
+    
+    return df_mtr_rpt
+
+    
+def compute_stats_rpt (dfs_f,df_00,rpt_ids):
     """Compute stats: Number of files per region and report"""
     df_grs = []
     for df in dfs_f[1:]:
@@ -577,7 +627,7 @@ def compute_stats (dfs_f,df_00,rpt_ids):
     return df_stats
 
 
-def compute_plot (df_stats,filename):
+def compute_plot_rpt (df_stats,filename):
     """Computes a barplot of number of nbr applications per rpt_id and office """
     df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
                       'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
@@ -590,6 +640,21 @@ def compute_plot (df_stats,filename):
     
     fig = ax.get_figure()
     fig.savefig(filename+'_plot')
+    
+
+def compute_plot_mtr (df_stats,filename):
+    """Computes a barplot of number of days per metric and office """
+    df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
+                      'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
+    
+    df_pl = df_pl = df_pl[1:]
+    
+    ax = df_pl.plot.bar(x= 'REPORT ID',stacked=True, rot=0,figsize=(15, 8))
+    ax.set_ylabel("Nbr of Files")
+    ax.set_xlabel("Report ID")  
+    
+    fig = ax.get_figure()
+    fig.savefig(filename+'_plot')    
    
 
 def create_report (df_list, sheet_list,filename):
@@ -651,53 +716,65 @@ df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
 
 print('\nCreating Reports.')
 dfs = []
-
+df_mtrs = []
     
 print('...report 01')
 df_01, df_01_mtr = create_rpt_01 (df_tnt,df_ats)
 dfs.append(df_01)
+df_mtrs.append(df_01_mtr)
 
 print('...report 02')
 df_02,df_02_mtr = create_rpt_02 (df_tnt,df_ats)
 dfs.append(df_02)
+df_mtrs.append(df_02_mtr)
 
 print('...report 03')
 df_03,df_03_mtr = create_rpt_03 (df_tnt,df_ats)
 dfs.append(df_03)
+df_mtrs.append(df_03_mtr)
 
 print('...report 04')
 df_04,df_04_mtr = create_rpt_04(df_tnt,df_ats)
 dfs.append(df_04)
+df_mtrs.append(df_04_mtr)
 
 print('...report 05')
 df_05,df_05_mtr = create_rpt_05 (df_tnt,df_ats)
 dfs.append(df_05)
+df_mtrs.append(df_05_mtr)
 
 print('...report 06')
 df_06,df_06_mtr = create_rpt_06 (df_tnt,df_ats)
 dfs.append(df_06)
+df_mtrs.append(df_06_mtr)
 
 print('...report 07')
 df_07,df_07_mtr = create_rpt_07 (df_tnt,df_ats)
 dfs.append(df_07)
-
-
+df_mtrs.append(df_07_mtr)
 
 print('\nFormatting Report columns')
 dfs_f = set_rpt_colums (df_ats, dfs)
 
-print('\nCreating a Summary Report')
+print('\nCreating a Summary Report - Nbr of Files')
 df_00, rpt_ids = create_summary_rpt (dfs_f)
-df_stats = compute_stats (dfs_f,df_00,rpt_ids)
+df_stats = compute_stats_rpt (dfs_f,df_00,rpt_ids)
+
+print('\nCreating a Summary Report - Nbr of days')
+df_mtr_rpt = create_summary_mtr(df_mtrs)
+
 
 print('\nExporting the Final Report')
 dfs_f.insert(0, df_stats)
-rpt_ids.insert(0, 'Summary')
+rpt_ids.insert(0, 'Summary - Nbr of Files')
+
+dfs_f.insert(1, df_mtr_rpt)
+rpt_ids.insert(1, 'Summary - Nbr of Days')
 
 today = date.today().strftime("%Y%m%d")
 filename = today + '_landFiles_tracker_betaVersion'
 
-compute_plot (df_stats,filename)
+compute_plot_rpt (df_stats,filename)
 create_report (dfs_f, rpt_ids,filename)
 
 #main()
