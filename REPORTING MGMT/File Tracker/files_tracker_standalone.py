@@ -20,7 +20,7 @@ warnings.simplefilter(action='ignore')
 import os
 import cx_Oracle
 import pandas as pd
-import numpy as np
+#import numpy as np
 from datetime import date, datetime, timedelta
 
 
@@ -41,7 +41,9 @@ def import_ats_oh (ats_oh_f):
     new_header = df.iloc[0] 
     df = df[1:] 
     df.columns = new_header 
-    cols_onh = ['Project Number','On Hold Start Date', 'Reason For Hold']
+    df['On Hold End Date']=''
+    cols_onh = ['Project Number','On Hold Start Date', 
+                'On Hold End Date','Reason For Hold']
     
     df = df[cols_onh]
     
@@ -153,27 +155,39 @@ def calculate_metrics(df , grp_col, mtr_ids):
         
         df_mtr = df_mtr.reset_index()
         
+        offices = ['AQUACULTURE','CAMPBELL RIVER','HAIDA GWAII',
+                   'NANAIMO', 'PORT ALBERNI','PORT MCNEILL']
+        
+        if set(offices) != set(df_mtr['DISTRICT OFFICE'].unique()):
+            new_rows = pd.DataFrame({'DISTRICT OFFICE': offices})
+            df_mtr = pd.merge(new_rows, df_mtr, how='outer', on='DISTRICT OFFICE')
+            df_mtr = df_mtr.fillna(0)
+        else:
+            df_mtr = df_mtr.sort_values(by='DISTRICT OFFICE')        
+        
+        
         df_mtr = pd.melt(df_mtr, id_vars=[grp_col])
         
         df_mtr = df_mtr.pivot_table(values='value', 
                                       index='variable', 
                                       columns=grp_col)
         
-        masked_arr = np.ma.masked_equal(df_mtr.values, 0)
-        df_mtr['WC'] = np.mean(masked_arr, axis=1)
-        
-        df_mtr = df_mtr.round().astype(int)
-        
         vals = []
         for col in df_mtr.columns:
             vals.extend(df_mtr[col].to_list())
             
         mtr_cols = ['avg AQ','med AQ','avg CR','med CR',
-            'avg HG','med HG','avg NA','med NA',
-            'avg PA','med PA','avg PM','med PM',
-            'avg WC','med WC']
+                    'avg HG','med HG','avg NA','med NA',
+                    'avg PA','med PA','avg PM','med PM']
         
         df_mtr = pd.DataFrame(data=[vals], columns=mtr_cols)
+
+        df_mtr['avg WC'] = df.loc[df[mtr_id] != 0, mtr_id].mean()
+        df_mtr['med WC'] = df.loc[df[mtr_id] != 0, mtr_id].median()
+
+        df_mtr.fillna(0, inplace=True)        
+        df_mtr = df_mtr.round().astype(int)
+        
         df_mtr['Metric id'] = mtr_id
         
         df_mtrs.append(df_mtr)
@@ -207,12 +221,14 @@ def create_rpt_01(df_tnt,df_ats):
     df_01.sort_values(by=['Received Date'], ascending=False, inplace=True)
     df_01.reset_index(drop = True, inplace = True)
     
+    df_01['DISTRICT OFFICE'] = df_01['Decision-making Office Name'] 
+    
     #Calulcate metrics
     today = date.today()
     df_01['mtr1'] = (today - df_01['Received Date']).dt.days
     
     metrics = ['mtr1']
-    df_01_mtr = calculate_metrics(df_01 , 'Decision-making Office Name',metrics )
+    df_01_mtr = calculate_metrics(df_01 , 'DISTRICT OFFICE',metrics )
     
 
     return df_01,df_01_mtr
@@ -319,11 +335,13 @@ def create_rpt_04 (df_tnt,df_ats):
 
     df_04['Bring Forward Date'] = pd.to_datetime(df_04['Bring Forward Date']
                                                  .fillna(pd.NaT), errors='coerce')
-    
-    mask = df_04['Bring Forward Date'].notnull() & df_04['REPORTED DATE'].notnull()
-    df_04.loc[mask, 'mtr8'] = (df_04['Bring Forward Date'] - df_04['REPORTED DATE']).dt.days
-    df_04.loc[mask, 'mtr9'] = (today - df_04['REPORTED DATE']).dt.days
 
+    df_04['REPORTED DATE'] = pd.to_datetime(df_04['REPORTED DATE']
+                                                 .fillna(pd.NaT), errors='coerce') 
+    
+    df_04['mtr8'] = (df_04['Bring Forward Date'] - df_04['REPORTED DATE']).dt.days
+    df_04['mtr9'] = (today - df_04['REPORTED DATE']).dt.days
+    
     metrics= ['mtr8','mtr9']
     df_04_mtr = calculate_metrics(df_04 , 'DISTRICT OFFICE', metrics )  
     
@@ -348,8 +366,17 @@ def create_rpt_05 (df_tnt,df_ats):
     
     df_05.sort_values(by=['ADJUDICATED DATE'], ascending=False, inplace=True)
     df_05.reset_index(drop = True, inplace = True)
+
+    #Calulcate metrics
+    today = date.today()
+
+    df_05['mtr10'] = (df_05['ADJUDICATED DATE'] - df_05['REPORTED DATE']).dt.days
+    df_05['mtr11'] = (today - df_05['ADJUDICATED DATE']).dt.days
+
+    metrics= ['mtr10','mtr11']
+    df_05_mtr = calculate_metrics(df_05 , 'DISTRICT OFFICE', metrics )  
     
-    return df_05
+    return df_05,df_05_mtr
 
 
 def create_rpt_06 (df_tnt,df_ats):
@@ -373,8 +400,18 @@ def create_rpt_06 (df_tnt,df_ats):
     
     df_06.sort_values(by=['COMPLETED DATE'], ascending=False, inplace=True)
     df_06.reset_index(drop = True, inplace = True)
+
+    #Calulcate metrics
+    #today = date.today()
+
+    df_06['mtr12'] = (df_06['COMPLETED DATE'] - df_06['ADJUDICATED DATE']).dt.days
+    df_06['mtr13'] = (df_06['COMPLETED DATE'] - df_06['RECEIVED DATE']).dt.days
+
+    metrics= ['mtr12','mtr13']
+    df_06_mtr = calculate_metrics(df_06 , 'DISTRICT OFFICE', metrics )  
+
     
-    return df_06
+    return df_06,df_06_mtr
 
 
 def create_rpt_07 (df_tnt,df_ats):
@@ -395,8 +432,24 @@ def create_rpt_07 (df_tnt,df_ats):
     
     df_07.sort_values(by=['CREATED DATE'], ascending=False, inplace=True)
     df_07.reset_index(drop = True, inplace = True)
+
+    #Calulcate metrics
+    today = pd.to_datetime(date.today())
+
+    df_07['On Hold Start Date'] = pd.to_datetime(df_07['On Hold Start Date']
+                                                 .fillna(pd.NaT), errors='coerce')
+
+    df_07['On Hold End Date'] = pd.to_datetime(df_07['On Hold End Date']
+                                                 .fillna(pd.NaT), errors='coerce') 
     
-    return df_07
+    df_07['mtr14'] = (today - df_07['On Hold Start Date']).dt.days
+    df_07['mtr15'] = (df_07['On Hold End Date'] - df_07['On Hold Start Date']).dt.days
+    
+    metrics= ['mtr14','mtr15']
+    df_07_mtr = calculate_metrics(df_07 , 'DISTRICT OFFICE', metrics )  
+
+    
+    return df_07,df_07_mtr
 
 
 def set_rpt_colums (df_ats, dfs):
@@ -439,6 +492,7 @@ def set_rpt_colums (df_ats, dfs):
          'OFFER ACCEPTED DATE',
          'Total Processing Time',
          'On Hold Start Date',
+         'On Hold End Date',
          'Reason For Hold',
          'Total On Hold Time',
          'Net Processing Time',
@@ -456,7 +510,7 @@ def set_rpt_colums (df_ats, dfs):
             if col not in df.columns:
                 df[col] = pd.Series(dtype='object')
         
-        df = df[cols]
+        df = df[cols+df.filter(regex='^mtr').columns.tolist()]
         df['Region Name'] = 'WEST COAST'
         df['Business Area'] = 'LANDS'
 
@@ -494,8 +548,6 @@ def create_summary_rpt (dfs_f):
                 'Files Awaiting Offer',
                 'Files Completed',
                 'Files On Hold']
-    
-    #rpt_gen = ['Y']* len(rpt_nmes)
     
     rpt_fls = [df.shape[0] for df in dfs_f]
     
@@ -618,15 +670,15 @@ df_04,df_04_mtr = create_rpt_04(df_tnt,df_ats)
 dfs.append(df_04)
 
 print('...report 05')
-df_05 = create_rpt_05 (df_tnt,df_ats)
+df_05,df_05_mtr = create_rpt_05 (df_tnt,df_ats)
 dfs.append(df_05)
 
 print('...report 06')
-df_06 = create_rpt_06 (df_tnt,df_ats)
+df_06,df_06_mtr = create_rpt_06 (df_tnt,df_ats)
 dfs.append(df_06)
 
-print('...report 06')
-df_07 = create_rpt_07 (df_tnt,df_ats)
+print('...report 07')
+df_07,df_07_mtr = create_rpt_07 (df_tnt,df_ats)
 dfs.append(df_07)
 
 
