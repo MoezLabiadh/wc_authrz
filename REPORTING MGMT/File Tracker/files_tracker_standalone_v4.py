@@ -562,7 +562,7 @@ def set_rpt_colums (df_ats, dfs):
          'ATS Comments']
 
     
-    dfs_f = []   
+    df_rpts = []   
     
     for df in dfs:
         for col in cols:
@@ -585,18 +585,18 @@ def set_rpt_colums (df_ats, dfs):
 
         df.columns = [x.upper() for x in df.columns]
         
-        dfs_f.append (df)
+        df_rpts.append (df)
     
-    return dfs_f
+    return df_rpts
         
 
-def create_summary_rpt (dfs_f):
+def create_summary_rpt (df_rpts):
     """Creates a summary  -Nbr of Files"""
     rpt_ids = ['rpt_01','rpt_02','rpt_03','rpt_04',
                'rpt_05','rpt_06','rpt_07','rpt_08','rpt_09']
     
     df_grs = []
-    for df in dfs_f:
+    for df in df_rpts:
         df_gr = df.groupby('DISTRICT OFFICE')['REGION NAME'].count().reset_index()
         df_gr.sort_values(by=['DISTRICT OFFICE'], inplace = True)
         df_gr_pv = pd.pivot_table(df_gr, values='REGION NAME',
@@ -777,10 +777,10 @@ dfs.append(df_09)
 df_mtrs.append(df_09_mtr)
 
 print('\nFormatting Report columns')
-dfs_f = set_rpt_colums (df_ats, dfs)
+df_rpts = set_rpt_colums (df_ats, dfs)
 
 print('\nCreating a Summary page')
-df_sum_rpt,rpt_ids = create_summary_rpt (dfs_f)
+df_sum_rpt,rpt_ids = create_summary_rpt (df_rpts)
 df_sum_mtr= create_summary_mtr(df_mtrs)
 
 template = 'TEMPLATE/rpt_template.xlsx'
@@ -788,7 +788,7 @@ df_sum_all= create_summary_all(template,df_sum_rpt,df_sum_mtr)
 
 
 print('\nExporting the Final Report')
-df_list = [df_sum_all]+dfs_f 
+df_list = [df_sum_all]+df_rpts 
 sheet_list = ['Summary']+rpt_ids
 
 
