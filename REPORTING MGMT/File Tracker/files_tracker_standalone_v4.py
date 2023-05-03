@@ -380,16 +380,12 @@ def create_rpt_05 (df_tnt,df_ats):
 
 
 def create_rpt_06 (df_tnt,df_ats):
-    """ Creates Report 06- Files Completed"""
+    """ Creates Report 06- Files awaiting Offer Acceptance"""
     df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
-    
-    date_30_days_ago = datetime.now() - timedelta(days=30)
-    date_30_days_ago = date_30_days_ago.date()
-    
-    df_06= df_tnt.loc[(df_tnt['COMPLETED DATE'].notnull()) &
-                      (df_tnt['COMPLETED DATE'] > date_30_days_ago) &
-                      (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &
-                      (df_tnt['STATUS'] == 'DISPOSITION IN GOOD STANDING')]
+    df_06= df_tnt.loc[(df_tnt['OFFERED DATE'].notnull()) &
+                      (df_tnt['OFFER ACCEPTED DATE'].isnull())&
+                      (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &                      
+                      (df_tnt['STATUS'] == 'OFFERED')]
     
     df_06['tempo_join_date']= df_06['CREATED DATE'].astype('datetime64[Y]')
     df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
@@ -398,58 +394,121 @@ def create_rpt_06 (df_tnt,df_ats):
                      left_on=['FILE NUMBER','tempo_join_date'],
                      right_on=['File Number','tempo_join_date'])
     
-    df_06.sort_values(by=['COMPLETED DATE'], ascending=False, inplace=True)
+    df_06.sort_values(by=['OFFERED DATE'], ascending=False, inplace=True)
     df_06.reset_index(drop = True, inplace = True)
 
     #Calulcate metrics
-    #today = date.today()
+    today = date.today()
 
-    df_06['mtr12'] = (df_06['COMPLETED DATE'] - df_06['ADJUDICATED DATE']).dt.days
-    df_06['mtr13'] = (df_06['COMPLETED DATE'] - df_06['RECEIVED DATE']).dt.days
+    df_06['mtr12'] = (df_06['OFFERED DATE'] - df_06['ADJUDICATED DATE']).dt.days
+    df_06['mtr13'] = (today - df_06['OFFERED DATE']).dt.days
 
     metrics= ['mtr12','mtr13']
     df_06_mtr = calculate_metrics(df_06 , 'DISTRICT OFFICE', metrics )  
-
     
     return df_06,df_06_mtr
 
 
 def create_rpt_07 (df_tnt,df_ats):
-    """ Creates Report 07 - Files On Hold"""
-    df_ats = df_ats.loc[(df_ats['Authorization Status']== 'On Hold') &
-                        (df_ats['Accepted Date'].notnull())]
-    hold_l = df_ats['File Number'].to_list()
+    """ Creates Report 07- Files with Offer Accepted"""
+    df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
+    df_07= df_tnt.loc[(df_tnt['OFFER ACCEPTED DATE'].notnull()) &
+                     (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &                      
+                      (df_tnt['STATUS'] == 'OFFER ACCEPTED')]
     
-    df_07= df_tnt.loc[(df_tnt['STATUS'] == 'ACCEPTED') & 
-                      (df_tnt['FILE NUMBER'].isin(hold_l))]
-
     df_07['tempo_join_date']= df_07['CREATED DATE'].astype('datetime64[Y]')
     df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
     
     df_07 = pd.merge(df_07, df_ats, how='left',
+                     left_on=['FILE NUMBER','tempo_join_date'],
+                     right_on=['File Number','tempo_join_date'])
+    
+    df_07.sort_values(by=['OFFER ACCEPTED DATE'], ascending=False, inplace=True)
+    df_07.reset_index(drop = True, inplace = True)
+
+    #Calulcate metrics
+    today = date.today()
+
+    df_07['mtr14'] = (df_07['OFFER ACCEPTED DATE'] - df_07['OFFERED DATE']).dt.days
+    df_07['mtr15'] = (today - df_07['OFFER ACCEPTED DATE']).dt.days
+
+    metrics= ['mtr14','mtr15']
+    df_07_mtr = calculate_metrics(df_07 , 'DISTRICT OFFICE', metrics )  
+    
+    return df_07,df_07_mtr
+
+
+def create_rpt_08 (df_tnt,df_ats):
+    """ Creates Report 08- Files Completed"""
+    df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
+    
+    date_30_days_ago = datetime.now() - timedelta(days=30)
+    date_30_days_ago = date_30_days_ago.date()
+    
+    df_08= df_tnt.loc[(df_tnt['COMPLETED DATE'].notnull()) &
+                      (df_tnt['COMPLETED DATE'] > date_30_days_ago) &
+                      (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &
+                      (df_tnt['STATUS'] == 'DISPOSITION IN GOOD STANDING')]
+    
+    df_08['tempo_join_date']= df_08['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+    
+    df_08 = pd.merge(df_08, df_ats, how='left',
+                     left_on=['FILE NUMBER','tempo_join_date'],
+                     right_on=['File Number','tempo_join_date'])
+    
+    df_08.sort_values(by=['COMPLETED DATE'], ascending=False, inplace=True)
+    df_08.reset_index(drop = True, inplace = True)
+
+    #Calulcate metrics
+    #today = date.today()
+
+    df_08['mtr16'] = (df_08['COMPLETED DATE'] - df_08['ADJUDICATED DATE']).dt.days
+    df_08['mtr17'] = (df_08['COMPLETED DATE'] - df_08['RECEIVED DATE']).dt.days
+
+    metrics= ['mtr16','mtr17']
+    df_08_mtr = calculate_metrics(df_08 , 'DISTRICT OFFICE', metrics )  
+
+    
+    return df_08,df_08_mtr
+
+
+def create_rpt_09 (df_tnt,df_ats):
+    """ Creates Report 09 - Files On Hold"""
+    df_ats = df_ats.loc[(df_ats['Authorization Status']== 'On Hold') &
+                        (df_ats['Accepted Date'].notnull())]
+    hold_l = df_ats['File Number'].to_list()
+    
+    df_09= df_tnt.loc[(df_tnt['STATUS'] == 'ACCEPTED') & 
+                      (df_tnt['FILE NUMBER'].isin(hold_l))]
+
+    df_09['tempo_join_date']= df_09['CREATED DATE'].astype('datetime64[Y]')
+    df_ats['tempo_join_date']= df_ats['Accepted Date'].astype('datetime64[Y]')
+    
+    df_09 = pd.merge(df_09, df_ats, how='left',
                      left_on=['FILE NUMBER'],
                      right_on=['File Number'])
     
-    df_07.sort_values(by=['CREATED DATE'], ascending=False, inplace=True)
-    df_07.reset_index(drop = True, inplace = True)
+    df_09.sort_values(by=['CREATED DATE'], ascending=False, inplace=True)
+    df_09.reset_index(drop = True, inplace = True)
 
     #Calulcate metrics
     today = pd.to_datetime(date.today())
 
-    df_07['On Hold Start Date'] = pd.to_datetime(df_07['On Hold Start Date']
+    df_09['On Hold Start Date'] = pd.to_datetime(df_09['On Hold Start Date']
                                                  .fillna(pd.NaT), errors='coerce')
 
-    df_07['On Hold End Date'] = pd.to_datetime(df_07['On Hold End Date']
+    df_09['On Hold End Date'] = pd.to_datetime(df_09['On Hold End Date']
                                                  .fillna(pd.NaT), errors='coerce') 
     
-    df_07['mtr14'] = (today - df_07['On Hold Start Date']).dt.days
-    df_07['mtr15'] = (df_07['On Hold End Date'] - df_07['On Hold Start Date']).dt.days
+    df_09['mtr18'] = (today - df_09['On Hold Start Date']).dt.days
+    df_09['mtr19'] = (df_09['On Hold End Date'] - df_09['On Hold Start Date']).dt.days
     
-    metrics= ['mtr14','mtr15']
-    df_07_mtr = calculate_metrics(df_07 , 'DISTRICT OFFICE', metrics )  
+    metrics= ['mtr18','mtr19']
+    df_09_mtr = calculate_metrics(df_09 , 'DISTRICT OFFICE', metrics )  
 
     
-    return df_07,df_07_mtr
+    return df_09,df_09_mtr
 
 
 def set_rpt_colums (df_ats, dfs):
@@ -532,9 +591,9 @@ def set_rpt_colums (df_ats, dfs):
         
 
 def create_summary_rpt (dfs_f):
-    """Creates a summary report -Nbr of Files - 1st page"""
+    """Creates a summary  -Nbr of Files"""
     rpt_ids = ['rpt_01','rpt_02','rpt_03','rpt_04',
-               'rpt_05','rpt_06','rpt_07']
+               'rpt_05','rpt_06','rpt_07','rpt_08','rpt_09']
     
     df_grs = []
     for df in dfs_f:
@@ -563,7 +622,7 @@ def create_summary_rpt (dfs_f):
 
 
 def create_summary_mtr(df_mtrs):
-    """Creates a summary report - Nbr of Days - 2nd page"""
+    """Creates a summary- Nbr of Days"""
 
 
     df_sum_mtr = pd.concat(df_mtrs)
@@ -595,9 +654,6 @@ def create_summary_all(template,df_sum_rpt,df_sum_mtr):
     
     return df_sum_all
     
-    
-
-
 
 def compute_plot_rpt (df_stats,filename):
     """Computes a barplot of number of nbr applications per rpt_id and office """
@@ -709,6 +765,16 @@ print('...report 07')
 df_07,df_07_mtr = create_rpt_07 (df_tnt,df_ats)
 dfs.append(df_07)
 df_mtrs.append(df_07_mtr)
+
+print('...report 08')
+df_08,df_08_mtr = create_rpt_08 (df_tnt,df_ats)
+dfs.append(df_08)
+df_mtrs.append(df_08_mtr)
+
+print('...report 09')
+df_09,df_09_mtr = create_rpt_09 (df_tnt,df_ats)
+dfs.append(df_09)
+df_mtrs.append(df_09_mtr)
 
 print('\nFormatting Report columns')
 dfs_f = set_rpt_colums (df_ats, dfs)
