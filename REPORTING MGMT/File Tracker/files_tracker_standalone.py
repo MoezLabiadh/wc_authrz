@@ -552,7 +552,7 @@ def create_summary_rpt (dfs_f):
     rpt_fls = [df.shape[0] for df in dfs_f]
     
     df_00 = pd.DataFrame({'REPORT ID': rpt_ids,
-                           'REPORT TITLE' : rpt_nmes,
+                           'REPORT NAME' : rpt_nmes,
                            'TOTAL NBR OF FILES': rpt_fls})
     
     return df_00, rpt_ids
@@ -595,7 +595,7 @@ def create_summary_mtr(df_mtrs):
     df_mtrs_all = pd.concat(df_mtrs)
     
     df_mtr_rpt = pd.DataFrame({'METRIC ID': mtr_ids,
-                               'METRIC TITLE' : mtr_nmes})
+                               'METRIC NAME' : mtr_nmes})
     
     df_mtr_rpt = pd.merge(df_mtr_rpt,df_mtrs_all,
                           left_on='METRIC ID',
@@ -603,15 +603,54 @@ def create_summary_mtr(df_mtrs):
     
     df_mtr_rpt.drop(columns=['Metric id'], inplace=True)
     
+    cols_1st = ['METRIC ID','METRIC NAME','avg WC','med WC']
+    cols_2nd = [x for x in df_mtr_rpt.columns if x not in cols_1st]
+    
+    df_mtr_rpt = df_mtr_rpt[cols_1st+cols_2nd]
+    
     df_mtr_rpt = df_mtr_rpt.reset_index(drop=True)
     
     return df_mtr_rpt
 
+
+def create_summary_all(template,df_stats,df_mtr_rpt):
+    """Create a Summary of Nbr files and days"""
+    df_tmp = pd.read_excel(template)
+    
+    df_stats.drop(columns=['REPORT NAME'], inplace=True)
+    df_mtr_rpt.drop(columns=['METRIC NAME'], inplace=True)
+    
+    df_sum = pd.merge(df_tmp,df_stats,
+                      how='left',
+                      on='REPORT ID')
+    
+    df_sum = pd.merge(df_sum,df_mtr_rpt,
+                      how='left',
+                      on='METRIC ID')
+
+    df_sum.rename({'TOTAL NBR OF FILES': 'files WC', 
+               'AQUACULTURE': 'files AQ',
+               'CAMPBELL RIVER': 'files CR',
+               'HAIDA GWAII':'files HG',
+               'NANAIMO': 'files NA',
+               'PORT ALBERNI': 'files PA',
+               'PORT MCNEILL': 'files PM'}, 
+              axis=1, inplace=True)
+    
+    sum_cols = ['REPORT ID', 'REPORT NAME', 'METRIC ID', 'METRIC NAME', 'files WC',
+                'avg WC', 'med WC', 'files AQ','avg AQ', 'med AQ','files CR','avg CR', 
+                'med CR','files HG','avg HG','med HG','files NA','avg NA', 'med NA',
+                'files PA','avg PA', 'med PA','files PM','avg PM', 'med PM']
+        
+    df_sum = df_sum  [sum_cols]  
+    
+    return df_sum
+    
     
 def compute_stats_rpt (dfs_f,df_00,rpt_ids):
     """Compute stats: Number of files per region and report"""
     df_grs = []
-    for df in dfs_f[1:]:
+    for df in dfs_f:
         df_gr = df.groupby('DISTRICT OFFICE')['REGION NAME'].count().reset_index()
         df_gr.sort_values(by=['DISTRICT OFFICE'], inplace = True)
         df_gr_pv = pd.pivot_table(df_gr, values='REGION NAME',
@@ -620,7 +659,7 @@ def compute_stats_rpt (dfs_f,df_00,rpt_ids):
     
     df_grs_o = pd.concat(df_grs).reset_index(drop=True)
     df_grs_o.fillna(0, inplace=True)
-    df_grs_o['REPORT ID'] = rpt_ids[1:]
+    df_grs_o['REPORT ID'] = rpt_ids
     
     df_stats = pd.merge(df_00,df_grs_o, how='left',on='REPORT ID')
     
@@ -631,8 +670,6 @@ def compute_plot_rpt (df_stats,filename):
     """Computes a barplot of number of nbr applications per rpt_id and office """
     df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
                       'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
-    
-    df_pl = df_pl = df_pl[1:]
     
     ax = df_pl.plot.bar(x= 'REPORT ID',stacked=True, rot=0,figsize=(15, 8))
     ax.set_ylabel("Nbr of Files")
@@ -646,8 +683,6 @@ def compute_plot_mtr (df_stats,filename):
     """Computes a barplot of number of days per metric and office """
     df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
                       'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
-    
-    df_pl = df_pl = df_pl[1:]
     
     ax = df_pl.plot.bar(x= 'REPORT ID',stacked=True, rot=0,figsize=(15, 8))
     ax.set_ylabel("Nbr of Files")
@@ -703,15 +738,15 @@ tnt_f = 'TITAN_RPT009.xlsx'
 df_tnt = import_titan (tnt_f)
 
 print ('...ats report: on-hold')
-ats_oh_f = 'on_hold_20230421.xlsx'
+ats_oh_f = '20230502_ats_onh.xlsx'
 df_onh= import_ats_oh (ats_oh_f)
 
 print ('...ats report: bring-forward')
-ats_bf_f = 'bringForward_20230421.xlsx'
+ats_bf_f = '20230502_ats_bfw.xlsx'
 df_bfw= import_ats_bf (ats_bf_f)
 
 print('...ats report: processing time')
-ats_pt_f = 'ats_20230421.xlsx'
+ats_pt_f = '20230502_ats_pt.xlsx'
 df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
 
 print('\nCreating Reports.')
@@ -764,12 +799,20 @@ print('\nCreating a Summary Report - Nbr of days')
 df_mtr_rpt = create_summary_mtr(df_mtrs)
 
 
+template = 'TEMPLATE/rpt_template.xlsx'
+df_tmp = pd.read_excel(template)
+df_sum= create_summary_all(template,df_stats,df_mtr_rpt)
+
+
 print('\nExporting the Final Report')
 dfs_f.insert(0, df_stats)
 rpt_ids.insert(0, 'Summary - Nbr of Files')
 
 dfs_f.insert(1, df_mtr_rpt)
 rpt_ids.insert(1, 'Summary - Nbr of Days')
+
+dfs_f.insert(2, df_sum)
+rpt_ids.insert(2, 'Summary')
 
 today = date.today().strftime("%Y%m%d")
 filename = today + '_landFiles_tracker_betaVersion'
