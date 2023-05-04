@@ -228,11 +228,11 @@ def create_rpt_01(df_tnt,df_ats):
     df_01_rp= df_01.loc[df_01['Authorization Type']=='Replacements']
     
     today = date.today()
-    df_01['mtr1'] = (today - df_01['Received Date']).dt.days
-    df_01_nw['mtr1'] = (today - df_01_nw['Received Date']).dt.days
-    df_01_rp['mtr1'] = (today - df_01_rp['Received Date']).dt.days
+    df_01['mtr01'] = (today - df_01['Received Date']).dt.days
+    df_01_nw['mtr01'] = (today - df_01_nw['Received Date']).dt.days
+    df_01_rp['mtr01'] = (today - df_01_rp['Received Date']).dt.days
     
-    metrics = ['mtr1']
+    metrics = ['mtr01']
     df_01_mtr_nw = calculate_metrics(df_01_nw , 'DISTRICT OFFICE',metrics)
     df_01_mtr_rp = calculate_metrics(df_01_rp , 'DISTRICT OFFICE',metrics )
     
@@ -267,16 +267,16 @@ def create_rpt_02(df_tnt,df_ats):
     
     today = date.today()
     
-    df_02['mtr2'] = (df_02['Submission Review Complete Date'] - df_02['Received Date']).dt.days
-    df_02['mtr3'] = (today - df_02['Submission Review Complete Date']).dt.days
+    df_02['mtr02'] = (df_02['Submission Review Complete Date'] - df_02['Received Date']).dt.days
+    df_02['mtr03'] = (today - df_02['Submission Review Complete Date']).dt.days
 
-    df_02_nw['mtr2'] = (df_02_nw['Submission Review Complete Date'] - df_02_nw['Received Date']).dt.days
-    df_02_nw['mtr3'] = (today - df_02_nw['Submission Review Complete Date']).dt.days
+    df_02_nw['mtr02'] = (df_02_nw['Submission Review Complete Date'] - df_02_nw['Received Date']).dt.days
+    df_02_nw['mtr03'] = (today - df_02_nw['Submission Review Complete Date']).dt.days
 
-    df_02_rp['mtr2'] = (df_02_rp['Submission Review Complete Date'] - df_02_rp['Received Date']).dt.days
-    df_02_rp['mtr3'] = (today - df_02_rp['Submission Review Complete Date']).dt.days
+    df_02_rp['mtr02'] = (df_02_rp['Submission Review Complete Date'] - df_02_rp['Received Date']).dt.days
+    df_02_rp['mtr03'] = (today - df_02_rp['Submission Review Complete Date']).dt.days
     
-    metrics= ['mtr2','mtr3']
+    metrics= ['mtr02','mtr03']
     df_02_mtr_nw = calculate_metrics(df_02_nw , 'DISTRICT OFFICE',metrics) 
     df_02_mtr_rp = calculate_metrics(df_02_rp , 'DISTRICT OFFICE',metrics) 
     
@@ -319,22 +319,22 @@ def create_rpt_03 (df_tnt,df_ats):
     df_03_nw= df_03.loc[df_03['TASK DESCRIPTION']=='NEW APPLICATION']
     df_03_rp= df_03.loc[df_03['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']    
     
-    df_03['mtr4'] = (df_03['Bring Forward Date'] - df_03['Submission Review Complete Date']).dt.days
-    df_03['mtr5'] = (today - df_03['First Nation Start Date']).dt.days
-    df_03['mtr6'] = (df_03['First Nation Completion Date'] - df_03['First Nation Start Date']).dt.days
-    df_03['mtr7'] = (today - df_03['Bring Forward Date']).dt.days
+    df_03['mtr04'] = (df_03['Bring Forward Date'] - df_03['Submission Review Complete Date']).dt.days
+    df_03['mtr05'] = (today - df_03['First Nation Start Date']).dt.days
+    df_03['mtr06'] = (df_03['First Nation Completion Date'] - df_03['First Nation Start Date']).dt.days
+    df_03['mtr07'] = (today - df_03['Bring Forward Date']).dt.days
 
-    df_03_nw['mtr4'] = (df_03_nw['Bring Forward Date'] - df_03_nw['Submission Review Complete Date']).dt.days
-    df_03_nw['mtr5'] = (today - df_03_nw['First Nation Start Date']).dt.days
-    df_03_nw['mtr6'] = (df_03_nw['First Nation Completion Date'] - df_03_nw['First Nation Start Date']).dt.days
-    df_03_nw['mtr7'] = (today - df_03_nw['Bring Forward Date']).dt.days
+    df_03_nw['mtr04'] = (df_03_nw['Bring Forward Date'] - df_03_nw['Submission Review Complete Date']).dt.days
+    df_03_nw['mtr05'] = (today - df_03_nw['First Nation Start Date']).dt.days
+    df_03_nw['mtr06'] = (df_03_nw['First Nation Completion Date'] - df_03_nw['First Nation Start Date']).dt.days
+    df_03_nw['mtr07'] = (today - df_03_nw['Bring Forward Date']).dt.days
 
-    df_03_rp['mtr4'] = (df_03_rp['Bring Forward Date'] - df_03_rp['Submission Review Complete Date']).dt.days
-    df_03_rp['mtr5'] = (today - df_03_rp['First Nation Start Date']).dt.days
-    df_03_rp['mtr6'] = (df_03_rp['First Nation Completion Date'] - df_03_rp['First Nation Start Date']).dt.days
-    df_03_rp['mtr7'] = (today - df_03_rp['Bring Forward Date']).dt.days
+    df_03_rp['mtr04'] = (df_03_rp['Bring Forward Date'] - df_03_rp['Submission Review Complete Date']).dt.days
+    df_03_rp['mtr05'] = (today - df_03_rp['First Nation Start Date']).dt.days
+    df_03_rp['mtr06'] = (df_03_rp['First Nation Completion Date'] - df_03_rp['First Nation Start Date']).dt.days
+    df_03_rp['mtr07'] = (today - df_03_rp['Bring Forward Date']).dt.days
     
-    metrics= ['mtr4','mtr5','mtr6','mtr7']
+    metrics= ['mtr04','mtr05','mtr06','mtr07']
     df_03_mtr_nw = calculate_metrics(df_03_nw , 'DISTRICT OFFICE', metrics ) 
     df_03_mtr_rp = calculate_metrics(df_03_rp , 'DISTRICT OFFICE', metrics ) 
 
@@ -373,16 +373,16 @@ def create_rpt_04 (df_tnt,df_ats):
     df_04_nw= df_04.loc[df_04['TASK DESCRIPTION']=='NEW APPLICATION']
     df_04_rp= df_04.loc[df_04['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']        
     
-    df_04['mtr8'] = (df_04['Bring Forward Date'] - df_04['REPORTED DATE']).dt.days
-    df_04['mtr9'] = (today - df_04['REPORTED DATE']).dt.days
+    df_04['mtr08'] = (df_04['Bring Forward Date'] - df_04['REPORTED DATE']).dt.days
+    df_04['mtr09'] = (today - df_04['REPORTED DATE']).dt.days
 
-    df_04_nw['mtr8'] = (df_04_nw['Bring Forward Date'] - df_04_nw['REPORTED DATE']).dt.days
-    df_04_nw['mtr9'] = (today - df_04_nw['REPORTED DATE']).dt.days
+    df_04_nw['mtr08'] = (df_04_nw['Bring Forward Date'] - df_04_nw['REPORTED DATE']).dt.days
+    df_04_nw['mtr09'] = (today - df_04_nw['REPORTED DATE']).dt.days
 
-    df_04_rp['mtr8'] = (df_04_rp['Bring Forward Date'] - df_04_rp['REPORTED DATE']).dt.days
-    df_04_rp['mtr9'] = (today - df_04_rp['REPORTED DATE']).dt.days
+    df_04_rp['mtr08'] = (df_04_rp['Bring Forward Date'] - df_04_rp['REPORTED DATE']).dt.days
+    df_04_rp['mtr09'] = (today - df_04_rp['REPORTED DATE']).dt.days
     
-    metrics= ['mtr8','mtr9']
+    metrics= ['mtr08','mtr09']
     df_04_mtr_nw = calculate_metrics(df_04_nw , 'DISTRICT OFFICE', metrics )  
     df_04_mtr_rp = calculate_metrics(df_04_rp , 'DISTRICT OFFICE', metrics ) 
     
@@ -682,8 +682,8 @@ def set_rpt_colums (dfs):
 
 def create_summary_rpt (df_rpts):
     """Creates a summary  -Nbr of Files"""
-    rpt_ids = ['rpt_01','rpt_02','rpt_03','rpt_04',
-               'rpt_05','rpt_06','rpt_07','rpt_08','rpt_09']
+    rpt_ids = ['rpt01','rpt02','rpt03','rpt04',
+               'rpt05','rpt06','rpt07','rpt08','rpt09']
     
     df_grs = []
     for df in df_rpts:
