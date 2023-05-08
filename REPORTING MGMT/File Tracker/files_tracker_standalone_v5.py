@@ -10,7 +10,7 @@
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     27-04-2023
+# Created:     2023-05-08
 # Updated:
 #-------------------------------------------------------------------------------
 
@@ -777,11 +777,9 @@ def create_report (df_list, sheet_list,filename):
 
         worksheet.set_column(0, dataframe.shape[1], 20)
 
-        col_names = [{'header': col_name} for col_name in dataframe.columns[1:-1]]
-        col_names.insert(0,{'header' : dataframe.columns[0], 'total_string': 'Total'})
-        col_names.append ({'header' : dataframe.columns[-1], 'total_function': 'count'})
-        worksheet.add_table(0, 0, dataframe.shape[0]+1, dataframe.shape[1]-1, {
-            'total_row': True,
+        col_names = [{'header': col_name} for col_name in dataframe.columns[:]]
+
+        worksheet.add_table(0, 0, dataframe.shape[0], dataframe.shape[1]-1, {
             'columns': col_names})
 
     writer.save()
