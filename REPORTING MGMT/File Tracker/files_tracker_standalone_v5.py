@@ -20,7 +20,8 @@ warnings.simplefilter(action='ignore')
 import os
 import cx_Oracle
 import pandas as pd
-#import numpy as np
+import openpyxl
+from openpyxl.utils import get_column_letter
 from datetime import date, datetime, timedelta
 
 
@@ -787,7 +788,37 @@ def create_report (df_list, sheet_list,filename):
 
 
 
+def add_readme_page(filename):
+    readme_xlsx= 'TEMPLATE/readme_template.xlsx'
+    source_workbook = openpyxl.load_workbook(readme_xlsx)
+    source_sheet = source_workbook['README']
     
+    rpt_xlsx = filename+".xlsx"
+    target_workbook = openpyxl.load_workbook(rpt_xlsx)
+    
+    target_sheet = target_workbook.create_sheet(title=source_sheet.title, index=0)
+    
+    for row in source_sheet.iter_rows():
+        for cell in row:
+            target_cell = target_sheet.cell(row=cell.row, column=cell.col_idx, value=cell.value)
+            if cell.has_style:
+                target_cell.font = cell.font.copy()
+                target_cell.border = cell.border.copy()
+                target_cell.fill = cell.fill.copy()
+                target_cell.number_format = cell.number_format
+                target_cell.protection = cell.protection.copy()
+                target_cell.alignment = cell.alignment.copy()
+
+    # Copy column widths from source workbook to target workbook
+    for i, col in enumerate(source_sheet.columns):
+        source_width = source_sheet.column_dimensions[col[0].column_letter].width
+        target_sheet.column_dimensions[get_column_letter(i+1)].width = source_width
+    
+    target_workbook.save(rpt_xlsx)
+                
+
+
+ 
 #def main():
     
 print ('\nConnecting to BCGW.')
@@ -837,7 +868,6 @@ dfs_nw.append(df_02_nw)
 dfs_rp.append(df_02_rp)
 df_mtrs_nw.append(df_02_mtr_nw)
 df_mtrs_rp.append(df_02_mtr_rp)
-
 
 print('...report 03')
 df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp = create_rpt_03 (df_tnt,df_ats)
@@ -922,5 +952,7 @@ filename = today + '_landFiles_tracker_betaVersion'
 
 #compute_plot_rpt (df_stats,filename)
 create_report (df_list, sheet_list,filename)
+
+add_readme_page(filename)
 
 #main()
