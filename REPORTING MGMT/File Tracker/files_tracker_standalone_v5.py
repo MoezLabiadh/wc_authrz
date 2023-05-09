@@ -199,7 +199,6 @@ def calculate_metrics(df , grp_col, mtr_ids):
     return df_mtr
 
 
-
 def create_rpt_01(df_tnt,df_ats):
     """ Creates Report 01- Files with FCBC"""
     ats_a = df_ats.loc[df_ats['Authorization Status'] == 'Active']
@@ -209,13 +208,9 @@ def create_rpt_01(df_tnt,df_ats):
                      (ats_a['Submission Review Complete Date'].isnull())]
     
     
-                      
-    df_01['tempo_join_date']= df_01['Accepted Date'].astype('datetime64[Y]')
-    df_tnt['tempo_join_date']= df_tnt['CREATED DATE'].astype('datetime64[Y]')
-    
     df_01 = pd.merge(df_01, df_tnt, how='left',
-                     left_on=['File Number','tempo_join_date'],
-                     right_on=['FILE NUMBER','tempo_join_date'])
+                     left_on='File Number',
+                     right_on='FILE NUMBER')
     
     df_01= df_01.loc[(df_01['STATUS'].isnull())]
     
@@ -243,11 +238,11 @@ def create_rpt_01(df_tnt,df_ats):
 
 def create_rpt_02(df_tnt,df_ats):
     """ Creates Report 02- Files in Queue"""
-    ats_r = df_ats.loc[df_ats['Authorization Status'].isin(['Closed', 'On Hold'])]
-    notactive = ats_r['File Number'].to_list()
+    ats_r = df_ats.loc[df_ats['Authorization Status']=='Active']
+    active = ats_r['File Number'].to_list()
     
     df_02= df_tnt.loc[(df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION','REPLACEMENT APPLICATION'])) &
-                      (~df_tnt['FILE NUMBER'].isin(notactive)) &
+                      (df_tnt['FILE NUMBER'].isin(active)) &
                       (df_tnt['OTHER EMPLOYEES ASSIGNED TO'].str.contains('WCR_', na=False) | 
                        df_tnt['OTHER EMPLOYEES ASSIGNED TO'].isnull()) &
                       (df_tnt['STATUS'] == 'ACCEPTED')]
@@ -286,11 +281,15 @@ def create_rpt_02(df_tnt,df_ats):
 
 def create_rpt_03 (df_tnt,df_ats):
     """ Creates Report 03- Files in Active Review"""
-    df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
+    df_ats_h = df_ats.loc[df_ats['Authorization Status'] == 'On Hold']
+    onhold= df_ats_h['File Number'].to_list()
+    #df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
+   
     
     df_03= df_tnt.loc[((~df_tnt['OTHER EMPLOYEES ASSIGNED TO'].str.contains('WCR_',na=False)) & 
                        (df_tnt['OTHER EMPLOYEES ASSIGNED TO'].notnull())) &
                       (df_tnt['REPORTED DATE'].isnull()) &
+                      (~df_tnt['FILE NUMBER'].isin(onhold)) &
                       (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
                       (df_tnt['STATUS'] == 'ACCEPTED')]
 
@@ -320,12 +319,12 @@ def create_rpt_03 (df_tnt,df_ats):
     df_03_nw= df_03.loc[df_03['TASK DESCRIPTION']=='NEW APPLICATION']
     df_03_rp= df_03.loc[df_03['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']    
     
-    df_03['mtr04'] = (df_03['Bring Forward Date'] - df_03['Submission Review Complete Date']).dt.days
+    df_03['mtr04'] = abs((df_03['Bring Forward Date'] - df_03['Submission Review Complete Date']).dt.days)
     df_03['mtr05'] = (today - df_03['First Nation Start Date']).dt.days
     df_03['mtr06'] = (df_03['First Nation Completion Date'] - df_03['First Nation Start Date']).dt.days
     df_03['mtr07'] = (today - df_03['Bring Forward Date']).dt.days
 
-    df_03_nw['mtr04'] = (df_03_nw['Bring Forward Date'] - df_03_nw['Submission Review Complete Date']).dt.days
+    df_03_nw['mtr04'] = abs((df_03_nw['Bring Forward Date'] - df_03_nw['Submission Review Complete Date']).dt.days)
     df_03_nw['mtr05'] = (today - df_03_nw['First Nation Start Date']).dt.days
     df_03_nw['mtr06'] = (df_03_nw['First Nation Completion Date'] - df_03_nw['First Nation Start Date']).dt.days
     df_03_nw['mtr07'] = (today - df_03_nw['Bring Forward Date']).dt.days
@@ -340,7 +339,7 @@ def create_rpt_03 (df_tnt,df_ats):
     df_03_mtr_rp = calculate_metrics(df_03_rp , 'DISTRICT OFFICE', metrics ) 
 
 
-    return df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp
+    return df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold
 
 
 def create_rpt_04 (df_tnt,df_ats):
@@ -809,10 +808,11 @@ def add_readme_page(filename):
                 target_cell.protection = cell.protection.copy()
                 target_cell.alignment = cell.alignment.copy()
 
-    # Copy column widths from source workbook to target workbook
     for i, col in enumerate(source_sheet.columns):
         source_width = source_sheet.column_dimensions[col[0].column_letter].width
         target_sheet.column_dimensions[get_column_letter(i+1)].width = source_width
+    
+    target_workbook.active = 0
     
     target_workbook.save(rpt_xlsx)
                 
@@ -870,7 +870,7 @@ df_mtrs_nw.append(df_02_mtr_nw)
 df_mtrs_rp.append(df_02_mtr_rp)
 
 print('...report 03')
-df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp = create_rpt_03 (df_tnt,df_ats)
+df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold = create_rpt_03 (df_tnt,df_ats)
 dfs.append(df_03)
 dfs_nw.append(df_03_nw)
 dfs_rp.append(df_03_rp)
