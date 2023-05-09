@@ -3,7 +3,7 @@
 This script generates interavtive HTML maps 
 for the AST/UOT
 
-Version: 2
+Version: 3
 
 '''
 
@@ -32,7 +32,7 @@ def add_proj_lib ():
 
 
 
-def create_map_template(map_title='Placeholder for title'):
+def create_map_template(map_title='Placeholder for title',Xcenter=0,Ycenter=0):
     """Returns an empty folium map object"""
     # Create a map object
     map_obj = folium.Map()
@@ -59,15 +59,18 @@ def create_map_template(map_title='Placeholder for title'):
         control=True).add_to(map_obj)
     
     # create a title and button to refresh the map to the initial view
+    map_var_nme = map_obj.get_name()
+    
     title_refresh = """
     <div style="position: fixed; 
          top: 8px; left: 70px; width: 150px; height: 70px; 
          background-color:transparent; border:0px solid grey;z-index: 900;">
          <h5 style="font-weight:bold;color:#DE1610;white-space:nowrap;">{}</h5>
         <button style="font-weight:bold; color:#DE1610" 
-                onclick="location.reload()">Refresh View</button>
+                onclick="{}.setView([{}, {}], 16)">Refresh View</button>
     </div>
-    """.format(map_title)
+
+    """.format(map_title,map_var_nme,Ycenter,Xcenter)
     
     map_obj.get_root().html.add_child(folium.Element(title_refresh))
     
@@ -111,7 +114,13 @@ def generate_html_maps(status_gdb):
 
     print ('Creating a map template')
     # Create an all-layers map
-    map_all = create_map_template(map_title='Overview Map - All Overlaps')
+    centroids = gdf_aoi.to_crs(4326)['geometry'].centroid
+    Xcenter = centroids.x[0]
+    Ycenter = centroids.y[0]
+        
+    map_all = create_map_template(map_title='Overview Map - All Overlaps',
+                                  Xcenter=Xcenter,Ycenter=Ycenter)
+    
     
     # Add the AOI layer to the all-layers map
     folium.GeoJson(data=gdf_aoi, name='AOI',
@@ -123,7 +132,6 @@ def generate_html_maps(status_gdb):
     xmin,ymin,xmax,ymax = gdf_aoi.to_crs(4326)['geometry'].total_bounds
     map_all.fit_bounds([[ymin, xmin], [ymax, xmax]])
     
-
  
     # Add buffered areas to the all-layers maps
     for k,v in bf_gdfs.items():
@@ -165,7 +173,8 @@ def generate_html_maps(status_gdb):
                 
             # Create an individual map
             map_title = fc.replace('_', ' ')
-            map_one = create_map_template(map_title=map_title)
+            map_one = create_map_template(map_title='Overview Map - All Overlaps',
+                                          Xcenter=Xcenter,Ycenter=Ycenter)
             
             # Create a list of columns for the tooltip
             gdf_fc['map_title'] = map_title
@@ -274,7 +283,7 @@ if __name__==__name__:
     # Execute the function and track processing time
     start_t = timeit.default_timer() #start time
     
-    add_proj_lib ()
+   # add_proj_lib ()
     
     # This is an example of a one_status_common_datasets geodatabase
     #file_nbr='1414630'
