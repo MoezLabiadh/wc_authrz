@@ -343,6 +343,8 @@ def create_rpt_03 (df_tnt,df_ats):
         df['mtr07'] = np.where((today - df['Bring Forward Date']).dt.days.isin([0, np.nan]), 
                                 np.nan, 
                                 ((today - df['Bring Forward Date']).dt.days) - df['Total On Hold Time'])
+        
+        df.loc[df['mtr07'] < 0, 'mtr07'] = (today - df['Bring Forward Date']).dt.days
  
     metrics= ['mtr04','mtr05','mtr06','mtr07']
     df_03_mtr_nw = calculate_metrics(df_03_nw , 'DISTRICT OFFICE', metrics ) 
@@ -591,10 +593,9 @@ def create_rpt_09 (df_tnt,df_ats):
         df['Total On Hold Time'].fillna(0, inplace=True)
         
         df['mtr18'] = (today - df['On Hold Start Date']).dt.days
-        df['mtr19'] = (df['On Hold End Date'] - df['On Hold Start Date']).dt.days
 
     
-    metrics= ['mtr18','mtr19']
+    metrics= ['mtr18']
     df_09_mtr_nw = calculate_metrics(df_09_nw , 'DISTRICT OFFICE', metrics )  
     df_09_mtr_rp = calculate_metrics(df_09_rp , 'DISTRICT OFFICE', metrics ) 
     
@@ -836,15 +837,15 @@ tnt_f = 'TITAN_RPT009.xlsx'
 df_tnt = import_titan (tnt_f)
 
 print ('...ats report: on-hold')
-ats_oh_f = '20230502_ats_onh.xlsx'
+ats_oh_f = '20230511_ats_oh.xlsx'
 df_onh= import_ats_oh (ats_oh_f)
 
 print ('...ats report: bring-forward')
-ats_bf_f = '20230502_ats_bfw.xlsx'
+ats_bf_f = '20230511_ats_bf.xlsx'
 df_bfw= import_ats_bf (ats_bf_f)
 
 print('...ats report: processing time')
-ats_pt_f = '20230502_ats_pt.xlsx'
+ats_pt_f = '20230511_ats_pt.xlsx'
 df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
 
 print('\nCreating Reports.')
