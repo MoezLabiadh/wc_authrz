@@ -574,11 +574,13 @@ def create_rpt_08 (df_tnt,df_ats):
     """ Creates Report 08- Files Completed"""
     df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
     
-    date_30_days_ago = datetime.now() - timedelta(days=30)
-    date_30_days_ago = date_30_days_ago.date()
+    today = datetime.today()
+    first_day_last_month = datetime(today.year, today.month, 1) - timedelta(days=1)
+    first_day_last_month = datetime(first_day_last_month.year, first_day_last_month.month, 1)
+    first_day_last_month = first_day_last_month.date()
     
     df_08= df_tnt.loc[(df_tnt['COMPLETED DATE'].notnull()) &
-                      (df_tnt['COMPLETED DATE'] > date_30_days_ago) &
+                      (df_tnt['COMPLETED DATE'] >= first_day_last_month) &
                       (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &
                       (df_tnt['STATUS'] == 'DISPOSITION IN GOOD STANDING')]
     
