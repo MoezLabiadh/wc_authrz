@@ -399,6 +399,8 @@ def create_rpt_04 (df_tnt,df_ats):
     
     df_04.sort_values(by=['REPORTED DATE'], ascending=False, inplace=True)
     df_04.reset_index(drop = True, inplace = True)
+    
+    df_04['Total On Hold Time'].fillna(0, inplace=True)
 
     #Calulcate metrics
     today = pd.to_datetime(date.today())
@@ -414,12 +416,8 @@ def create_rpt_04 (df_tnt,df_ats):
     
     
     for df in [df_04,df_04_nw,df_04_rp]:
-        df['Total On Hold Time'].fillna(0, inplace=True)
 
-        df['mtr08'] = np.where((df['Bring Forward Date'] - df['REPORTED DATE']).dt.days.isin([0, np.nan]), 
-                                np.nan, 
-                                ((df['Bring Forward Date'] - df['REPORTED DATE']).dt.days) - df['Total On Hold Time'])
-        
+        df['mtr08'] = (df['REPORTED DATE'] - df['Bring Forward Date']).dt.days
         df['mtr09'] = (today - df['REPORTED DATE']).dt.days
 
     metrics= ['mtr08','mtr09']
@@ -898,15 +896,15 @@ tnt_f = 'TITAN_RPT009.xlsx'
 df_tnt = import_titan (tnt_f)
 
 print ('...ats report: on-hold')
-ats_oh_f = '20230511_ats_oh.xlsx'
+ats_oh_f = '20230530_ats_oh.xlsx'
 df_onh= import_ats_oh (ats_oh_f)
 
 print ('...ats report: bring-forward')
-ats_bf_f = '20230511_ats_bf.xlsx'
+ats_bf_f = '20230530_ats_bf.xlsx'
 df_bfw= import_ats_bf (ats_bf_f)
 
 print('...ats report: processing time')
-ats_pt_f = '20230511_ats_pt.xlsx'
+ats_pt_f = '20230530_ats_pt.xlsx'
 df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
 
 print('\nCreating Reports.')
