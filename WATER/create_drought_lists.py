@@ -64,6 +64,7 @@ def load_sql ():
                        wl.LICENCE_NUMBER,
                        pl.PID, 
                        wl.PURPOSE_USE, 
+                       wl.LICENCE_STATUS_DATE AS LICENCE_DATE,
                        wl.PRIMARY_LICENSEE_NAME,
                        wl.ADDRESS_LINE_1,
                        wl.ADDRESS_LINE_2,
@@ -82,6 +83,7 @@ def load_sql ():
                          AND aw.WATERSHED_FEATURE_ID IN ({})
                 
                 WHERE wl.LICENCE_STATUS = 'Current'
+                ORDER BY LICENCE_STATUS_DATE DESC
                   """
    
     sql ['asw'] = """
@@ -176,9 +178,14 @@ for k, v in wsh_dict.items():
         
         df_wlc = pd.read_sql(sql['wlc'].format(v), connection)
         
+        df_wlc['LICENCE_DATE'] = pd.to_datetime(df_wlc['LICENCE_DATE'],
+                                        infer_datetime_format=True,
+                                        errors = 'coerce').dt.date
+        
         for col in df_wlc.columns:
-            df_wlc[col] = df_wlc[col].str.lstrip()
-            df_wlc[col].fillna('', inplace=True)
+            if col != 'LICENCE_DATE':
+                df_wlc[col] = df_wlc[col].str.lstrip()
+                df_wlc[col].fillna('', inplace=True)
             
 
         for index, row in df_wlc.iterrows():
