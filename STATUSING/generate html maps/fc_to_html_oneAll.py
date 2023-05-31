@@ -12,11 +12,16 @@ import os
 import sys
 #import arcpy
 import fiona
+import base64
 import numpy as np
 import geopandas as gpd
 import folium
-from folium.plugins import MeasureControl, MousePosition
+from folium.plugins import MeasureControl, MousePosition,FloatImage
 
+
+
+proj_lib = os.path.join(sys.executable[:-10], r'Library\share\proj')
+os.environ["proj_lib"] = proj_lib
 
 
 def add_proj_lib ():
@@ -85,6 +90,16 @@ def create_map_template(map_title='Placeholder for title',Xcenter=0,Ycenter=0):
 
     # Add Lat/Long Popup to the map
     map_obj.add_child(folium.features.LatLngPopup())
+
+    
+    # Add logo to the map
+    logo_path = (r"\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\MAPS\Logos\BCID_V_key_pms_pos_small.JPG")
+    
+    b64_content = base64.b64encode(open(logo_path, 'rb').read()).decode('utf-8')
+    float_image = FloatImage('data:image/png;base64,{}'.format(b64_content), 
+                                     bottom=3, left=2, width=8)
+    float_image.add_to(map_obj)
+
     
     return map_obj
 
@@ -114,7 +129,7 @@ def generate_html_maps(status_gdb):
 
     print ('Creating a map template')
     # Create an all-layers map
-    centroids = gdf_aoi.to_crs(4326)['geometry'].centroid
+    centroids = gdf_aoi['geometry'].to_crs(4326).centroid
     Xcenter = centroids.x[0]
     Ycenter = centroids.y[0]
         
@@ -173,7 +188,7 @@ def generate_html_maps(status_gdb):
                 
             # Create an individual map
             map_title = fc.replace('_', ' ')
-            map_one = create_map_template(map_title='Overview Map - All Overlaps',
+            map_one = create_map_template(map_title=map_title,
                                           Xcenter=Xcenter,Ycenter=Ycenter)
             
             # Create a list of columns for the tooltip
