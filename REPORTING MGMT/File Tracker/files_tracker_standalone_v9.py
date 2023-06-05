@@ -40,7 +40,9 @@ def connect_to_DB (username,password,hostname):
 
 def import_ats_oh (ats_oh_f):
     """Reads the ATS Auth. On Hold report into a df"""
-    df = pd.read_html(ats_oh_f,header=1)[3]
+    df = pd.read_html(ats_oh_f)[5]
+    df.columns = df.iloc[1]
+    df.drop([0, 1],inplace=True)
     
     df['On Hold End Date']=''
     cols_onh = ['Project Number','On Hold Start Date', 
@@ -55,27 +57,22 @@ def import_ats_bf (ats_bf_f):
     """Reads the ATS Bring Forward report into a df"""
     warnings.filterwarnings("ignore", category=pd.errors.ParserWarning)
     
-    # Read CSV file
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=pd.errors.ParserWarning)
-        df = pd.read_csv(ats_bf_f, delimiter="\t", error_bad_lines=False)
+
+    df = pd.read_csv(ats_bf_f, delimiter="\t",encoding='cp1252',error_bad_lines=False)
 
     cols_onh = ['Project Number','Authorization Assigned To', 
                 'Bring Forward Date']
     
     df = df[cols_onh]
-    df['Project Number'] = pd.to_numeric(df['Project Number'], errors='coerce')
+    df.dropna(subset=['Project Number'],inplace=True)
     
     return df
 
 
 def import_ats_pt (ats_pt_f, df_onh,df_bfw):
     """Reads the ATS Processing Time report into a df"""
-    df = pd.read_csv(f_pt, delimiter = "\t",encoding='cp1252')
-    
-    df['File Number'] = df['File Number'].fillna(0)
-    df['File Number'] = df['File Number'].astype(str)
-    
+    df = pd.read_csv(ats_pt_f, delimiter = "\t",encoding='cp1252')
+
     df.rename(columns={'Comments': 'ATS Comments'}, inplace=True)
     
     df.loc[(df['Accepted Date'].isnull()) & 
@@ -95,8 +92,10 @@ def import_ats_pt (ats_pt_f, df_onh,df_bfw):
      
     # fill na Onhold time with 0
     df['Total On Hold Time'].fillna(0, inplace=True)
-     
+    
+
     #add on-hold cols
+    df['Project Number'] = df['Project Number'].astype(str)
     df = pd.merge(df, df_onh, how='left', on='Project Number')
     
     #add bring-forward cols
