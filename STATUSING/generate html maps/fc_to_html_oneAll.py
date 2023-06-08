@@ -3,9 +3,11 @@
 This script generates interavtive HTML maps 
 for the AST/UOT
 
-Version: 3
+Version: 4
 
 '''
+import warnings
+warnings.simplefilter(action='ignore')
 
 import timeit
 import os
@@ -19,22 +21,16 @@ import folium
 from folium.plugins import MeasureControl, MousePosition,FloatImage
 
 
-
-proj_lib = os.path.join(sys.executable[:-10], r'Library\share\proj')
-os.environ["proj_lib"] = proj_lib
-
-
 def add_proj_lib ():
     """
-    FIX: Geopandas not pointing to pyproj library.
-    Checks if pyproj is in env path. if not, add it.
+    FIX: pyproj not pointing to proj.db database.
+    Checks if proj repo is in env path. if not, add it.
     """
     proj_lib = os.path.join(sys.executable[:-10], r'Library\share\proj')
     if proj_lib not in os.environ['path']:
-        os.environ["proj_lib"] = proj_lib
+        os.environ["PROJ_LIB"] = proj_lib
     else:
         pass
-
 
 
 def create_map_template(map_title='Placeholder for title',Xcenter=0,Ycenter=0):
@@ -82,8 +78,7 @@ def create_map_template(map_title='Placeholder for title',Xcenter=0,Ycenter=0):
     # Add measure controls to the map
     map_obj.add_child(MeasureControl(primary_length_unit='meters', 
                                      secondary_length_unit='kilometers',
-                                     primary_area_unit='hectares', 
-                                     secondary_area_unit='square kilometers'))
+                                     primary_area_unit='hectares'))
     
     # Add mouse psotion to the map
     MousePosition().add_to(map_obj)
@@ -93,13 +88,13 @@ def create_map_template(map_title='Placeholder for title',Xcenter=0,Ycenter=0):
 
     
     # Add logo to the map
-    logo_path = (r"\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\MAPS\Logos\BCID_V_key_pms_pos_small.JPG")
+    logo_path = (r"\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\MAPS\Logos\BCID_V_key_pms_pos_small_150px.JPG")
     
     b64_content = base64.b64encode(open(logo_path, 'rb').read()).decode('utf-8')
-    float_image = FloatImage('data:image/png;base64,{}'.format(b64_content), 
-                                     bottom=3, left=2, width=8)
-    float_image.add_to(map_obj)
 
+
+    float_image = FloatImage('data:image/png;base64,{}'.format(b64_content), bottom=3, left=2)
+    float_image.add_to(map_obj)
     
     return map_obj
 
@@ -129,9 +124,13 @@ def generate_html_maps(status_gdb):
 
     print ('Creating a map template')
     # Create an all-layers map
-    centroids = gdf_aoi['geometry'].to_crs(4326).centroid
+    centroids = gdf_aoi.to_crs(4326).centroid
     Xcenter = centroids.x[0]
     Ycenter = centroids.y[0]
+    #epsg = gdf_aoi.crs.to_epsg()
+    #centroids = gdf_aoi.centroid
+    #wgs84 = pyproj.Proj(init='epsg:4326')  
+    #Xcenter, Ycenter = pyproj.transform(epsg, wgs84, centroids.x[0], centroids.y[0])
         
     map_all = create_map_template(map_title='Overview Map - All Overlaps',
                                   Xcenter=Xcenter,Ycenter=Ycenter)
@@ -144,19 +143,24 @@ def generate_html_maps(status_gdb):
                                             'weight': 3}).add_to(map_all)
     
     # Zoom the all-layers map to the AOI extent
-    xmin,ymin,xmax,ymax = gdf_aoi.to_crs(4326)['geometry'].total_bounds
+
+    xmin,ymin,xmax,ymax = bf_gdfs.get('aoi_1000').to_crs(4326)['geometry'].total_bounds
     map_all.fit_bounds([[ymin, xmin], [ymax, xmax]])
     
  
     # Add buffered areas to the all-layers maps
     for k,v in bf_gdfs.items():
-            folium.GeoJson(data=v, name=k, show=False,
+            folium.GeoJson(data=v, name=k, show=True,
+                           tooltip=folium.features.GeoJsonTooltip(fields=['BUFF_DIST'],
+                                                                  aliases=['BUFFER (m)'],
+                                                                  labels=True),
                            style_function=lambda x:{'color': 'orange',
                                                     'fillColor': 'none',
                                                     'weight': 3}).add_to(map_all)
     # Loop through the rest of layers and make maps
     counter = 1
     for fc in ly_list:
+    
         # Read the feature class into a gdf 
         gdf_fc = gpd.read_file(filename= status_gdb, layer= fc)
         
@@ -185,6 +189,8 @@ def generate_html_maps(status_gdb):
                 color = [str(hex(i))[2:] for i in color]
                 color = '#'+''.join(color).upper()
                 gdf_fc.at[x, 'color'] = color
+            
+            gdf_fc['color2']=color
                 
             # Create an individual map
             map_title = fc.replace('_', ' ')
@@ -205,19 +211,31 @@ def generate_html_maps(status_gdb):
             xmin,ymin,xmax,ymax = gdf_fc.to_crs(4326)['geometry'].total_bounds
             map_one.fit_bounds([[ymin, xmin], [ymax, xmax]])
                 
-            # Add the main layer to the folium maps
-            for mp in [map_one, map_all]:
-                folium.GeoJson(data=gdf_fc, name=map_title,
-                               style_function= lambda x: {'fillColor': x['properties']['color'],
-                                                          'color': x['properties']['color'],
-                                                          'weight': 2},
-                               tooltip=folium.features.GeoJsonTooltip(fields=tooltip_cols,
-                                                                      aliases=['LAYER', label_col],
-                                                                      labels=True),
-                               popup=folium.features.GeoJsonPopup(fields=popup_cols, 
-                                                                  sticky=False,
-                                                                  max_width=380)).add_to(mp)
-
+            # Add the layer to the individual map
+            folium.GeoJson(data=gdf_fc, name=map_title,
+                           style_function= lambda x: {'fillColor': x['properties']['color'],
+                                                      'color': x['properties']['color'],
+                                                      'weight': 2},
+                           tooltip=folium.features.GeoJsonTooltip(fields=tooltip_cols,
+                                                                  aliases=['LAYER', label_col],
+                                                                  labels=True),
+                           popup=folium.features.GeoJsonPopup(fields=popup_cols, 
+                                                              sticky=False,
+                                                              max_width=380)).add_to(map_one)
+            # Add the layer to the all-Layers map
+   
+            folium.GeoJson(data=gdf_fc, name=map_title,
+                           show= False,
+                           style_function= lambda x: {'fillColor': x['properties']['color2'],
+                                                   'color': x['properties']['color2'],
+                                                   'weight': 2},
+                           tooltip=folium.features.GeoJsonTooltip(fields=tooltip_cols,
+                                                                  aliases=['LAYER', label_col],
+                                                                  labels=True),
+                           popup=folium.features.GeoJsonPopup(fields=popup_cols, 
+                                                              sticky=False,
+                                                              max_width=380)).add_to(map_all)
+            
             # Add buffered areas to the individual maps
             for k,v in bf_gdfs.items():
                     folium.GeoJson(data=v, name=k, show=False,
@@ -225,7 +243,7 @@ def generate_html_maps(status_gdb):
                                                             'fillColor': 'none',
                                                             'weight': 3}).add_to(map_one)
 
-            # Create a Legend
+            # Create a Legend for individual maps
             #legend colors and names
             legend_labels = zip(gdf_fc['color'], gdf_fc[label_col])
             
@@ -270,9 +288,10 @@ def generate_html_maps(status_gdb):
             #close the div tag
             legend_html += '</div>'
             
-            #add the legend to the map
+
+            #add the legend to the individual maps
             map_one.get_root().html.add_child(folium.Element(legend_html))
-           
+
             # Add layer controls to the individual map
             lyr_cont_one = folium.LayerControl()
             lyr_cont_one.add_to(map_one)
@@ -282,16 +301,38 @@ def generate_html_maps(status_gdb):
             map_one.save(os.path.join(out_loc, fc+'.html'))
             
         counter += 1
-    
+
+        # Create a Legend for all-layers map
+        legend_html_all = '''
+                    <div id="legend" style="position: fixed; 
+                    bottom: 50px; right: 50px; z-index: 1000; 
+                    background-color: #fff; padding: 10px; 
+                    border-radius: 5px; border: 1px solid grey;">
+
+                    <div style="display: inline-block; 
+                    margin-right: 10px;
+                    background-color: transparent;
+                    border: 2px solid red;
+                    width: 15px; height: 15px;"></div>AOI<br>
+                    
+                    <div style="display: inline-block; 
+                    margin-right: 10px;background-color: transparent; 
+                    border: 2px solid orange;
+                    width: 15px; height: 15px;"></div>AOI buffers<br>
+                    
+                    </div>
+                    '''    
+                    
+    #add the legend to the all-layers map
+    map_all.get_root().html.add_child(folium.Element(legend_html_all))   
+             
     # Add layer controls to the all-layers map
     lyr_cont_all = folium.LayerControl()
     lyr_cont_all.add_to(map_all)
     
     # Save the all-layers map to html file
     map_all.save(os.path.join(out_loc, '00_all_layers.html'))
-
-
-
+    
 
 if __name__==__name__:
 
