@@ -31,6 +31,7 @@ from datetime import date, datetime, timedelta
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QFileDialog, QLabel, QVBoxLayout, QMessageBox,QSpacerItem,QSizePolicy
 
 
+
 class LandsTracker(QWidget):
     
     def __init__(self):
@@ -413,13 +414,11 @@ class LandsTracker(QWidget):
             df_sum_mtr_nw= self.create_summary_mtr(df_mtrs_nw)
             df_sum_mtr_rp= self.create_summary_mtr(df_mtrs_rp)
             
-            wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230303_lands_tracker'
-            template_file = 'rpt_template.xlsx'
-            template= os.path.join(wks,'TEMPLATE',template_file)
-            df_sum_all_nw= self.create_summary_all(template,df_sum_rpt_nw,df_sum_mtr_nw)
-            df_sum_all_rp= self.create_summary_all(template,df_sum_rpt_rp,df_sum_mtr_rp)
-            
-            
+            template_wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230303_lands_tracker\TEMPLATE'
+            template_rpt_f = 'rpt_template.xlsx'
+            template_rpt= os.path.join(template_wks,template_rpt_f)
+            df_sum_all_nw= self.create_summary_all(template_rpt,df_sum_rpt_nw,df_sum_mtr_nw)
+            df_sum_all_rp= self.create_summary_all(template_rpt,df_sum_rpt_rp,df_sum_mtr_rp)
             
             
             time.sleep(1)
@@ -436,7 +435,10 @@ class LandsTracker(QWidget):
             today = date.today().strftime("%Y%m%d")
             filename = today + '_landFiles_tracker'
             self. create_report (df_list, sheet_list,filename)
-            self.add_readme_page(filename)
+            
+            template_rdm_f = 'readme_template.xlsx'
+            template_rdm= os.path.join(template_wks,template_rdm_f)
+            self.add_readme_page(filename,template_rdm)
             
  
             time.sleep(1)
@@ -1303,7 +1305,7 @@ class LandsTracker(QWidget):
 
 
 
-    def add_readme_page(self, filename):
+    def add_readme_page(self, filename,template_rdm):
         readme_xlsx= 'TEMPLATE/readme_template.xlsx'
         source_workbook = openpyxl.load_workbook(readme_xlsx)
         source_sheet = source_workbook['README']
