@@ -1306,8 +1306,7 @@ class LandsTracker(QWidget):
 
 
     def add_readme_page(self, filename,template_rdm):
-        readme_xlsx= 'TEMPLATE/readme_template.xlsx'
-        source_workbook = openpyxl.load_workbook(readme_xlsx)
+        source_workbook = openpyxl.load_workbook(template_rdm)
         source_sheet = source_workbook['README']
         
         rpt_xlsx = filename+".xlsx"
