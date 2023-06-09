@@ -5,8 +5,10 @@
 # Purpose:     This script generates the Monthly WC Land files 
 #              tracking reports: backlog and active files.
 #
-# Input(s):    (1) ATS processing time report (excel).
-#              (2) Titan workledger report (excel) - RPT009
+# Input(s):    (1) Titan workledger report RPT009 (excel) 
+#              (2) ATS processing time report (detailed export).
+#              (3) ATS on-hold authorzations report (spreadsheet export).
+#              (3) ATS bring forward report (data-dump export).
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
@@ -21,7 +23,7 @@ warnings.simplefilter(action='ignore')
 import os
 import cx_Oracle
 import pandas as pd
-import numpy as np
+#import numpy as np
 import openpyxl
 from openpyxl.utils import get_column_letter
 from datetime import date, datetime, timedelta
@@ -882,140 +884,140 @@ def add_readme_page(filename):
 
 
  
-#def main():
+def main():
 
-print ('\nConnecting to BCGW.')
-hostname = 'bcgw.bcgov/idwprod1.bcgov'
-bcgw_user = os.getenv('bcgw_user')
-bcgw_pwd = os.getenv('bcgw_pwd')
-#connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-
-
-print ('\nReading Input files')
-
-print('...titan report')
-tnt_f = 'TITAN_RPT009.xlsx'
-df_tnt = import_titan (tnt_f)
-
-print ('...ats report: on-hold')
-ats_oh_f = '20230601_ats_oh.xls'
-df_onh= import_ats_oh (ats_oh_f)
-
-print ('...ats report: bring-forward')
-ats_bf_f = '20230601_ats_bf.xls'
-df_bfw= import_ats_bf (ats_bf_f)
-
-print('...ats report: processing time')
-ats_pt_f = '20230601_ats_pt.xls'
-df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
-
-print('\nCreating Reports.')
-dfs = []
-dfs_nw = []
-dfs_rp = []
-df_mtrs_nw = []
-df_mtrs_rp = []
+    print ('\nConnecting to BCGW.')
+    hostname = 'bcgw.bcgov/idwprod1.bcgov'
+    bcgw_user = os.getenv('bcgw_user')
+    bcgw_pwd = os.getenv('bcgw_pwd')
+    #connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
-print('...report 01')
-df_01,df_01_nw,df_01_rp,df_01_mtr_nw,df_01_mtr_rp= create_rpt_01 (df_tnt,df_ats)
-dfs.append(df_01)
-dfs_nw.append(df_01_nw)
-dfs_rp.append(df_01_rp)
-df_mtrs_nw.append(df_01_mtr_nw)
-df_mtrs_rp.append(df_01_mtr_rp)
+    
+    print ('\nReading Input files')
+    
+    print('...titan report')
+    tnt_f = 'TITAN_RPT009.xlsx'
+    df_tnt = import_titan (tnt_f)
+    
+    print ('...ats report: on-hold')
+    ats_oh_f = '20230601_ats_oh.xls'
+    df_onh= import_ats_oh (ats_oh_f)
+    
+    print ('...ats report: bring-forward')
+    ats_bf_f = '20230601_ats_bf.xls'
+    df_bfw= import_ats_bf (ats_bf_f)
+    
+    print('...ats report: processing time')
+    ats_pt_f = '20230601_ats_pt.xls'
+    df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
+    
+    print('\nCreating Reports.')
+    dfs = []
+    dfs_nw = []
+    dfs_rp = []
+    df_mtrs_nw = []
+    df_mtrs_rp = []
+        
+    print('...report 01')
+    df_01,df_01_nw,df_01_rp,df_01_mtr_nw,df_01_mtr_rp= create_rpt_01 (df_tnt,df_ats)
+    dfs.append(df_01)
+    dfs_nw.append(df_01_nw)
+    dfs_rp.append(df_01_rp)
+    df_mtrs_nw.append(df_01_mtr_nw)
+    df_mtrs_rp.append(df_01_mtr_rp)
+    
+    print('...report 02')
+    df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp = create_rpt_02 (df_tnt,df_ats)
+    dfs.append(df_02)
+    dfs_nw.append(df_02_nw)
+    dfs_rp.append(df_02_rp)
+    df_mtrs_nw.append(df_02_mtr_nw)
+    df_mtrs_rp.append(df_02_mtr_rp)
+    
+    print('...report 03')
+    df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold = create_rpt_03 (df_tnt,df_ats)
+    dfs.append(df_03)
+    dfs_nw.append(df_03_nw)
+    dfs_rp.append(df_03_rp)
+    df_mtrs_nw.append(df_03_mtr_nw)
+    df_mtrs_rp.append(df_03_mtr_rp)
+    
+    print('...report 04')
+    df_04,df_04_nw,df_04_rp,df_04_mtr_nw,df_04_mtr_rp = create_rpt_04(df_tnt,df_ats)
+    dfs.append(df_04)
+    dfs_nw.append(df_04_nw)
+    dfs_rp.append(df_04_rp)
+    df_mtrs_nw.append(df_04_mtr_nw)
+    df_mtrs_rp.append(df_04_mtr_rp)
+    
+    print('...report 05')
+    df_05,df_05_nw,df_05_rp,df_05_mtr_nw,df_05_mtr_rp = create_rpt_05 (df_tnt,df_ats)
+    dfs.append(df_05)
+    dfs_nw.append(df_05_nw)
+    dfs_rp.append(df_05_rp)
+    df_mtrs_nw.append(df_05_mtr_nw)
+    df_mtrs_rp.append(df_05_mtr_rp)
+    
+    print('...report 06')
+    df_06,df_06_nw,df_06_rp,df_06_mtr_nw,df_06_mtr_rp = create_rpt_06 (df_tnt,df_ats)
+    dfs.append(df_06)
+    dfs_nw.append(df_06_nw)
+    dfs_rp.append(df_06_rp)
+    df_mtrs_nw.append(df_06_mtr_nw)
+    df_mtrs_rp.append(df_06_mtr_rp)
+    
+    print('...report 07')
+    df_07,df_07_nw,df_07_rp,df_07_mtr_nw,df_07_mtr_rp = create_rpt_07 (df_tnt,df_ats)
+    dfs.append(df_07)
+    dfs_nw.append(df_07_nw)
+    dfs_rp.append(df_07_rp)
+    df_mtrs_nw.append(df_07_mtr_nw)
+    df_mtrs_rp.append(df_07_mtr_rp)
+    
+    print('...report 08')
+    df_08,df_08_nw,df_08_rp,df_08_mtr_nw,df_08_mtr_rp= create_rpt_08 (df_tnt,df_ats)
+    dfs.append(df_08)
+    dfs_nw.append(df_08_nw)
+    dfs_rp.append(df_08_rp)
+    df_mtrs_nw.append(df_08_mtr_nw)
+    df_mtrs_rp.append(df_08_mtr_rp)
+    
+    print('...report 09')
+    df_09,df_09_nw,df_09_rp,df_09_mtr_nw,df_09_mtr_rp = create_rpt_09 (df_tnt,df_ats)
+    dfs.append(df_09)
+    dfs_nw.append(df_09_nw)
+    dfs_rp.append(df_09_rp)
+    df_mtrs_nw.append(df_09_mtr_nw)
+    df_mtrs_rp.append(df_09_mtr_rp)
+    
+    print('\nFormatting Report columns')
+    df_rpts = set_rpt_colums (dfs)
+    df_rpts_nw = set_rpt_colums (dfs_nw)
+    df_rpts_rp = set_rpt_colums (dfs_rp)
+    
+    print('\nCreating Summary Pages')
+    df_sum_rpt_nw,rpt_ids = create_summary_rpt (df_rpts_nw)
+    df_sum_rpt_rp,rpt_ids = create_summary_rpt (df_rpts_rp)
+    
+    df_sum_mtr_nw= create_summary_mtr(df_mtrs_nw)
+    df_sum_mtr_rp= create_summary_mtr(df_mtrs_rp)
+    
+    template = 'TEMPLATE/rpt_template.xlsx'
+    df_sum_all_nw= create_summary_all(template,df_sum_rpt_nw,df_sum_mtr_nw)
+    df_sum_all_rp= create_summary_all(template,df_sum_rpt_rp,df_sum_mtr_rp)
+    
+    
+    print('\nExporting the Final Report')
+    df_list = [df_sum_all_nw,df_sum_all_rp] + df_rpts 
+    sheet_list = ['Summary - NEW Applics','Summary - REP Applics'] + rpt_ids
+    
+    
+    today = date.today().strftime("%Y%m%d")
+    filename = today + '_landFiles_tracker'
+    
+    #compute_plot_rpt (df_stats,filename)
+    create_report (df_list, sheet_list,filename)
+    
+    add_readme_page(filename)
 
-print('...report 02')
-df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp = create_rpt_02 (df_tnt,df_ats)
-dfs.append(df_02)
-dfs_nw.append(df_02_nw)
-dfs_rp.append(df_02_rp)
-df_mtrs_nw.append(df_02_mtr_nw)
-df_mtrs_rp.append(df_02_mtr_rp)
-
-print('...report 03')
-df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold = create_rpt_03 (df_tnt,df_ats)
-dfs.append(df_03)
-dfs_nw.append(df_03_nw)
-dfs_rp.append(df_03_rp)
-df_mtrs_nw.append(df_03_mtr_nw)
-df_mtrs_rp.append(df_03_mtr_rp)
-
-print('...report 04')
-df_04,df_04_nw,df_04_rp,df_04_mtr_nw,df_04_mtr_rp = create_rpt_04(df_tnt,df_ats)
-dfs.append(df_04)
-dfs_nw.append(df_04_nw)
-dfs_rp.append(df_04_rp)
-df_mtrs_nw.append(df_04_mtr_nw)
-df_mtrs_rp.append(df_04_mtr_rp)
-
-print('...report 05')
-df_05,df_05_nw,df_05_rp,df_05_mtr_nw,df_05_mtr_rp = create_rpt_05 (df_tnt,df_ats)
-dfs.append(df_05)
-dfs_nw.append(df_05_nw)
-dfs_rp.append(df_05_rp)
-df_mtrs_nw.append(df_05_mtr_nw)
-df_mtrs_rp.append(df_05_mtr_rp)
-
-print('...report 06')
-df_06,df_06_nw,df_06_rp,df_06_mtr_nw,df_06_mtr_rp = create_rpt_06 (df_tnt,df_ats)
-dfs.append(df_06)
-dfs_nw.append(df_06_nw)
-dfs_rp.append(df_06_rp)
-df_mtrs_nw.append(df_06_mtr_nw)
-df_mtrs_rp.append(df_06_mtr_rp)
-
-print('...report 07')
-df_07,df_07_nw,df_07_rp,df_07_mtr_nw,df_07_mtr_rp = create_rpt_07 (df_tnt,df_ats)
-dfs.append(df_07)
-dfs_nw.append(df_07_nw)
-dfs_rp.append(df_07_rp)
-df_mtrs_nw.append(df_07_mtr_nw)
-df_mtrs_rp.append(df_07_mtr_rp)
-
-print('...report 08')
-df_08,df_08_nw,df_08_rp,df_08_mtr_nw,df_08_mtr_rp= create_rpt_08 (df_tnt,df_ats)
-dfs.append(df_08)
-dfs_nw.append(df_08_nw)
-dfs_rp.append(df_08_rp)
-df_mtrs_nw.append(df_08_mtr_nw)
-df_mtrs_rp.append(df_08_mtr_rp)
-
-print('...report 09')
-df_09,df_09_nw,df_09_rp,df_09_mtr_nw,df_09_mtr_rp = create_rpt_09 (df_tnt,df_ats)
-dfs.append(df_09)
-dfs_nw.append(df_09_nw)
-dfs_rp.append(df_09_rp)
-df_mtrs_nw.append(df_09_mtr_nw)
-df_mtrs_rp.append(df_09_mtr_rp)
-
-print('\nFormatting Report columns')
-df_rpts = set_rpt_colums (dfs)
-df_rpts_nw = set_rpt_colums (dfs_nw)
-df_rpts_rp = set_rpt_colums (dfs_rp)
-
-print('\nCreating a Summary page')
-df_sum_rpt_nw,rpt_ids = create_summary_rpt (df_rpts_nw)
-df_sum_rpt_rp,rpt_ids = create_summary_rpt (df_rpts_rp)
-
-df_sum_mtr_nw= create_summary_mtr(df_mtrs_nw)
-df_sum_mtr_rp= create_summary_mtr(df_mtrs_rp)
-
-template = 'TEMPLATE/rpt_template.xlsx'
-df_sum_all_nw= create_summary_all(template,df_sum_rpt_nw,df_sum_mtr_nw)
-df_sum_all_rp= create_summary_all(template,df_sum_rpt_rp,df_sum_mtr_rp)
-
-
-print('\nExporting the Final Report')
-df_list = [df_sum_all_nw,df_sum_all_rp] + df_rpts 
-sheet_list = ['Summary - NEW Applics','Summary - REP Applics'] + rpt_ids
-
-
-today = date.today().strftime("%Y%m%d")
-filename = today + '_landFiles_tracker'
-
-#compute_plot_rpt (df_stats,filename)
-create_report (df_list, sheet_list,filename)
-
-add_readme_page(filename)
-
-#main()
+main()
