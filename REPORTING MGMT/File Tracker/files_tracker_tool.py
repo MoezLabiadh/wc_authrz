@@ -36,8 +36,13 @@ class LandsTracker(QWidget):
     
     def __init__(self):
         super().__init__()
-
-        self.step1_lbl = QLabel('STEP-1: Provide input spreadsheets')
+        self.intro_lbl1 = QLabel('Welcome to the Lands Tracker!')
+        self.intro_lbl1.setStyleSheet("font-weight: bold")
+        self.intro_lbl2 = QLabel('This tool generates the monthly lands files tracking report for West Coast region.')
+        self.intro_lbl3 = QLabel('Follow the steps below to run the tool:')
+        
+        
+        self.step1_lbl = QLabel('STEP-1: Provide input files')
         self.step1_lbl.setStyleSheet("font-weight: bold")
         
         self.path_label_tnt = QLabel('No file selected')
@@ -61,7 +66,7 @@ class LandsTracker(QWidget):
         self.ats_f_button = QPushButton('Select an ATS Bring Forward Report')
         self.ats_f_button.clicked.connect(lambda: self.select_file(3))
         
-        self.ats_h_button = QPushButton('Select an ATS Auth. On-Hold Report')
+        self.ats_h_button = QPushButton('Select an ATS On-Hold Report')
         self.ats_h_button.clicked.connect(lambda: self.select_file(4))
         
         
@@ -77,7 +82,13 @@ class LandsTracker(QWidget):
         
         # Create a vertical layout for the widgets
         self.layout = QVBoxLayout()
- 
+        
+        self.layout.addWidget(self.intro_lbl1)
+        self.layout.addWidget(self.intro_lbl2)
+        self.layout.addWidget(self.intro_lbl3)
+        
+        self.layout.addItem(self.spacer)
+        
         self.layout.addWidget(self.step1_lbl)
         self.layout.addWidget(self.titan_button)
         self.layout.addWidget(self.path_label_tnt)
@@ -97,7 +108,7 @@ class LandsTracker(QWidget):
 
         # Set the layout for the main window
         self.setLayout(self.layout)
-        self.setGeometry(100, 100, 280, 190)
+        self.setGeometry(100, 100, 300, 360)
 
         # Initialize the DataFrames
         self.df_tnt = None
@@ -154,7 +165,7 @@ class LandsTracker(QWidget):
     def execute_program(self):
         """Executes the main Program"""
         proc_label = QLabel(self)
-        proc_label.setText('Processing... ')
+        proc_label.setText('Program is running... ')
         proc_label.setStyleSheet("color: green;")
         self.layout.addWidget(proc_label)
         
@@ -162,18 +173,18 @@ class LandsTracker(QWidget):
         
         try:
             time.sleep(1) 
-            print ('\nReading Input files')
+            print ('\nImporting Input files')
             rd_label = QLabel(self)
-            rd_label.setText('Reading Input files')
+            rd_label.setText('Importing Input files')
             rd_label.setStyleSheet("color: black;")
             self.layout.addWidget(rd_label)
             
             QApplication.processEvents()
             
             time.sleep(1) 
-            print ('...TITAN report')
+            print ('...TITAN workledger spreadsheet')
             tnt_label = QLabel(self)
-            tnt_label.setText('...TITAN report')
+            tnt_label.setText('...TITAN workledger spreadsheet')
             tnt_label.setStyleSheet("color: black;")
             self.layout.addWidget(tnt_label)
             
@@ -182,9 +193,9 @@ class LandsTracker(QWidget):
             df_tnt =  self.import_titan ()
             
             
-            print ('...ATS report: bring-forward')
+            print ('...ATS bring-forward spreadsheet')
             ats_label_f = QLabel(self)
-            ats_label_f.setText('...ATS report: bring-forward')
+            ats_label_f.setText('...ATS bring-forward spreadsheet')
             ats_label_f.setStyleSheet("color: black;")
             self.layout.addWidget(ats_label_f)
             
@@ -193,7 +204,7 @@ class LandsTracker(QWidget):
             df_bfw= self.import_ats_bf ()            
             
             
-            print ('...ATS report: on-hold')
+            print ('...ATS on-hold spreadsheet')
             ats_label_h = QLabel(self)
             ats_label_h.setText('...ATS report: on-hold')
             ats_label_h.setStyleSheet("color: black;")
@@ -216,9 +227,9 @@ class LandsTracker(QWidget):
             
             
             time.sleep(1) 
-            print('\nCreating Reports.')
+            print('\nComputing Reports.')
             crt_label = QLabel(self)
-            crt_label.setText('Creating Reports')
+            crt_label.setText('Computing Reports')
             crt_label.setStyleSheet("color: black;")
             self.layout.addWidget(crt_label)
             
@@ -385,9 +396,9 @@ class LandsTracker(QWidget):
             
             
             time.sleep(1) 
-            print('\nFormatting Report columns')
+            print('\nFormatting Reports')
             frm_label = QLabel(self)
-            frm_label.setText('Formatting Report columns')
+            frm_label.setText('Formatting Reports')
             frm_label.setStyleSheet("color: black;")
             self.layout.addWidget(frm_label)
             
@@ -399,9 +410,9 @@ class LandsTracker(QWidget):
             
  
             time.sleep(1) 
-            print('\nCreating Summary Pages')
+            print('\nCalculating Summary Stats')
             sum_label = QLabel(self)
-            sum_label.setText('Creating Summary Pages')
+            sum_label.setText('Calculating Summary Stats')
             sum_label.setStyleSheet("color: black;")
             self.layout.addWidget(sum_label)
             
