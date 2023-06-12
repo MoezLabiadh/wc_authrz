@@ -893,17 +893,17 @@ def main():
     #connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
     
-    print ('\nReading Input files')
+    print ('\nImporting Input files')
     
-    print('...titan report')
+    print('...TITAN workledger spreadsheet')
     tnt_f = 'TITAN_RPT009.xlsx'
     df_tnt = import_titan (tnt_f)
     
-    print ('...ats report: on-hold')
+    print ('...ATS on-hold spreadsheet')
     ats_oh_f = '20230601_ats_oh.xls'
     df_onh= import_ats_oh (ats_oh_f)
     
-    print ('...ats report: bring-forward')
+    print ('...ATS bring-forward spreadsheet')
     ats_bf_f = '20230601_ats_bf.xls'
     df_bfw= import_ats_bf (ats_bf_f)
     
@@ -911,7 +911,7 @@ def main():
     ats_pt_f = '20230601_ats_pt.xls'
     df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
     
-    print('\nCreating Reports.')
+    print('\nComputing Reports.')
     dfs = []
     dfs_nw = []
     dfs_rp = []
@@ -990,12 +990,12 @@ def main():
     df_mtrs_nw.append(df_09_mtr_nw)
     df_mtrs_rp.append(df_09_mtr_rp)
     
-    print('\nFormatting Report columns')
+    print('\nFormatting Reports')
     df_rpts = set_rpt_colums (dfs)
     df_rpts_nw = set_rpt_colums (dfs_nw)
     df_rpts_rp = set_rpt_colums (dfs_rp)
     
-    print('\nCreating Summary Pages')
+    print('\nCalculating Summary Stats')
     df_sum_rpt_nw,rpt_ids = create_summary_rpt (df_rpts_nw)
     df_sum_rpt_rp,rpt_ids = create_summary_rpt (df_rpts_rp)
     
