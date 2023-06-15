@@ -812,13 +812,13 @@ class LandsTracker(QWidget):
         today = pd.to_datetime(date.today())
         
         # for replacements, use acepted date instead of submisson review date to calculate mtr4
-        df_03.loc[df_03['TASK DESCRIPTION'] == 'REPLACEMENT APPLICATION', 'Submission Review Complete Date'] = df_03['Accepted Date']
+        df_03.loc[df_03['TASK DESCRIPTION'] == 'REPLACEMENT APPLICATION', 'Submission Review Complete Date'] = df_03['RECEIVED DATE']
         
         df_03['Bring Forward Date'] = pd.to_datetime(df_03['Bring Forward Date']
                                                      .fillna(pd.NaT), errors='coerce')
         df_03['Submission Review Complete Date'] = pd.to_datetime(df_03['Submission Review Complete Date']
                                                                   .fillna(pd.NaT), errors='coerce')
-        df_03['Accepted Date'] = pd.to_datetime(df_03['Accepted Date']
+        df_03['RECEIVED DATE'] = pd.to_datetime(df_03['RECEIVED DATE']
                                                .fillna(pd.NaT), errors='coerce')
         df_03['First Nation Start Date'] = pd.to_datetime(df_03['First Nation Start Date']
                                                           .fillna(pd.NaT), errors='coerce')
