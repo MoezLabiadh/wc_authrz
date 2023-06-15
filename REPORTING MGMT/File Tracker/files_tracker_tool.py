@@ -771,7 +771,7 @@ class LandsTracker(QWidget):
         return df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp
     
     
-    def create_rpt_03 (self,df_tnt,df_ats):
+    def create_rpt_03 (self, df_tnt,df_ats):
         """ Creates Report 03- Files in Active Review"""
         df_ats_h = df_ats.loc[df_ats['Authorization Status'] == 'On Hold']
         onhold= df_ats_h['File Number'].to_list()
@@ -784,7 +784,7 @@ class LandsTracker(QWidget):
                           (~df_tnt['FILE NUMBER'].isin(onhold)) &
                           (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
                           (df_tnt['STATUS'] == 'ACCEPTED')]
-    
+
         df_03.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
         df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
         
@@ -807,20 +807,24 @@ class LandsTracker(QWidget):
         df_03.reset_index(drop = True, inplace = True)
         
         df_03['Total On Hold Time'].fillna(0, inplace=True)
-    
+
         #Calulcate metrics
         today = pd.to_datetime(date.today())
         
-    
+        # for replacements, use acepted date instead of submisson review date to calculate mtr4
+        df_03.loc[df_03['TASK DESCRIPTION'] == 'REPLACEMENT APPLICATION', 'Submission Review Complete Date'] = df_03['Accepted Date']
+        
         df_03['Bring Forward Date'] = pd.to_datetime(df_03['Bring Forward Date']
                                                      .fillna(pd.NaT), errors='coerce')
         df_03['Submission Review Complete Date'] = pd.to_datetime(df_03['Submission Review Complete Date']
                                                                   .fillna(pd.NaT), errors='coerce')
+        df_03['Accepted Date'] = pd.to_datetime(df_03['Accepted Date']
+                                               .fillna(pd.NaT), errors='coerce')
         df_03['First Nation Start Date'] = pd.to_datetime(df_03['First Nation Start Date']
                                                           .fillna(pd.NaT), errors='coerce')
         df_03['First Nation Completion Date'] = pd.to_datetime(df_03['First Nation Completion Date']
                                                                .fillna(pd.NaT), errors='coerce')
-    
+        
         df_03_nw= df_03.loc[df_03['TASK DESCRIPTION']=='NEW APPLICATION']
         df_03_rp= df_03.loc[df_03['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']    
         
@@ -830,12 +834,12 @@ class LandsTracker(QWidget):
             df['mtr05'] = (today - df['First Nation Start Date']).dt.days
             df['mtr06'] = (df['First Nation Completion Date'] - df['First Nation Start Date']).dt.days
             df['mtr07'] = (today - df['Bring Forward Date']).dt.days
-    
+
         metrics= ['mtr04','mtr05','mtr06','mtr07']
         df_03_mtr_nw = self.calculate_metrics(df_03_nw , 'DISTRICT OFFICE', metrics ) 
         df_03_mtr_rp = self.calculate_metrics(df_03_rp , 'DISTRICT OFFICE', metrics ) 
-    
-    
+
+
         return df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold
     
     
@@ -1290,9 +1294,8 @@ class LandsTracker(QWidget):
         fig.savefig(filename+'_plot')  
        
     
-    def create_report (self, df_list, sheet_list,filename):
+    def create_report (df_list, sheet_list,filename):
         """ Exports dataframes to multi-tab excel spreasheet"""
-    
         writer = pd.ExcelWriter(filename+'.xlsx',engine='xlsxwriter')
     
         for dataframe, sheet in zip(df_list, sheet_list):
@@ -1302,9 +1305,17 @@ class LandsTracker(QWidget):
             dataframe.to_excel(writer, sheet_name=sheet, index=False, startrow=0 , startcol=0)
     
             worksheet = writer.sheets[sheet]
-            workbook = writer.book
-    
-            worksheet.set_column(0, dataframe.shape[1], 20)
+            #workbook = writer.book
+            
+            if sheet == sheet_list[0] or sheet == sheet_list[1]:
+                worksheet.set_column(0, 0, 11)
+                worksheet.set_column(1, 1, 27)
+                worksheet.set_column(2, 2, 11)
+                worksheet.set_column(3, 3, 37)
+                worksheet.set_column(4, dataframe.shape[1], 10)
+            
+            else:
+                worksheet.set_column(0, dataframe.shape[1], 20)
     
             col_names = [{'header': col_name} for col_name in dataframe.columns[:]]
     
@@ -1312,7 +1323,7 @@ class LandsTracker(QWidget):
                 'columns': col_names})
     
         writer.save()
-        writer.close()    
+        writer.close()     
 
 
 
