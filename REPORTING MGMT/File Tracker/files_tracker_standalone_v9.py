@@ -346,16 +346,20 @@ def create_rpt_03 (df_tnt,df_ats):
     #Calulcate metrics
     today = pd.to_datetime(date.today())
     
-
+    # for replacements, use acepted date instead of submisson review date to calculate mtr4
+    df_03.loc[df_03['TASK DESCRIPTION'] == 'REPLACEMENT APPLICATION', 'Submission Review Complete Date'] = df_03['Accepted Date']
+    
     df_03['Bring Forward Date'] = pd.to_datetime(df_03['Bring Forward Date']
                                                  .fillna(pd.NaT), errors='coerce')
     df_03['Submission Review Complete Date'] = pd.to_datetime(df_03['Submission Review Complete Date']
                                                               .fillna(pd.NaT), errors='coerce')
+    df_03['Accepted Date'] = pd.to_datetime(df_03['Accepted Date']
+                                           .fillna(pd.NaT), errors='coerce')
     df_03['First Nation Start Date'] = pd.to_datetime(df_03['First Nation Start Date']
                                                       .fillna(pd.NaT), errors='coerce')
     df_03['First Nation Completion Date'] = pd.to_datetime(df_03['First Nation Completion Date']
                                                            .fillna(pd.NaT), errors='coerce')
-
+    
     df_03_nw= df_03.loc[df_03['TASK DESCRIPTION']=='NEW APPLICATION']
     df_03_rp= df_03.loc[df_03['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']    
     
@@ -823,12 +827,8 @@ def compute_plot_rpt (df_stats,filename):
     fig.savefig(filename+'_plot')
     
   
-   
-
 def create_report (df_list, sheet_list,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
-
-    
     writer = pd.ExcelWriter(filename+'.xlsx',engine='xlsxwriter')
 
     for dataframe, sheet in zip(df_list, sheet_list):
@@ -838,9 +838,17 @@ def create_report (df_list, sheet_list,filename):
         dataframe.to_excel(writer, sheet_name=sheet, index=False, startrow=0 , startcol=0)
 
         worksheet = writer.sheets[sheet]
-        workbook = writer.book
-
-        worksheet.set_column(0, dataframe.shape[1], 20)
+        #workbook = writer.book
+        
+        if sheet == sheet_list[0] or sheet == sheet_list[1]:
+            worksheet.set_column(0, 0, 11)
+            worksheet.set_column(1, 1, 27)
+            worksheet.set_column(2, 2, 11)
+            worksheet.set_column(3, 3, 37)
+            worksheet.set_column(4, dataframe.shape[1], 10)
+        
+        else:
+            worksheet.set_column(0, dataframe.shape[1], 20)
 
         col_names = [{'header': col_name} for col_name in dataframe.columns[:]]
 
