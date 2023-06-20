@@ -36,7 +36,7 @@ class LandsTracker(QWidget):
     
     def __init__(self):
         super().__init__()
-        self.intro_lbl1 = QLabel('Welcome to the Lands Tracker!')
+        self.intro_lbl1 = QLabel('Welcome to the Lands File Tracker!')
         self.intro_lbl1.setStyleSheet("font-weight: bold")
         self.intro_lbl2 = QLabel('This tool generates the monthly lands files tracking report for West Coast region.')
         self.intro_lbl3 = QLabel('Follow the steps below to run the tool:')
@@ -430,6 +430,11 @@ class LandsTracker(QWidget):
             template_rpt= os.path.join(template_wks,template_rpt_f)
             df_sum_all_nw= self.create_summary_all(template_rpt,df_sum_rpt_nw,df_sum_mtr_nw)
             df_sum_all_rp= self.create_summary_all(template_rpt,df_sum_rpt_rp,df_sum_mtr_rp)
+            
+            # set the first 3 rows of the replacement summary to N/A.
+            rows_range = slice(0, 3)
+            cols_range = slice(4, 26)
+            df_sum_all_rp.iloc[rows_range, cols_range] = 'n/a'
             
             
             time.sleep(1)
@@ -1294,7 +1299,7 @@ class LandsTracker(QWidget):
         fig.savefig(filename+'_plot')  
        
     
-    def create_report (df_list, sheet_list,filename):
+    def create_report (self, df_list, sheet_list,filename):
         """ Exports dataframes to multi-tab excel spreasheet"""
         writer = pd.ExcelWriter(filename+'.xlsx',engine='xlsxwriter')
     
@@ -1363,7 +1368,7 @@ if __name__ == "__main__":
     
     # Create the ExcelReader window
     window = LandsTracker()
-    window.setWindowTitle('Lands Tracker')
+    window.setWindowTitle('Lands File Tracker')
     
     # Show the ExcelReader window
     window.show()
