@@ -1014,6 +1014,11 @@ def main():
     df_sum_all_nw= create_summary_all(template,df_sum_rpt_nw,df_sum_mtr_nw)
     df_sum_all_rp= create_summary_all(template,df_sum_rpt_rp,df_sum_mtr_rp)
     
+    # set the first 3 rows of the replacement summary to N/A.
+    rows_range = slice(0, 3)
+    cols_range = slice(4, 26)
+    df_sum_all_rp.iloc[rows_range, cols_range] = 'n/a'
+    
     
     print('\nExporting the Final Report')
     df_list = [df_sum_all_nw,df_sum_all_rp] + df_rpts 
