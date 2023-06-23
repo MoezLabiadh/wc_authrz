@@ -18,7 +18,7 @@ import base64
 import numpy as np
 import geopandas as gpd
 import folium
-from folium.plugins import MeasureControl, MousePosition,FloatImage
+from folium.plugins import MeasureControl, MousePosition,FloatImage, MiniMap
 
 
 def add_proj_lib ():
@@ -96,8 +96,11 @@ def create_map_template(map_title='Placeholder for title',Xcenter=0,Ycenter=0):
     float_image = FloatImage('data:image/png;base64,{}'.format(b64_content), bottom=3, left=2)
     float_image.add_to(map_obj)
     
+    #Add a Mini Map
+    minimap = MiniMap(position="bottomright")
+    map_obj.add_child(minimap)
+    
     return map_obj
-
 
 
 def generate_html_maps(status_gdb):
@@ -250,7 +253,7 @@ def generate_html_maps(status_gdb):
             #start the div tag and set the legend size and position
             legend_html = '''
                         <div id="legend" style="position: fixed; 
-                        bottom: 50px; right: 50px; z-index: 1000; 
+                        bottom: 200px; right: 30px; z-index: 1000; 
                         background-color: #fff; padding: 10px; 
                         border-radius: 5px; border: 1px solid grey;">
                         '''
