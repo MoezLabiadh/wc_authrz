@@ -103,6 +103,7 @@ def create_map_template(map_title='Placeholder for title',Xcenter=0,Ycenter=0):
     return map_obj
 
 
+
 def generate_html_maps(status_gdb):
     """Creates a HTML map for each feature class in gdb"""
     
@@ -308,7 +309,7 @@ def generate_html_maps(status_gdb):
         # Create a Legend for all-layers map
         legend_html_all = '''
                     <div id="legend" style="position: fixed; 
-                    bottom: 50px; right: 50px; z-index: 1000; 
+                    bottom: 200px; right: 30px; z-index: 1000; 
                     background-color: #fff; padding: 10px; 
                     border-radius: 5px; border: 1px solid grey;">
 
