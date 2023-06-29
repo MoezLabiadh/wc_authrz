@@ -850,6 +850,73 @@ def create_summary_all(template,df_sum_rpt,df_sum_mtr):
     df_sum_all= df_sum_all[sum_cols]  
     
     return df_sum_all
+
+
+
+##############################################################################################################
+
+def analysis_tables (tmplt_anlz,df_sum_rpt,df_sum_mtr):
+    """Create Analysis tables"""
+    df_tmp= pd.read_excel(tmplt_anlz)
+
+    
+    df_anz_tim= pd.merge(df_tmp,df_sum_mtr[['METRIC ID','WC avg','WC med']],
+                         how= 'left', on='METRIC ID')
+    
+    tm_stg= ['mtr01','mtr03','mtr07','mtr05','mtr09','mtr11','mtr13','mtr15','mtr18']
+    tm_prc= ['mtr02','mtr04','mtr08','mtr06','mtr10','mtr12','mtr14','mtr16']
+    
+    df_anz_tim.loc[df_anz_tim['METRIC ID'].isin(tm_stg),'METRIC ID']='Time of Files at Stage'
+    df_anz_tim.loc[df_anz_tim['METRIC ID'].isin(tm_prc),'METRIC ID']='Processing Time'
+    
+    df_anz_tim.rename(columns={'WC avg': 'Average','WC med': 'Median'}, inplace=True)
+
+    df_anz_tim = df_anz_tim.pivot(index='REPORT NAME', columns='METRIC ID')
+    df_anz_tim.columns = [f'{col[0]}_{col[1]}' for col in df_anz_tim.columns]
+    df_anz_tim=df_anz_tim.reset_index()
+    
+    df_anz_tim.drop('REPORT ID_Processing Time', axis=1, inplace=True)
+    df_anz_tim.rename(columns={'REPORT ID_Time of Files at Stage': 'REPORT ID'}, inplace=True)
+    
+    df_anz_tim= pd.merge(df_anz_tim,df_sum_rpt[['REPORT ID','WC files']],
+                    how= 'left', on='REPORT ID')
+    df_anz_tim.rename(columns={'WC files': '# Files at Stage',
+                               'REPORT NAME': 'Stage'}, inplace=True)  
+    
+    df_anz_tim.sort_values('REPORT ID', ascending=True, inplace=True)
+    
+    df_anz_tim = df_anz_tim[['Stage','# Files at Stage','Average_Time of Files at Stage',
+                     'Median_Time of Files at Stage','Average_Processing Time',
+                     'Median_Processing Time']]
+    
+    df_anz_tim=df_anz_tim.reset_index(drop= True)
+    
+    
+    df_tmp.drop_duplicates('REPORT ID', inplace= True)
+    df_tmp.drop('METRIC ID', axis=1, inplace=True)
+    df_tmp.loc[len(df_tmp)] = ['rpt08', 'Files Completed']
+    df_tmp.sort_values('REPORT ID', ascending=True, inplace=True)
+    
+    cols= ['REPORT ID','AQ files', 'CR files', 'HG files', 'NA files', 'PA files', 'PM files']
+    df_anz_off= pd.merge(df_tmp,df_sum_rpt[cols],
+                         how= 'left', on='REPORT ID')
+    
+    df_anz_off.rename(columns={'REPORT NAME': 'Stage',
+                               'AQ files': 'Aquaculture', 
+                               'NA files': 'Nanaimo',
+                               'HG files': 'HGNRD',
+                               'CR files': 'CRNRD',
+                               'PA files': 'SINRD',
+                               'PM files': 'NICCNRD'}, inplace=True)
+    
+    df_anz_off.drop('REPORT ID', axis=1, inplace=True)
+    df_anz_off = df_anz_off[['Stage','Nanaimo','Aquaculture','SINRD',
+                             'CRNRD','NICCNRD','HGNRD']]
+    
+    return df_anz_tim,df_anz_off
+
+
+###################################################################################################################
     
 
 def compute_plot_rpt (df_stats,filename):
@@ -930,152 +997,165 @@ def add_readme_page(filename):
 
 
  
-def main():
-  print ('\nConnecting to BCGW.')
-  hostname = 'bcgw.bcgov/idwprod1.bcgov'
-  bcgw_user = os.getenv('bcgw_user')
-  bcgw_pwd = os.getenv('bcgw_pwd')
-  #connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-  
-  
-  print ('\nImporting Input files')
-  
-  print('...TITAN workledger spreadsheet')
-  tnt_f = 'TITAN_RPT009.xlsx'
-  df_tnt = import_titan (tnt_f)
-  
-  print ('...ATS on-hold spreadsheet')
-  ats_oh_f = '20230628_ats_oh.xls'
-  df_onh= import_ats_oh (ats_oh_f)
-  
-  print ('...ATS bring-forward spreadsheet')
-  ats_bf_f = '20230628_ats_bf.xls'
-  df_bfw= import_ats_bf (ats_bf_f)
-  
-  print('...ats report: processing time')
-  ats_pt_f = '20230628_ats_pt.xls'
-  df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
-  
-  print('\nComputing Reports.')
-  dfs = []
-  dfs_nw = []
-  dfs_rp = []
-  df_mtrs_nw = []
-  df_mtrs_rp = []
-      
-  print('...report 01')
-  df_01,df_01_nw,df_01_rp,df_01_mtr_nw,df_01_mtr_rp= create_rpt_01 (df_tnt,df_ats)
-  dfs.append(df_01)
-  dfs_nw.append(df_01_nw)
-  dfs_rp.append(df_01_rp)
-  df_mtrs_nw.append(df_01_mtr_nw)
-  df_mtrs_rp.append(df_01_mtr_rp)
-  
-  print('...report 02')
-  df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp = create_rpt_02 (df_tnt,df_ats)
-  dfs.append(df_02)
-  dfs_nw.append(df_02_nw)
-  dfs_rp.append(df_02_rp)
-  df_mtrs_nw.append(df_02_mtr_nw)
-  df_mtrs_rp.append(df_02_mtr_rp)
-  
-  print('...report 03')
-  df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold = create_rpt_03 (df_tnt,df_ats)
-  dfs.append(df_03)
-  dfs_nw.append(df_03_nw)
-  dfs_rp.append(df_03_rp)
-  df_mtrs_nw.append(df_03_mtr_nw)
-  df_mtrs_rp.append(df_03_mtr_rp)
-  
-  print('...report 03-1')
-  df_031,df_031_nw,df_031_rp,df_031_mtr_nw,df_031_mtr_rp= create_rpt_03_1 (df_03)
-  dfs.append(df_031)
-  dfs_nw.append(df_031_nw)
-  dfs_rp.append(df_031_rp)
-  df_mtrs_nw.append(df_031_mtr_nw)
-  df_mtrs_rp.append(df_031_mtr_rp)
-  
-  print('...report 04')
-  df_04,df_04_nw,df_04_rp,df_04_mtr_nw,df_04_mtr_rp = create_rpt_04(df_tnt,df_ats)
-  dfs.append(df_04)
-  dfs_nw.append(df_04_nw)
-  dfs_rp.append(df_04_rp)
-  df_mtrs_nw.append(df_04_mtr_nw)
-  df_mtrs_rp.append(df_04_mtr_rp)
-  
-  print('...report 05')
-  df_05,df_05_nw,df_05_rp,df_05_mtr_nw,df_05_mtr_rp = create_rpt_05 (df_tnt,df_ats)
-  dfs.append(df_05)
-  dfs_nw.append(df_05_nw)
-  dfs_rp.append(df_05_rp)
-  df_mtrs_nw.append(df_05_mtr_nw)
-  df_mtrs_rp.append(df_05_mtr_rp)
-  
-  print('...report 06')
-  df_06,df_06_nw,df_06_rp,df_06_mtr_nw,df_06_mtr_rp = create_rpt_06 (df_tnt,df_ats)
-  dfs.append(df_06)
-  dfs_nw.append(df_06_nw)
-  dfs_rp.append(df_06_rp)
-  df_mtrs_nw.append(df_06_mtr_nw)
-  df_mtrs_rp.append(df_06_mtr_rp)
-  
-  print('...report 07')
-  df_07,df_07_nw,df_07_rp,df_07_mtr_nw,df_07_mtr_rp = create_rpt_07 (df_tnt,df_ats)
-  dfs.append(df_07)
-  dfs_nw.append(df_07_nw)
-  dfs_rp.append(df_07_rp)
-  df_mtrs_nw.append(df_07_mtr_nw)
-  df_mtrs_rp.append(df_07_mtr_rp)
-  
-  print('...report 08')
-  df_08,df_08_nw,df_08_rp,df_08_mtr_nw,df_08_mtr_rp= create_rpt_08 (df_tnt,df_ats)
-  dfs.append(df_08)
-  dfs_nw.append(df_08_nw)
-  dfs_rp.append(df_08_rp)
-  df_mtrs_nw.append(df_08_mtr_nw)
-  df_mtrs_rp.append(df_08_mtr_rp)
-  
-  print('...report 09')
-  df_09,df_09_nw,df_09_rp,df_09_mtr_nw,df_09_mtr_rp = create_rpt_09 (df_tnt,df_ats)
-  dfs.append(df_09)
-  dfs_nw.append(df_09_nw)
-  dfs_rp.append(df_09_rp)
-  df_mtrs_nw.append(df_09_mtr_nw)
-  df_mtrs_rp.append(df_09_mtr_rp)
-  
-  print('\nFormatting Reports')
-  df_rpts = set_rpt_colums (dfs)
-  df_rpts_nw = set_rpt_colums (dfs_nw)
-  df_rpts_rp = set_rpt_colums (dfs_rp)
-  
-  print('\nCalculating Summary Stats')
-  df_sum_rpt_nw,rpt_ids = create_summary_rpt (df_rpts_nw)
-  df_sum_rpt_rp,rpt_ids = create_summary_rpt (df_rpts_rp)
-  
-  df_sum_mtr_nw= create_summary_mtr(df_mtrs_nw)
-  df_sum_mtr_rp= create_summary_mtr(df_mtrs_rp)
-  
-  template = 'TEMPLATE/rpt_template.xlsx'
-  df_sum_all_nw= create_summary_all(template,df_sum_rpt_nw,df_sum_mtr_nw)
-  df_sum_all_rp= create_summary_all(template,df_sum_rpt_rp,df_sum_mtr_rp)
-  
-  # set the first 3 rows of the replacement summary to N/A.
-  rows_range = slice(0, 3)
-  cols_range = slice(4, 26)
-  df_sum_all_rp.iloc[rows_range, cols_range] = 'n/a'
-  
-  
-  print('\nExporting the Final Report')
-  df_list = [df_sum_all_nw,df_sum_all_rp] + df_rpts 
-  sheet_list = ['Summary - NEW Applics','Summary - REP Applics'] + rpt_ids
-  
-  
-  today = date.today().strftime("%Y%m%d")
-  filename = today + '_landFiles_tracker'
-  
-  #compute_plot_rpt (df_stats,filename)
-  create_report (df_list, sheet_list,filename)
-  
-  add_readme_page(filename)
+#def main():
 
-main()
+print ('\nConnecting to BCGW.')
+hostname = 'bcgw.bcgov/idwprod1.bcgov'
+bcgw_user = os.getenv('bcgw_user')
+bcgw_pwd = os.getenv('bcgw_pwd')
+#connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
+
+
+print ('\nImporting Input files')
+
+print('...TITAN workledger spreadsheet')
+tnt_f = 'TITAN_RPT009.xlsx'
+df_tnt = import_titan (tnt_f)
+
+print ('...ATS on-hold spreadsheet')
+ats_oh_f = '20230628_ats_oh.xls'
+df_onh= import_ats_oh (ats_oh_f)
+
+print ('...ATS bring-forward spreadsheet')
+ats_bf_f = '20230628_ats_bf.xls'
+df_bfw= import_ats_bf (ats_bf_f)
+
+print('...ats report: processing time')
+ats_pt_f = '20230628_ats_pt.xls'
+df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
+
+print('\nComputing Reports.')
+dfs = []
+dfs_nw = []
+dfs_rp = []
+df_mtrs_nw = []
+df_mtrs_rp = []
+    
+print('...report 01')
+df_01,df_01_nw,df_01_rp,df_01_mtr_nw,df_01_mtr_rp= create_rpt_01 (df_tnt,df_ats)
+dfs.append(df_01)
+dfs_nw.append(df_01_nw)
+dfs_rp.append(df_01_rp)
+df_mtrs_nw.append(df_01_mtr_nw)
+df_mtrs_rp.append(df_01_mtr_rp)
+
+print('...report 02')
+df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp = create_rpt_02 (df_tnt,df_ats)
+dfs.append(df_02)
+dfs_nw.append(df_02_nw)
+dfs_rp.append(df_02_rp)
+df_mtrs_nw.append(df_02_mtr_nw)
+df_mtrs_rp.append(df_02_mtr_rp)
+
+print('...report 03')
+df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold = create_rpt_03 (df_tnt,df_ats)
+dfs.append(df_03)
+dfs_nw.append(df_03_nw)
+dfs_rp.append(df_03_rp)
+df_mtrs_nw.append(df_03_mtr_nw)
+df_mtrs_rp.append(df_03_mtr_rp)
+
+print('...report 03-1')
+df_031,df_031_nw,df_031_rp,df_031_mtr_nw,df_031_mtr_rp= create_rpt_03_1 (df_03)
+dfs.append(df_031)
+dfs_nw.append(df_031_nw)
+dfs_rp.append(df_031_rp)
+df_mtrs_nw.append(df_031_mtr_nw)
+df_mtrs_rp.append(df_031_mtr_rp)
+
+print('...report 04')
+df_04,df_04_nw,df_04_rp,df_04_mtr_nw,df_04_mtr_rp = create_rpt_04(df_tnt,df_ats)
+dfs.append(df_04)
+dfs_nw.append(df_04_nw)
+dfs_rp.append(df_04_rp)
+df_mtrs_nw.append(df_04_mtr_nw)
+df_mtrs_rp.append(df_04_mtr_rp)
+
+print('...report 05')
+df_05,df_05_nw,df_05_rp,df_05_mtr_nw,df_05_mtr_rp = create_rpt_05 (df_tnt,df_ats)
+dfs.append(df_05)
+dfs_nw.append(df_05_nw)
+dfs_rp.append(df_05_rp)
+df_mtrs_nw.append(df_05_mtr_nw)
+df_mtrs_rp.append(df_05_mtr_rp)
+
+print('...report 06')
+df_06,df_06_nw,df_06_rp,df_06_mtr_nw,df_06_mtr_rp = create_rpt_06 (df_tnt,df_ats)
+dfs.append(df_06)
+dfs_nw.append(df_06_nw)
+dfs_rp.append(df_06_rp)
+df_mtrs_nw.append(df_06_mtr_nw)
+df_mtrs_rp.append(df_06_mtr_rp)
+
+print('...report 07')
+df_07,df_07_nw,df_07_rp,df_07_mtr_nw,df_07_mtr_rp = create_rpt_07 (df_tnt,df_ats)
+dfs.append(df_07)
+dfs_nw.append(df_07_nw)
+dfs_rp.append(df_07_rp)
+df_mtrs_nw.append(df_07_mtr_nw)
+df_mtrs_rp.append(df_07_mtr_rp)
+
+print('...report 08')
+df_08,df_08_nw,df_08_rp,df_08_mtr_nw,df_08_mtr_rp= create_rpt_08 (df_tnt,df_ats)
+dfs.append(df_08)
+dfs_nw.append(df_08_nw)
+dfs_rp.append(df_08_rp)
+df_mtrs_nw.append(df_08_mtr_nw)
+df_mtrs_rp.append(df_08_mtr_rp)
+
+print('...report 09')
+df_09,df_09_nw,df_09_rp,df_09_mtr_nw,df_09_mtr_rp = create_rpt_09 (df_tnt,df_ats)
+dfs.append(df_09)
+dfs_nw.append(df_09_nw)
+dfs_rp.append(df_09_rp)
+df_mtrs_nw.append(df_09_mtr_nw)
+df_mtrs_rp.append(df_09_mtr_rp)
+
+print('\nFormatting Reports')
+df_rpts = set_rpt_colums (dfs)
+df_rpts_nw = set_rpt_colums (dfs_nw)
+df_rpts_rp = set_rpt_colums (dfs_rp)
+
+print('\nCalculating Summary Stats')
+df_sum_rpt_nw,rpt_ids = create_summary_rpt (df_rpts_nw)
+df_sum_rpt_rp,rpt_ids = create_summary_rpt (df_rpts_rp)
+
+df_sum_mtr_nw= create_summary_mtr(df_mtrs_nw)
+df_sum_mtr_rp= create_summary_mtr(df_mtrs_rp)
+
+
+
+
+
+print ('\nCreating Analysis tables')
+tmplt_anlz = 'TEMPLATE/anz_template.xlsx'
+df_anz_tim_nw, df_anz_off_nw= analysis_tables (tmplt_anlz,df_sum_rpt_nw,df_sum_mtr_nw)
+df_anz_tim_rp, df_anz_off_rp= analysis_tables (tmplt_anlz,df_sum_rpt_rp,df_sum_mtr_rp)
+
+
+
+
+template = 'TEMPLATE/rpt_template.xlsx'
+df_sum_all_nw= create_summary_all(template,df_sum_rpt_nw,df_sum_mtr_nw)
+df_sum_all_rp= create_summary_all(template,df_sum_rpt_rp,df_sum_mtr_rp)
+
+# set the first 3 rows of the replacement summary to N/A.
+rows_range = slice(0, 3)
+cols_range = slice(4, 26)
+df_sum_all_rp.iloc[rows_range, cols_range] = 'n/a'
+
+
+print('\nExporting the Final Report')
+df_list = [df_sum_all_nw,df_sum_all_rp] + df_rpts 
+sheet_list = ['Summary - NEW Applics','Summary - REP Applics'] + rpt_ids
+
+
+today = date.today().strftime("%Y%m%d")
+filename = today + '_landFiles_tracker'
+
+#compute_plot_rpt (df_stats,filename)
+create_report (df_list, sheet_list,filename)
+
+add_readme_page(filename)
+
+#main()
