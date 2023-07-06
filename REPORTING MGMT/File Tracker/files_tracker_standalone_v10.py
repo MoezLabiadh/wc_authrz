@@ -28,6 +28,9 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 from datetime import date, datetime, timedelta
 
+import plotly.express as px
+import plotly.graph_objects as go
+
 
 def connect_to_DB (username,password,hostname):
     """ Returns a connection and cursor to Oracle database"""
@@ -315,11 +318,11 @@ def create_rpt_03 (df_tnt,df_ats):
     
     df_03= df_tnt.loc[((~df_tnt['OTHER EMPLOYEES ASSIGNED TO'].str.contains('WCR_',na=False)) & 
                        (df_tnt['OTHER EMPLOYEES ASSIGNED TO'].notnull())) &
-                      (df_tnt['REPORTED DATE'].isnull()) &
-                      (~df_tnt['FILE NUMBER'].isin(onhold)) &
-                      (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
-                      (df_tnt['STATUS'] == 'ACCEPTED')]
-
+                       (df_tnt['REPORTED DATE'].isnull()) &
+                       (~df_tnt['FILE NUMBER'].isin(onhold)) &
+                       (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
+                       (df_tnt['STATUS'] == 'ACCEPTED')]
+ 
     df_03.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
     df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
     
@@ -919,22 +922,43 @@ def analysis_tables (tmplt_anlz,df_sum_rpt,df_sum_mtr):
 ###################################################################################################################
     
 
-def compute_plot_rpt (df_stats,filename):
-    """Computes a barplot of number of nbr applications per rpt_id and office """
-    df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
-                      'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
+def compute_chart (df, title_tag, out_folder, figname):
+    """Computes a barplot of number of # of files and processing times """
+
+    fig = px.bar(df, x='Stage', y='# Files at Stage',template='plotly')
+    fig.update_traces(texttemplate='<b>%{y}</b>', textposition='auto')
     
-    ax = df_pl.plot.bar(x= 'REPORT ID',stacked=True, rot=0,figsize=(15, 8))
-    ax.set_ylabel("Nbr of Files")
-    ax.set_xlabel("Report ID")  
+    fig.add_trace(go.Scatter(x=df['Stage'], y=df['Average_Time of Files at Stage'], 
+                             mode='markers', name='Average Time', 
+                             marker=dict(symbol='x', color='red', size=12), yaxis='y2'))
+    fig.add_trace(go.Scatter(x=df['Stage'], y=df['Median_Time of Files at Stage'], 
+                             mode='markers', name='Median Time', 
+                             marker=dict(symbol='circle', color='orange', size=12), yaxis='y2'))
     
-    fig = ax.get_figure()
-    fig.savefig(filename+'_plot')
+
+    exld= ['Files in Consultation (with LO)','Files On Hold']
+    df_sum= df.loc[~df['Stage'].isin(exld)]
+    nbr_files= int(df_sum['# Files at Stage'].sum())
+    title= """WCR Lands Applications Workflow Status - {} <br>[{} Total Files in Process, excl On Hold]
+           """.format(title_tag, nbr_files)
+    
+    fig.update_layout(
+        title=title,
+        title_x=0.5,  
+        yaxis=dict(title='# Files at Stage'),
+        yaxis2=dict(title='Time (Days)', overlaying='y', side='right'),
+        legend=dict(orientation='h', yanchor='top', y=1.06, xanchor='center', x=0.87)
+    )
+    
+    out_chart= os.path.join('{}'.format(out_folder), figname+'.png')
+    fig.write_image(out_chart, width=1200, height=800, scale=2)
+
     
   
-def create_report (df_list, sheet_list,filename):
+def create_report (df_list, sheet_list,out_folder,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
-    writer = pd.ExcelWriter(filename+'.xlsx',engine='xlsxwriter')
+    out_file= os.path.join('{}'.format(out_folder), filename+'.xlsx')
+    writer = pd.ExcelWriter(out_file,engine='xlsxwriter')
 
     for dataframe, sheet in zip(df_list, sheet_list):
         dataframe = dataframe.reset_index(drop=True)
@@ -970,7 +994,7 @@ def add_readme_page(filename):
     source_workbook = openpyxl.load_workbook(readme_xlsx)
     source_sheet = source_workbook['README']
     
-    rpt_xlsx = filename+".xlsx"
+    rpt_xlsx = os.path.join('{}'.format(out_folder), filename+'.xlsx')
     target_workbook = openpyxl.load_workbook(rpt_xlsx)
     
     target_sheet = target_workbook.create_sheet(title=source_sheet.title, index=0)
@@ -1005,7 +1029,13 @@ bcgw_user = os.getenv('bcgw_user')
 bcgw_pwd = os.getenv('bcgw_pwd')
 #connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
 
+today = date.today().strftime("%Y%m%d")
+out_folder = today+'_outputs'
 
+if not os.path.exists(out_folder):
+    os.makedirs(out_folder)
+    
+    
 print ('\nImporting Input files')
 
 print('...TITAN workledger spreadsheet')
@@ -1013,15 +1043,15 @@ tnt_f = 'TITAN_RPT009.xlsx'
 df_tnt = import_titan (tnt_f)
 
 print ('...ATS on-hold spreadsheet')
-ats_oh_f = '20230628_ats_oh.xls'
+ats_oh_f = '20230701_ats_oh.xls'
 df_onh= import_ats_oh (ats_oh_f)
 
 print ('...ATS bring-forward spreadsheet')
-ats_bf_f = '20230628_ats_bf.xls'
+ats_bf_f = '20230701_ats_bf.xls'
 df_bfw= import_ats_bf (ats_bf_f)
 
 print('...ats report: processing time')
-ats_pt_f = '20230628_ats_pt.xls'
+ats_pt_f = '20230701_ats_pt.xls'
 df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
 
 print('\nComputing Reports.')
@@ -1127,10 +1157,35 @@ df_sum_mtr_rp= create_summary_mtr(df_mtrs_rp)
 
 
 
+
+
+
+###################################################################################################################
 print ('\nCreating Analysis tables')
 tmplt_anlz = 'TEMPLATE/anz_template.xlsx'
 df_anz_tim_nw, df_anz_off_nw= analysis_tables (tmplt_anlz,df_sum_rpt_nw,df_sum_mtr_nw)
 df_anz_tim_rp, df_anz_off_rp= analysis_tables (tmplt_anlz,df_sum_rpt_rp,df_sum_mtr_rp)
+
+
+df_list = [df_anz_tim_nw,df_anz_tim_rp,df_anz_off_nw,df_anz_off_rp]
+sheet_list = ['SUMMARY - TIME - NEW','SUMMARY - TIME - REP','SUMMARY - OFFICE - NEW','SUMMARY - OFFICE - REP']
+filename = today + '_landFiles_tracker_summaries'
+create_report (df_list, sheet_list,out_folder,filename)
+
+print ('\nComputing Charts')
+figname_nw= today+'_chart_processingTimes_new'
+title_tag_nw= 'New Files'
+compute_chart (df_anz_tim_nw, title_tag_nw, out_folder, figname_nw)
+
+figname_rp= today+'_chart_processingTimes_rep'
+title_tag_rp= 'Replacement Files'
+compute_chart (df_anz_tim_rp, title_tag_rp, out_folder, figname_rp)
+
+###################################################################################################################
+
+
+
+
 
 
 
@@ -1150,11 +1205,10 @@ df_list = [df_sum_all_nw,df_sum_all_rp] + df_rpts
 sheet_list = ['Summary - NEW Applics','Summary - REP Applics'] + rpt_ids
 
 
-today = date.today().strftime("%Y%m%d")
 filename = today + '_landFiles_tracker'
 
 #compute_plot_rpt (df_stats,filename)
-create_report (df_list, sheet_list,filename)
+create_report (df_list, sheet_list,out_folder,filename)
 
 add_readme_page(filename)
 
