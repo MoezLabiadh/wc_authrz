@@ -12,7 +12,7 @@
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     2023-06-28
+# Created:     2023-07-06
 # Updated:
 #-------------------------------------------------------------------------------
 
@@ -953,6 +953,19 @@ def compute_chart (df, title_tag, out_folder, figname):
     out_chart= os.path.join('{}'.format(out_folder), figname+'.png')
     fig.write_image(out_chart, width=1200, height=800, scale=2)
 
+
+
+def create_hitlists (df_rpts):
+    mtr_lst= ['mtr01','mtr03','mtr07','mtr05','mtr09',
+              'mtr11','mtr13','mtr15','mtr17','mtr18']
+    
+    dfs_htlst = []
+    for i, df in enumerate(df_rpts):
+        mtr= mtr_lst[i]
+        df.sort_values(by=mtr.upper(), ascending=False, inplace=True)
+        dfs_htlst.append(df.head(10))
+        
+    return dfs_htlst
     
   
 def create_report (df_list, sheet_list,out_folder,filename):
@@ -1167,11 +1180,6 @@ df_anz_tim_nw, df_anz_off_nw= analysis_tables (tmplt_anlz,df_sum_rpt_nw,df_sum_m
 df_anz_tim_rp, df_anz_off_rp= analysis_tables (tmplt_anlz,df_sum_rpt_rp,df_sum_mtr_rp)
 
 
-df_list = [df_anz_tim_nw,df_anz_tim_rp,df_anz_off_nw,df_anz_off_rp]
-sheet_list = ['SUMMARY - TIME - NEW','SUMMARY - TIME - REP','SUMMARY - OFFICE - NEW','SUMMARY - OFFICE - REP']
-filename = today + '_landFiles_tracker_summaries'
-create_report (df_list, sheet_list,out_folder,filename)
-
 print ('\nComputing Charts')
 figname_nw= today+'_chart_processingTimes_new'
 title_tag_nw= 'New Files'
@@ -1181,6 +1189,19 @@ figname_rp= today+'_chart_processingTimes_rep'
 title_tag_rp= 'Replacement Files'
 compute_chart (df_anz_tim_rp, title_tag_rp, out_folder, figname_rp)
 
+
+print ('\nComputing Hitlists')
+dfs_htlst= create_hitlists (df_rpts)
+
+dfs_htlst_lbls= ['hitlist_rpt01','hitlist_rpt02','hitlist_rpt03','hitlist_rpt03-1',
+                 'hitlist_rpt04','hitlist_rpt05','hitlist_rpt06','hitlist_rpt07',
+                 'hitlist_rpt08','hitlist_rpt09']
+
+df_list = [df_anz_tim_nw,df_anz_tim_rp,df_anz_off_nw,df_anz_off_rp]+ dfs_htlst
+sheet_list = ['SUMMARY - TIME - NEW','SUMMARY - TIME - REP',
+              'SUMMARY - OFFICE - NEW','SUMMARY - OFFICE - REP']+ dfs_htlst_lbls
+filename = today + '_landFiles_tracker_summaries_hitlists'
+create_report (df_list, sheet_list,out_folder,filename)
 ###################################################################################################################
 
 
@@ -1200,9 +1221,11 @@ cols_range = slice(4, 26)
 df_sum_all_rp.iloc[rows_range, cols_range] = 'n/a'
 
 
-print('\nExporting the Final Report')
+print('\nExporting the Final Reports')
 df_list = [df_sum_all_nw,df_sum_all_rp] + df_rpts 
 sheet_list = ['Summary - NEW Applics','Summary - REP Applics'] + rpt_ids
+
+
 
 
 filename = today + '_landFiles_tracker'
