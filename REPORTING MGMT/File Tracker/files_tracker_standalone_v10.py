@@ -20,17 +20,23 @@ import warnings
 warnings.simplefilter(action='ignore')
 
 import os
+
 import cx_Oracle
 import pandas as pd
 #import numpy as np
+
 import openpyxl
 from openpyxl import load_workbook
-from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.drawing.image import Image
+
 from datetime import date, datetime, timedelta
 
 import plotly.express as px
 import plotly.graph_objects as go
+
+from PIL import Image as PILImage
 
 
 def connect_to_DB (username,password,hostname):
@@ -915,8 +921,9 @@ def analysis_tables (tmplt_anlz,df_sum_rpt,df_sum_mtr):
     
     return df_anz_tim,df_anz_off
 
-def add_analysis_tables(df_anz_tim, df_anz_off, nw_rp, out_folder, filename):
-    """Adds the Executive Summaries to the output report"""
+
+def add_analysis_tables (df_anz_tim, df_anz_off, nw_rp, out_folder, filename):
+    """Adds the Executive Summaries to the Main report"""
     out_file = os.path.join(out_folder, f"{filename}.xlsx")
     
     workbook = load_workbook(out_file)
@@ -963,8 +970,8 @@ def add_analysis_tables(df_anz_tim, df_anz_off, nw_rp, out_folder, filename):
     
 
     writer.save()
-
-
+    
+    
 def compute_chart (df, title_tag, out_folder, figname):
     """Computes a barplot of number of # of files and processing times """
 
@@ -995,6 +1002,43 @@ def compute_chart (df, title_tag, out_folder, figname):
     
     out_chart= os.path.join('{}'.format(out_folder), figname+'.png')
     fig.write_image(out_chart, width=1200, height=800, scale=2)
+
+
+def add_charts(nw_rp, out_folder, filename, figname):
+    """ "Adds the charts to the Main report """
+    
+    out_file = os.path.join(out_folder, f"{filename}.xlsx")
+    workbook = load_workbook(out_file)
+    
+    if nw_rp == 'NEW':
+        sheet_index = 0
+    else:
+        sheet_index = 1
+
+    sheet_name = workbook.sheetnames[sheet_index]
+    worksheet = workbook[sheet_name]
+    
+    image_path = os.path.join(out_folder, f"{figname}.png")
+
+    pil_image = PILImage.open(image_path)
+    
+    width_cm = 27
+    height_cm = 17
+    
+    dpi = 96 
+    width_px = int(width_cm * dpi / 2.54)
+    height_px = int(height_cm * dpi / 2.54)
+    
+    resized_image = pil_image.resize((width_px, height_px))
+    
+    resized_image.save(image_path, "PNG")
+    img = Image(image_path)
+
+    cell = "J22"
+    
+    worksheet.add_image(img, cell)
+    
+    workbook.save(out_file)
 
 
 def create_hitlists (df_rpts):
@@ -1073,6 +1117,8 @@ def add_readme_page(filename):
     target_workbook.active = 0
     
     target_workbook.save(rpt_xlsx)
+                
+
 
 
 def main():
@@ -1213,9 +1259,7 @@ def main():
     df_anz_tim_rp, df_anz_off_rp= analysis_tables (tmplt_anlz,df_sum_rpt_rp,df_sum_mtr_rp)
     
     
-    figname_rp= today+'_chart_processingTimes_rep'
-    title_tag_rp= 'Replacement Files'
-    compute_chart (df_anz_tim_rp, title_tag_rp, out_folder, figname_rp)
+    
     
     template = 'TEMPLATE/rpt_template.xlsx'
     df_sum_all_nw= create_summary_all(template,df_sum_rpt_nw,df_sum_mtr_nw)
@@ -1239,8 +1283,6 @@ def main():
     nw_rp= 'REP'
     add_analysis_tables(df_anz_tim_rp,df_anz_off_rp,nw_rp,out_folder,outfile_main_rpt)
     
-    add_readme_page(outfile_main_rpt)
-    
     
     print ('\nExporting the Hitlists Report')
     dfs_htlst= create_hitlists (df_rpts)
@@ -1257,5 +1299,17 @@ def main():
     figname_nw= today+'_chart_processingTimes_new'
     title_tag_nw= 'New Files'
     compute_chart (df_anz_tim_nw, title_tag_nw, out_folder, figname_nw)
+    
+    figname_rp= today+'_chart_processingTimes_rep'
+    title_tag_rp= 'Replacement Files'
+    compute_chart (df_anz_tim_rp, title_tag_rp, out_folder, figname_rp)
+    
+    nw_rp= 'NEW'
+    add_charts(nw_rp, out_folder, outfile_main_rpt,figname_nw)
+    nw_rp= 'REP'
+    add_charts(nw_rp, out_folder, outfile_main_rpt,figname_rp)
+    
+    add_readme_page(outfile_main_rpt)
+
 
 main()
