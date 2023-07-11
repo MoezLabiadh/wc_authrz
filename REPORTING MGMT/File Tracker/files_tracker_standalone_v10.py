@@ -12,7 +12,7 @@
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     2023-07-06
+# Created:     2023-07-11
 # Updated:
 #-------------------------------------------------------------------------------
 
@@ -24,6 +24,8 @@ import cx_Oracle
 import pandas as pd
 #import numpy as np
 import openpyxl
+from openpyxl import load_workbook
+from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.utils import get_column_letter
 from datetime import date, datetime, timedelta
 
@@ -912,7 +914,55 @@ def analysis_tables (tmplt_anlz,df_sum_rpt,df_sum_mtr):
                              'CRNRD','NICCNRD','HGNRD']]
     
     return df_anz_tim,df_anz_off
+
+def add_analysis_tables(df_anz_tim, df_anz_off, nw_rp, out_folder, filename):
+    """Adds the Executive Summaries to the output report"""
+    out_file = os.path.join(out_folder, f"{filename}.xlsx")
     
+    workbook = load_workbook(out_file)
+    writer = pd.ExcelWriter(out_file, engine='openpyxl')
+    writer.book = workbook
+    
+    if nw_rp == 'NEW':
+        sheet_index = 0
+        tab_tim_nme= 'Table3000'
+        tab_off_nme= 'Table3001'
+    else:
+        sheet_index = 1
+        tab_tim_nme= 'Table3002'
+        tab_off_nme= 'Table3003'
+        
+    sheet_name = workbook.sheetnames[sheet_index]
+
+    start_row = 21
+    df_anz_tim.to_excel(writer, sheet_name=sheet_name, 
+                        startrow=start_row,
+                        startcol=1,
+                        index=False)
+
+    df_anz_off.to_excel(writer, sheet_name=sheet_name, 
+                        startrow=start_row + len(df_anz_tim) + 3, 
+                        startcol=1,
+                        index=False)
+    
+
+    worksheet = workbook[sheet_name]
+    
+   
+    tab_tim = Table(displayName= tab_tim_nme, ref="B22:G31")
+    tab_off = Table(displayName= tab_off_nme, ref="B34:H44")
+
+    style = TableStyleInfo(name="TableStyleMedium9", showFirstColumn=True,
+                          showLastColumn=False, showRowStripes=True, showColumnStripes=True)
+    
+    tab_tim.tableStyleInfo = style
+    tab_off.tableStyleInfo = style
+
+    worksheet.add_table(tab_tim)
+    worksheet.add_table(tab_off)
+    
+
+    writer.save()
 
 
 def compute_chart (df, title_tag, out_folder, figname):
@@ -987,8 +1037,8 @@ def create_report (df_list, sheet_list,out_folder,filename):
 
         col_names = [{'header': col_name} for col_name in dataframe.columns[:]]
 
-        worksheet.add_table(0, 0, dataframe.shape[0], dataframe.shape[1]-1, {
-            'columns': col_names})
+        worksheet.add_table(0, 0, dataframe.shape[0], dataframe.shape[1]-1, 
+                            {'columns': col_names})
 
     writer.save()
     writer.close()    
@@ -1023,11 +1073,10 @@ def add_readme_page(filename):
     target_workbook.active = 0
     
     target_workbook.save(rpt_xlsx)
-                
 
 
- 
 def main():
+
     print ('\nConnecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
@@ -1163,27 +1212,10 @@ def main():
     df_anz_tim_nw, df_anz_off_nw= analysis_tables (tmplt_anlz,df_sum_rpt_nw,df_sum_mtr_nw)
     df_anz_tim_rp, df_anz_off_rp= analysis_tables (tmplt_anlz,df_sum_rpt_rp,df_sum_mtr_rp)
     
-    print ('\nComputing Charts')
-    figname_nw= today+'_chart_processingTimes_new'
-    title_tag_nw= 'New Files'
-    compute_chart (df_anz_tim_nw, title_tag_nw, out_folder, figname_nw)
     
     figname_rp= today+'_chart_processingTimes_rep'
     title_tag_rp= 'Replacement Files'
     compute_chart (df_anz_tim_rp, title_tag_rp, out_folder, figname_rp)
-    
-    print ('\nComputing Hitlists')
-    dfs_htlst= create_hitlists (df_rpts)
-    
-    dfs_htlst_lbls= ['hitlist_rpt01','hitlist_rpt02','hitlist_rpt03','hitlist_rpt03-1',
-                     'hitlist_rpt04','hitlist_rpt05','hitlist_rpt06','hitlist_rpt07',
-                     'hitlist_rpt08','hitlist_rpt09']
-    
-    df_list = [df_anz_tim_nw,df_anz_tim_rp,df_anz_off_nw,df_anz_off_rp]+ dfs_htlst
-    sheet_list = ['SUMMARY - TIME - NEW','SUMMARY - TIME - REP',
-                  'SUMMARY - OFFICE - NEW','SUMMARY - OFFICE - REP']+ dfs_htlst_lbls
-    filename = today + '_landFiles_tracker_summaries_hitlists'
-    create_report (df_list, sheet_list,out_folder,filename)
     
     template = 'TEMPLATE/rpt_template.xlsx'
     df_sum_all_nw= create_summary_all(template,df_sum_rpt_nw,df_sum_mtr_nw)
@@ -1194,14 +1226,36 @@ def main():
     cols_range = slice(4, 26)
     df_sum_all_rp.iloc[rows_range, cols_range] = 'n/a'
     
-    print('\nExporting the Final Reports')
+    print('\nExporting the Main Report')
     df_list = [df_sum_all_nw,df_sum_all_rp] + df_rpts 
     sheet_list = ['Summary - NEW Applics','Summary - REP Applics'] + rpt_ids
     
-    filename = today + '_landFiles_tracker'
+    outfile_main_rpt = today + '_landFiles_tracker'
     
-    create_report (df_list, sheet_list,out_folder,filename)
+    create_report (df_list, sheet_list,out_folder,outfile_main_rpt)
     
-    add_readme_page(filename)
+    nw_rp= 'NEW'
+    add_analysis_tables(df_anz_tim_nw,df_anz_off_nw,nw_rp,out_folder,outfile_main_rpt)
+    nw_rp= 'REP'
+    add_analysis_tables(df_anz_tim_rp,df_anz_off_rp,nw_rp,out_folder,outfile_main_rpt)
+    
+    add_readme_page(outfile_main_rpt)
+    
+    
+    print ('\nExporting the Hitlists Report')
+    dfs_htlst= create_hitlists (df_rpts)
+    
+    dfs_htlst_lbls= ['hitlist_rpt01','hitlist_rpt02','hitlist_rpt03','hitlist_rpt03-1',
+                     'hitlist_rpt04','hitlist_rpt05','hitlist_rpt06','hitlist_rpt07',
+                     'hitlist_rpt08','hitlist_rpt09']
+    
+    outfile_hit = today + '_landFiles_tracker_hitlists'
+    create_report (dfs_htlst, dfs_htlst_lbls, out_folder, outfile_hit)
+    
+    
+    print ('\nComputing Charts')
+    figname_nw= today+'_chart_processingTimes_new'
+    title_tag_nw= 'New Files'
+    compute_chart (df_anz_tim_nw, title_tag_nw, out_folder, figname_nw)
 
 main()
