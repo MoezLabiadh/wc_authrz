@@ -122,7 +122,7 @@ def load_queries ():
                 WHSE_LEGAL_ADMIN_BOUNDARIES.FNT_TREATY_SIDE_AGREEMENTS_SP iha
             
              WHERE ipr.CROWN_LANDS_FILE in ({tm})
-               AND ipr.TENURE_STAGE = 'TENURE' 
+               --AND ipr.TENURE_STAGE = 'TENURE' 
                AND iha.AREA_TYPE = 'Important Harvest Area'
                AND iha.STATUS = 'ACTIVE'
                AND SDO_RELATE (iha.GEOMETRY, ipr.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
@@ -139,7 +139,7 @@ def load_queries ():
                 WHSE_LAND_USE_PLANNING.RMP_LANDSCAPE_UNIT_SVW ldu
             
              WHERE ipr.CROWN_LANDS_FILE in ({tm})
-               AND ipr.TENURE_STAGE = 'TENURE' 
+               --AND ipr.TENURE_STAGE = 'TENURE' 
                AND SDO_RELATE (ldu.GEOMETRY, ipr.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
                  """           
     return sql
