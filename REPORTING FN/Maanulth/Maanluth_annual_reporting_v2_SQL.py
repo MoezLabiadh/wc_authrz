@@ -12,7 +12,7 @@
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
 # Created:     23-01-2023
-# Updated:
+# Updated:     15-08-2023
 #-------------------------------------------------------------------------------
 
 
@@ -205,10 +205,16 @@ def get_maan_tenures (df_off,connection,sql):
     
     df_maan = pd.merge(df_maan, df_off, how= 'left', left_on='CROWN_LANDS_FILE', right_on='FILE NUMBER')
     
+    df_maan['PURPOSE FULL'] = df_maan['PURPOSE'] + ' - ' + df_maan['SUBPURPOSE']
+    
     df_maan = df_maan[['FILE NUMBER', 'DISTRICT OFFICE', 'STATUS', 'TASK DESCRIPTION', 
                        'OFFERED DATE', 'OFFER ACCEPTED DATE','EXPIRY DATE', 'TENURE LENGTH YEARS',
-                       'TYPE','SUBTYPE','PURPOSE','SUBPURPOSE','TENURE_HECTARE','OVERLAP_HECTARE']]
+                       'TYPE','SUBTYPE','PURPOSE','SUBPURPOSE','PURPOSE FULL','TENURE_HECTARE','OVERLAP_HECTARE']]
     
+    for col in df_maan.columns:
+        if 'DATE' in col:
+            df_maan[col] = pd.to_datetime(df_maan[col]).dt.date
+            
     df_maan.sort_values(by = ['FILE NUMBER'], inplace = True)
     
     return df_maan, gdf_maan
@@ -282,7 +288,7 @@ def generate_report (workspace, df_list, sheet_list,filename):
 def main():
     """Runs the program"""
     
-    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20220719_maanulth_annual_report_2022\tests_2023'
+    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230815_maanulth_reporting_2023\aug15'
     titan_report = os.path.join(workspace, 'TITAN_RPT009.xlsx')
     
     print ('Connecting to BCGW...')
@@ -295,7 +301,7 @@ def main():
     print ('Titan report date/time is: {}'.format (titan_date))
     
     print ("TITAN filtering: Getting Offered Tenures...")
-    year = 2022
+    year = 2023
     df_off = filter_TITAN (titan_report,year)
     
     print ("Loading SQL queries...")
@@ -303,8 +309,7 @@ def main():
     
     print ("SQL-1: Getting Tenures within Maanulth Territory...")
     df_maan, gdf_maan = get_maan_tenures (df_off,connection, sql)
-    
-    
+
     print ("SQL-2: Getting overlaps with Important Harvest Areas...")
     df_iha = get_iha_overlaps (df_maan,connection, sql)
     
