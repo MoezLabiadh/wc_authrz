@@ -102,6 +102,7 @@ def load_queries ():
             FROM
                 WHSE_TANTALIS.TA_CROWN_TENURES_SVW ipr,
                 WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP pip
+                
             
              WHERE pip.CONTACT_ORGANIZATION_NAME = q'[Maa-nulth First Nations]'
                AND (ipr.TENURE_STAGE = 'TENURE' 
@@ -135,11 +136,14 @@ def load_queries ():
             
             FROM
                 WHSE_TANTALIS.TA_CROWN_TENURES_SVW ipr,
-                WHSE_LAND_USE_PLANNING.RMP_LANDSCAPE_UNIT_SVW ldu
+                WHSE_LAND_USE_PLANNING.RMP_LANDSCAPE_UNIT_SVW ldu,
+                WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP pip
             
              WHERE ipr.CROWN_LANDS_FILE in ({tm})
+               AND pip.CONTACT_ORGANIZATION_NAME = q'[Maa-nulth First Nations]'
                --AND ipr.TENURE_STAGE = 'TENURE' 
                AND SDO_RELATE (ldu.GEOMETRY, ipr.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
+               AND SDO_RELATE (pip.SHAPE, ldu.GEOMETRY, 'mask=ANYINTERACT') = 'TRUE'
                  """           
     return sql
          
@@ -186,6 +190,7 @@ def df_2_gdf (df, crs):
     #gdf = gpd.GeoDataFrame(df, geometry = df['geometry'])
     gdf.crs = "EPSG:" + str(crs)
     del df['SHAPE']
+    del gdf['SHAPE']
     
     return gdf
 
