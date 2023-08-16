@@ -130,8 +130,7 @@ def load_queries ():
 
     sql['lu'] = """
                 SELECT
-               ipr.INTRID_SID, ipr.CROWN_LANDS_FILE, ldu.LANDSCAPE_UNIT_NAME, 
-               ROUND (ipr.TENURE_AREA_IN_HECTARES, 2) TENURE_HECTARE, 
+               ipr.CROWN_LANDS_FILE, ldu.LANDSCAPE_UNIT_NAME,                  
                ROUND(SDO_GEOM.SDO_AREA(SDO_GEOM.SDO_INTERSECTION(ldu.GEOMETRY,ipr.SHAPE, 0.005), 0.005, 'unit=HECTARE'), 2) OVERLAP_HECTARE
             
             FROM
@@ -236,6 +235,9 @@ def get_lu_overlaps (df_maan,connection, sql):
     query = sql['lu'].format(tm= s_maan)
     df_lu = read_query(connection,query)
     
+    df_lu = df_lu.groupby(['CROWN_LANDS_FILE', 'LANDSCAPE_UNIT_NAME'])\
+                            ['OVERLAP_HECTARE'].sum().reset_index()
+    
     df_lu.sort_values(by = ['CROWN_LANDS_FILE'], inplace = True)
     
     df_lu_sum = df_lu.groupby('LANDSCAPE_UNIT_NAME')[['OVERLAP_HECTARE']].apply(sum).reset_index()
@@ -246,7 +248,6 @@ def get_lu_overlaps (df_maan,connection, sql):
 def generate_spatial_files(gdf, workspace, year):
     """Generate a Shapefile of Tenures"""
 
-    
     shp_name = os.path.join(workspace, 'maan_report_{}_shapes.shp'.format(str(year)))
     kml_name = os.path.join(workspace, 'maan_report_{}_shapes.kml'.format(str(year)))
     if not os.path.isfile(shp_name):
@@ -288,7 +289,7 @@ def generate_report (workspace, df_list, sheet_list,filename):
 def main():
     """Runs the program"""
     
-    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230815_maanulth_reporting_2023\aug15'
+    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230815_maanulth_reporting_2023\aug16'
     titan_report = os.path.join(workspace, 'TITAN_RPT009.xlsx')
     
     print ('Connecting to BCGW...')
@@ -309,7 +310,7 @@ def main():
     
     print ("SQL-1: Getting Tenures within Maanulth Territory...")
     df_maan, gdf_maan = get_maan_tenures (df_off,connection, sql)
-
+    
     print ("SQL-2: Getting overlaps with Important Harvest Areas...")
     df_iha = get_iha_overlaps (df_maan,connection, sql)
     
