@@ -265,12 +265,16 @@ def generate_spatial_files(gdf, workspace, year):
 
     shp_name = os.path.join(workspace, 'maan_report_{}_shapes.shp'.format(str(year)))
     kml_name = os.path.join(workspace, 'maan_report_{}_shapes.kml'.format(str(year)))
-    if not os.path.isfile(shp_name):
-        gdf.to_file(shp_name, driver="ESRI Shapefile")
+    #if not os.path.isfile(shp_name):
+    gdf.to_file(shp_name, driver="ESRI Shapefile")
+    
+    gdf = gdf.to_crs(4326)    
+    
+    if os.path.isfile(kml_name):
+        os.remove(kml_name)
         
-    if not os.path.isfile(kml_name):
-        fiona.supported_drivers['KML'] = 'rw'
-        gdf.to_file(kml_name, driver='KML')
+    fiona.supported_drivers['KML'] = 'rw'
+    gdf.to_file(kml_name, driver='KML')
 
            
 def generate_report (workspace, df_list, sheet_list,filename):
