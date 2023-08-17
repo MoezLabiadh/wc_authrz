@@ -131,19 +131,29 @@ def load_queries ():
 
     sql['lu'] = """
                 SELECT
-               ipr.CROWN_LANDS_FILE, ldu.LANDSCAPE_UNIT_NAME,                  
-               ROUND(SDO_GEOM.SDO_AREA(SDO_GEOM.SDO_INTERSECTION(ldu.GEOMETRY,ipr.SHAPE, 0.005), 0.005, 'unit=HECTARE'), 2) OVERLAP_HECTARE
-            
-            FROM
-                WHSE_TANTALIS.TA_CROWN_TENURES_SVW ipr,
-                WHSE_LAND_USE_PLANNING.RMP_LANDSCAPE_UNIT_SVW ldu,
-                WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP pip
-            
-             WHERE ipr.CROWN_LANDS_FILE in ({tm})
-               AND pip.CONTACT_ORGANIZATION_NAME = q'[Maa-nulth First Nations]'
-               --AND ipr.TENURE_STAGE = 'TENURE' 
-               AND SDO_RELATE (ldu.GEOMETRY, ipr.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
-               AND SDO_RELATE (pip.SHAPE, ldu.GEOMETRY, 'mask=ANYINTERACT') = 'TRUE'
+                    ipr.CROWN_LANDS_FILE,
+                    ldm.LANDSCAPE_UNIT_NAME,
+                    ROUND(SDO_GEOM.SDO_AREA(SDO_GEOM.SDO_INTERSECTION(ldm.GEOMETRY, ipr.SHAPE, 0.005), 0.005, 'unit=HECTARE'), 2) AS OVERLAP_HECTARE
+                FROM
+                    WHSE_TANTALIS.TA_CROWN_TENURES_SVW ipr
+                JOIN
+                    (
+                        SELECT
+                            ldu.LANDSCAPE_UNIT_NAME,
+                            ldu.GEOMETRY
+                        FROM
+                            WHSE_LAND_USE_PLANNING.RMP_LANDSCAPE_UNIT_SVW ldu
+                        JOIN
+                            WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP pip
+                        ON
+                            SDO_RELATE(pip.SHAPE, ldu.GEOMETRY, 'mask=ANYINTERACT') = 'TRUE'
+                        AND
+                            pip.CONTACT_ORGANIZATION_NAME = q'[Maa-nulth First Nations]'
+                    ) ldm
+                ON
+                    SDO_RELATE(ldm.GEOMETRY, ipr.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
+                WHERE
+                    ipr.CROWN_LANDS_FILE IN ({tm})
                  """           
     return sql
          
