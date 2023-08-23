@@ -189,12 +189,12 @@ def load_queries ():
                         JOIN
                             WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP pip
                         ON
-                            SDO_RELATE(pip.SHAPE, ldu.GEOMETRY, 'mask=ANYINTERACT') = 'TRUE'
+                            SDO_RELATE(ldu.GEOMETRY,pip.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
                         AND
                             pip.CONTACT_ORGANIZATION_NAME = q'[Maa-nulth First Nations]'
                     ) ldm
                 ON
-                    SDO_RELATE(ldm.GEOMETRY, ipr.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
+                    SDO_RELATE(ipr.SHAPE, ldm.GEOMETRY, 'mask=ANYINTERACT') = 'TRUE'
                 WHERE
                     ipr.CROWN_LANDS_FILE IN ({tm})
                  """           
@@ -331,7 +331,6 @@ def generate_spatial_files(gdf, workspace, year):
     gdf.to_file(kml_name, driver='KML')
 
      
-
       
 def generate_report (workspace, df_list, sheet_list,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
@@ -362,44 +361,44 @@ def generate_report (workspace, df_list, sheet_list,filename):
 
 
 def main():
-  """Runs the program"""
-  
-  workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230815_maanulth_reporting_2023\aug22'
-  
-  print ('Connecting to BCGW...')
-  hostname = 'bcgw.bcgov/idwprod1.bcgov'
-  bcgw_user = os.getenv('bcgw_user')
-  bcgw_pwd = os.getenv('bcgw_pwd')
-  connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-      
-  year = 2023
-  
-  print ("Loading SQL queries...")
-  sql = load_queries ()
-  
-  print ("SQL-1: Getting Tenures within Maanulth Territory...")
-  df_maan, df_maan_geo= get_maan_tenures (year, connection, sql)
-  
-  print ("SQL-2: Getting overlaps with Important Harvest Areas...")
-  df_iha = get_iha_overlaps (df_maan,connection, sql)
-  
-  print ("SQL-3: Getting overlaps with Landscape Units...")
-  df_lu, df_lu_sum = get_lu_overlaps (df_maan,connection, sql) 
-  
-  print ('Creating Spatial file')
-  gdf_maan = df_2_gdf (df_maan_geo, 3005)
-  
-  
-  print ("Getting overlaps with Individual Nations")
-  indNat_fc= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\Maa-nulth.gdb\PreTreatyFirstNationAreas'
-  df_nat= get_FN_overlaps(gdf_maan, indNat_fc)
-  
-  print ('Generating Outputs...')
-  df_list = [df_maan,df_iha, df_nat, df_lu, df_lu_sum]
-  sheet_list = ['Offered Tenures in Maanulth', 'Overlay - IHA', 'Overlay - Nations','Overlay - LU', 'LU Area Summary']
-  filename = 'Maanulth_annualReporting_{}_tables'.format(str(year))
-  generate_report (workspace, df_list, sheet_list,filename)
-  
-  generate_spatial_files(gdf_maan, workspace, year)
+    """Runs the program"""
+    
+    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230815_maanulth_reporting_2023\aug22'
+    
+    print ('Connecting to BCGW...')
+    hostname = 'bcgw.bcgov/idwprod1.bcgov'
+    bcgw_user = os.getenv('bcgw_user')
+    bcgw_pwd = os.getenv('bcgw_pwd')
+    connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
+        
+    year = 2023
+    
+    print ("Loading SQL queries...")
+    sql = load_queries ()
+    
+    print ("SQL-1: Getting Tenures within Maanulth Territory...")
+    df_maan, df_maan_geo= get_maan_tenures (year, connection, sql)
+    
+    print ("SQL-2: Getting overlaps with Important Harvest Areas...")
+    df_iha = get_iha_overlaps (df_maan,connection, sql)
+    
+    print ("SQL-3: Getting overlaps with Landscape Units...")
+    df_lu, df_lu_sum = get_lu_overlaps (df_maan,connection, sql) 
+    
+    print ('Creating Spatial file')
+    gdf_maan = df_2_gdf (df_maan_geo, 3005)
+    
+    
+    print ("Getting overlaps with Individual Nations")
+    indNat_fc= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\Maa-nulth.gdb\PreTreatyFirstNationAreas'
+    df_nat= get_FN_overlaps(gdf_maan, indNat_fc)
+    
+    print ('Generating Outputs...')
+    df_list = [df_maan,df_iha, df_nat, df_lu, df_lu_sum]
+    sheet_list = ['Offered Tenures in Maanulth', 'Overlay - IHA', 'Overlay - Nations','Overlay - LU', 'LU Area Summary']
+    filename = 'Maanulth_annualReporting_{}_tables'.format(str(year))
+    generate_report (workspace, df_list, sheet_list,filename)
+    
+    generate_spatial_files(gdf_maan, workspace, year)
  
 main ()
