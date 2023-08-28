@@ -1,4 +1,3 @@
-
 -- FOREST AUTHORIZATIONS
 	-- NEW_AMEND column indicates whether the athorization is NEW or AMENDEMENT 
 	-- REGION column indicates whether the athorization is located in maanulth NORTH or SOUTH areas
@@ -52,8 +51,11 @@ FROM WHSE_FOREST_TENURE.FTEN_HARVEST_AUTH_POLY_SVW frr
   ) amdd
     ON amdd.MAP_LABEL = frr.MAP_LABEL
         
-WHERE frr.ISSUE_DATE BETWEEN TO_DATE('01/09/2022', 'DD/MM/YYYY') AND TO_DATE('31/08/2023', 'DD/MM/YYYY')
-
+WHERE frr.LIFE_CYCLE_STATUS_CODE <> 'PENDING'
+  AND (amdd.AMEND_STATUS_DATE BETWEEN TO_DATE('01/09/2022', 'DD/MM/YYYY') AND TO_DATE('31/08/2023', 'DD/MM/YYYY') 
+        OR 
+      (frr.ISSUE_DATE BETWEEN TO_DATE('01/09/2022', 'DD/MM/YYYY') AND TO_DATE('31/08/2023', 'DD/MM/YYYY')AND amdd.AMEND_STATUS_DATE is NULL)) 
+        
 ORDER BY frr.MAP_LABEL;
 
 
