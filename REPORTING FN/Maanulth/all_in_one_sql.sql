@@ -1,12 +1,14 @@
-                SELECT --TN.INTRID_SID, 
+SELECT --TN.INTRID_SID, 
                        --TN.DISPOSITION_TRANSACTION_SID,
+                       ldu.LANDSCAPE_UNIT_NAME,
+                       
                        CASE
                         WHEN iha.TREATY_SIDE_AGREEMENT_AREA_ID IS NOT NULL
                           THEN 'YES'
                             ELSE 'NO'
                               END AS OVERLAP_IHA,
                         
-                       iha.TREATY_SIDE_AGREEMENT_AREA_ID,
+                       iha.TREATY_SIDE_AGREEMENT_AREA_ID,  
                        TN.FILE_NBR,
                        TN.STAGE,
                        TN.STATUS,
@@ -98,7 +100,13 @@
                       
                      ON TF.DISPOSITION_TRANSACTION_SID = TN.DISPOSITION_TRANSACTION_SID
                      
+                     
+                     
+                JOIN WHSE_LAND_USE_PLANNING.RMP_LANDSCAPE_UNIT_SVW ldu
+                  ON SDO_RELATE(ldu.GEOMETRY, TN.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
+                                             
+                                                   
                 LEFT JOIN WHSE_LEGAL_ADMIN_BOUNDARIES.FNT_TREATY_SIDE_AGREEMENTS_SP iha
                     ON SDO_RELATE (iha.GEOMETRY, TN.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
                        AND iha.AREA_TYPE = 'Important Harvest Area'
-                       AND iha.STATUS = 'ACTIVE';
+                       AND iha.STATUS = 'ACTIVE'; 
