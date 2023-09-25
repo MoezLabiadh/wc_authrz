@@ -1,33 +1,29 @@
+
 SELECT TN.INTRID_SID, 
-       TN.DISPOSITION_TRANSACTION_SID,
-       ldu.LANDSCAPE_UNIT_NAME,
-       
+       TN.FILE_NBR,
+       ldu.LANDSCAPE_UNIT_NAME AS LANDSCAPE_UNIT,
        CASE
         WHEN iha.TREATY_SIDE_AGREEMENT_AREA_ID IS NOT NULL
-          THEN 'YES'
-            ELSE 'NO'
+          THEN 'Yes'
+            ELSE 'No'
               END AS OVERLAP_IHA,
-        
-       iha.TREATY_SIDE_AGREEMENT_AREA_ID,  
-       TN.FILE_NBR,
+       iha.TREATY_SIDE_AGREEMENT_AREA_ID AS IHA_ID,  
        TN.STAGE,
        TN.STATUS,
        TN.APPLICATION_TYPE,
-       --TN.EFFECTIVE_DATE,
+       TN.EFFECTIVE_DATE,
        TN.TENURE_TYPE,
        TN.TENURE_SUBTYPE,
+       TN.TENURE_TYPE || ' ' || '-' || ' ' || TN.TENURE_SUBTYPE AS FULL_TYPE,
        TN.TENURE_PURPOSE,
        TN.TENURE_SUBPURPOSE,
        TN.TENURE_PURPOSE || ' ' || '-' || ' ' || TN.TENURE_SUBPURPOSE AS FULL_PURPOSE,
        TF.OFFERED_DATE, 
        TN.EXPIRY_DATE,
        (EXTRACT(YEAR FROM TN.EXPIRY_DATE) - EXTRACT(YEAR FROM TF.OFFERED_DATE)) AS TENURE_LENGTH_YRS,
-       ROUND(TN.AREA_HA,2) AS AREA_HA,
-       
+       ROUND(TN.AREA_HA,2) AS AREA_HA, 
        SDO_UTIL.TO_WKTGEOMETRY(TN.SHAPE) SHAPE
-       --TN.LOCATION_DSC,
-       --TN.CLIENT_NAME_PRIMARY
-      
+
 FROM(
 SELECT
       CAST(IP.INTRID_SID AS NUMBER) INTRID_SID,
@@ -93,20 +89,22 @@ WHERE TT.STATUS_NME IN ('DISPOSITION IN GOOD STANDING', 'OFFERED', 'OFFER ACCEPT
 
 ORDER BY TS.EFFECTIVE_DAT DESC) TN
 
+--Add Offered Date  
 JOIN (SELECT DISPOSITION_TRANSACTION_SID, EFFECTIVE_DAT AS OFFERED_DATE 
       FROM WHSE_TANTALIS.TA_DISP_TRANS_STATUSES
       WHERE CODE_CHR_STATUS = 'OF'
-      AND EFFECTIVE_DAT BETWEEN TO_DATE('01/09/2022', 'DD/MM/YYYY') AND TO_DATE('31/08/2023', 'DD/MM/YYYY')) TF
+      AND EFFECTIVE_DAT BETWEEN TO_DATE('01/09/2022', 'DD/MM/YYYY') AND TO_DATE('31/08/2023', 'DD/MM/YYYY')) TF  
+  ON TF.DISPOSITION_TRANSACTION_SID = TN.DISPOSITION_TRANSACTION_SID
       
-     ON TF.DISPOSITION_TRANSACTION_SID = TN.DISPOSITION_TRANSACTION_SID
-     
-     
-     
+ -- Add Landscape Units    
 JOIN WHSE_LAND_USE_PLANNING.RMP_LANDSCAPE_UNIT_SVW ldu
-  ON SDO_RELATE(ldu.GEOMETRY, TN.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
-                             
-                                   
+  ON SDO_RELATE (ldu.GEOMETRY, TN.SHAPE, 'mask=ANYINTERACT')= 'TRUE'
+  AND ldu.LANDSCAPE_UNIT_NAME IN ('Lower Nimpkish','Marble','Neroutsos','Klaskish','Tahsish','Nasparti','Kashutl','Brooks','Artlish','Zeballos','Kaouk',
+                                  'Eliza','Clayoquot SMZ','Sproat Lake','Nahmint','Cous','Henderson','Effingham','Nitinat','Corrigan','Maggie',
+                                  'Barkley Sound Islands','Sarita','Klanawa','Toquaht')
+          
+-- Add IHAs                                   
 LEFT JOIN WHSE_LEGAL_ADMIN_BOUNDARIES.FNT_TREATY_SIDE_AGREEMENTS_SP iha
     ON SDO_RELATE (iha.GEOMETRY, TN.SHAPE, 'mask=ANYINTERACT') = 'TRUE'
        AND iha.AREA_TYPE = 'Important Harvest Area'
-       AND iha.STATUS = 'ACTIVE'; 
+       AND iha.STATUS = 'ACTIVE';      
