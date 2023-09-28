@@ -217,7 +217,7 @@ def create_fn_contact_list (df, connection, sql):
     
     for col in df_fn_con.columns:
         if 'DATE' in col:
-            df[col] =  pd.to_datetime(df_fn_con[col], infer_datetime_format=True, 
+            df_fn_con[col] =  pd.to_datetime(df_fn_con[col], infer_datetime_format=True, 
                                       errors = 'coerce').dt.date
 
 
