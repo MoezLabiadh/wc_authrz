@@ -390,6 +390,7 @@ def main():
     
     #create a master list of expiriing tenures
     df_tn= df.drop_duplicates(subset=['FILE_NBR'])
+    df_tn.drop(columns=['CNSLTN_AREA_NAME'], inplace= True)
     
     print ("\nGenerating a summary table...")
     #create a summary per file nbr and FN area
