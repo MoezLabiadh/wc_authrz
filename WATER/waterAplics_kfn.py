@@ -1,3 +1,21 @@
+#-------------------------------------------------------------------------------
+# Name:        Komoks Water Applications
+#
+# Purpose:     This script generates a report on Water applications
+#              (New and Existing Use) within Komoks First Nation Territory.
+#
+# Input(s):    (1) Workspace (folder) where outputs will be generated.
+#              (2) New Water Applications ledger(xlsx)
+#              (3) Existing Use Applications ledger(xlsx)
+#              (4) BCGW connection parameters
+#
+# Author:      Moez Labiadh - FCBC, Nanaimo
+#
+# Created:     29-09-2023
+# Updated:     
+#-------------------------------------------------------------------------------
+
+
 import warnings
 warnings.simplefilter(action='ignore')
 
@@ -5,6 +23,8 @@ import os
 import cx_Oracle
 import pandas as pd
 import geopandas as gpd
+from datetime import datetime
+import timeit
 
 
 def connect_to_DB (username,password,hostname):
@@ -18,8 +38,20 @@ def connect_to_DB (username,password,hostname):
     return connection
 
 
+def create_dir (path, dir):
+    """ Creates new folder and returns path"""
+    try:
+      os.makedirs(os.path.join(path,dir))
+
+    except OSError:
+        print('Folder {} already exists!'.format(dir))
+        pass
+
+    return os.path.join(path,dir)
+
+
 def prep_data(f_eug,f_new):
-    df_eug = pd.read_excel(f_eug, 'Existing Use Applications2', usecols="A:AG")
+    df_eug = pd.read_excel(f_eug, 'Existing Use Applications', usecols="A:AG")
     df_new = pd.read_excel(f_new, 'Active Applications',converters={'File Number':str})
     
     df_new.dropna(subset=['Application Type'],inplace=True)
@@ -41,7 +73,7 @@ def prep_data(f_eug,f_new):
     
     cols = ['APPLICATION TYPE','FILE NUMBER','ATS NUMBER', 
             'APPLICANT','PURPOSE','STATUS','LATITUDE', 'LONGITUDE']
-    
+
     df_eug = df_eug[cols+['SOURCE_AQUIFER','VOLUME']]
     df_new = df_new[cols]
     
@@ -104,32 +136,53 @@ def add_kfn_info(df,connection,sql):
 def add_aquifer_info(df,connection,sql):
     for index, row in df.iterrows():
         print('...working on row {}'.format(index))
-        app_typ = row['APPLICATION_TYPE']
+        #app_typ = row['APPLICATION_TYPE']
         
-        if app_typ in ('Existing Use - Groundwater', 'Water Licence - Ground', 
-                       'Abandon - Ground', 'Amendment - Ground'):
-            long = row['LONGITUDE']
-            lat = row['LATITUDE']
+        #if app_typ in ('Existing Use - Groundwater', 'Water Licence - Ground', 
+                      # 'Abandon - Ground', 'Amendment - Ground'):
+        long = row['LONGITUDE']
+        lat = row['LATITUDE']
             
-            query = sql['aqf'].format(lat=lat,long=long)
-            df_q = pd.read_sql(query,connection)
+        query = sql['aqf'].format(lat=lat,long=long)
+        df_q = pd.read_sql(query,connection)
             
-            if df_q.shape[0] > 0:
-                aq = ", ".join(str(x) for x in df_q['AQUIFER_ID'].to_list())
-                df.at[index,'SOURCE_AQUIFER'] = aq
-            else:
-                pass
+        if df_q.shape[0] > 0:
+            aq = ", ".join(str(x) for x in df_q['AQUIFER_ID'].to_list())
+            df.at[index,'AQUIFER_OVERLAP'] = aq
+            
         else:
             pass
+
+    cols = list(df.columns)
+    cols.insert(11, cols.pop(cols.index('AQUIFER_OVERLAP')))
+    df = df.reindex(columns=cols)
         
     return df
 
 
-def add_southKFN_info (df, shp):
+
+def esri_to_gdf (aoi):
+    """Returns a Geopandas file (gdf) based on 
+       an ESRI format vector (shp or featureclass/gdb)"""
+    
+    if '.shp' in aoi: 
+        gdf = gpd.read_file(aoi)
+    
+    elif '.gdb' in aoi:
+        l = aoi.split ('.gdb')
+        gdb = l[0] + '.gdb'
+        fc = os.path.basename(aoi)
+        gdf = gpd.read_file(filename= gdb, layer= fc)
+        
+    else:
+        raise Exception ('Format not recognized. Please provide a shp or featureclass (gdb)!')
+    
+    return gdf
+
+
+def add_southKFN_info (df, gdf_skfn, gdf_wapp):
     """ Overlay with south KFN """
-    gdf_skfn = gpd.read_file(shp)
     gdf_skfn = gdf_skfn.to_crs({'init': 'epsg:4326'})
-    gdf_wapp = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['LONGITUDE'], df['LATITUDE']))
     
     gdf_int= gpd.overlay(gdf_wapp, gdf_skfn, how='intersection')
     
@@ -142,11 +195,17 @@ def add_southKFN_info (df, shp):
     return df
 
 
-def create_report (df_list, sheet_list,filename):
-    """ Exports dataframes to multi-tab excel spreasheet"""
-
+def export_shp (gdf, out_dir, shp_name):
+    """Exports a shapefile based on a geodataframe"""
+    shp_f = os.path.join(out_dir, shp_name+'.shp')
+    gdf.to_file(shp_f, driver="ESRI Shapefile")
     
-    writer = pd.ExcelWriter(filename+'.xlsx',engine='xlsxwriter')
+    
+def generate_report (workspace, df_list, sheet_list,filename):
+    """ Exports dataframes to multi-tab excel spreasheet"""
+    file_name = os.path.join(workspace, filename+'.xlsx')
+
+    writer = pd.ExcelWriter(file_name,engine='xlsxwriter')
 
     for dataframe, sheet in zip(df_list, sheet_list):
         dataframe = dataframe.reset_index(drop=True)
@@ -155,58 +214,82 @@ def create_report (df_list, sheet_list,filename):
         dataframe.to_excel(writer, sheet_name=sheet, index=False, startrow=0 , startcol=0)
 
         worksheet = writer.sheets[sheet]
-        workbook = writer.book
 
         worksheet.set_column(0, dataframe.shape[1], 20)
 
         col_names = [{'header': col_name} for col_name in dataframe.columns[1:-1]]
         col_names.insert(0,{'header' : dataframe.columns[0], 'total_string': 'Total'})
         col_names.append ({'header' : dataframe.columns[-1], 'total_function': 'count'})
+
+
         worksheet.add_table(0, 0, dataframe.shape[0]+1, dataframe.shape[1]-1, {
             'total_row': True,
             'columns': col_names})
 
     writer.save()
-    writer.close()
     
     
-def main():    
-    print ('Preparing Input dataset')
-    f_eug = 'workingCopy_Existing_Use_Groundwater.xlsx'
-    f_new = 'workingCopy_Water Application Ledger.xlsx'
+def main():  
+    start_t = timeit.default_timer() #start time
+        
+    print ('\nPreparing Input dataset')
+    workspace= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230929_komoks_waterApplics'
+    f_eug = os.path.join(workspace,'20290929_Existing_Use_Groundwater.xlsx')
+    f_new = os.path.join(workspace,'20290929_Water Application Ledger.xlsx')
     df = prep_data(f_eug,f_new)
     
-    print ('Connecting to BCGW.')
+    print ('\nConnecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
-    #bcgw_user = 'XXXX'
     bcgw_pwd = os.getenv('bcgw_pwd')
-    #bcgw_pwd = 'XXXX'
     connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
-    print ('Loading SQL queries')
+    print ('\nLoading SQL queries')
     sql = load_sql ()
     
-    print ('Adding KFN info')
+    print ('\nAdding KFN info')
     df = add_kfn_info(df,connection,sql)
     
-    print ('Filtering Applications within KFN')
+    print ('\nFiltering Applications within KFN')
     df = df.loc[df['WITHIN_KFN']== 'YES']
     df.reset_index(drop=True, inplace= True)
     
-    print ('Adding Aquifer info')
+    print ('\nAdding Aquifer info')
     df = add_aquifer_info(df,connection,sql)
     
     df['UNIQUE_ID'] = df['FILE_NUMBER']
     df['UNIQUE_ID'].fillna(df['ATS_NUMBER'], inplace=True)
     df = df[ ['UNIQUE_ID'] + [ col for col in df.columns if col != 'UNIQUE_ID' ]]
     
-    print ("Overlaying with South KFN boundary")
-    shp_skfn = r'\\...\KFN_Southern_Core_Area.shp'
-    add_southKFN_info (df, shp_skfn)
+    print ("\nOverlaying with South KFN boundary")
+    skfn_fc = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\local_datasets.gdb\komoks_southern_core'
     
-    print ('Exporting report')
+    gdf_skfn= esri_to_gdf (skfn_fc)
+    
+    gdf_wapp = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['LONGITUDE'], df['LATITUDE']))
+    gdf_wapp.set_crs('epsg:4326', inplace=True)
+    
+    add_southKFN_info (df, gdf_skfn, gdf_wapp)
+    
+    print ('\nExporting results')
+    out_path = create_dir (workspace, 'OUTPUTS')
+    spatial_path = create_dir (out_path, 'SPATAL')
+    excel_path = create_dir (out_path, 'SPREADSHEET')
+        
     df = df.drop('geometry', axis=1)
-    create_report ([df], ['Water Applics - KFN territory'],'20230302_waterApplics_KFN')
-
+    
+    today = datetime.today().strftime('%Y%m%d')
+    
+    filename= f'{today}_waterApplics_KFN' 
+    generate_report (excel_path, [df], ['Water Applics - KFN territory'], filename)
+    
+    export_shp (gdf_wapp, spatial_path, filename)
+    
+    finish_t = timeit.default_timer() #finish time
+    t_sec = round(finish_t-start_t)
+    mins = int (t_sec/60)
+    secs = int (t_sec%60)
+    print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs)) 
+    
+    
 main()
