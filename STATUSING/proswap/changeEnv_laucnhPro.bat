@@ -7,7 +7,7 @@ set PYTHONPATH=P:\XXXXXXXX\python3916
 
 rem Check if the new Python environment exists
 if not exist %PYTHONPATH% (
-  echo The new Python environment does not exist. Please check the path and try again.
+  echo The Python environment does not exist. Please check the path and try again.
   rem Pause the screen for 10 seconds
   timeout /t 10 /nobreak >nul
   exit /b 1
