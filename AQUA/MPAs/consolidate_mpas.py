@@ -4,7 +4,6 @@ from shapely import wkb
 from datetime import datetime
 
 
-
 def esri_to_gdf(aoi):
     """Returns a Geopandas file (gdf) based on 
        an ESRI format vector (shp or featureclass/gdb)"""
