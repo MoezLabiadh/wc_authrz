@@ -23,9 +23,9 @@ def load_queries():
     
     sql['cmb']= """
                 SELECT
-                  wlw.WATER_LICENSING_WATERSHED_NAME,
-                  CAST(IP.INTRID_SID AS NUMBER) INTEREST_PARCEL_ID,
-                  CAST(DT.DISPOSITION_TRANSACTION_SID AS NUMBER) DISPOSITION_TRANSACTION_ID,
+                  --wlw.FWA_WATERSHED_GROUP_CODE,
+                  --CAST(IP.INTRID_SID AS NUMBER) INTEREST_PARCEL_ID,
+                  --CAST(DT.DISPOSITION_TRANSACTION_SID AS NUMBER) DISPOSITION_TRANSACTION_ID,
                   DS.FILE_CHR AS FILE_NBR,
                   SG.STAGE_NME AS STAGE,
                   --TT.ACTIVATION_CDE,
@@ -33,6 +33,7 @@ def load_queries():
                   DT.APPLICATION_TYPE_CDE AS APPLICATION_TYPE,
                   --TS.EFFECTIVE_DAT AS EFFECTIVE_DATE,
                   DT.RECEIVED_DAT AS RECEIVED_DATE,
+                  EXTRACT(YEAR FROM DT.RECEIVED_DAT) AS RECEIVED_YEAR,
                   TY.TYPE_NME AS TENURE_TYPE,
                   ST.SUBTYPE_NME AS TENURE_SUBTYPE,
                   PU.PURPOSE_NME AS TENURE_PURPOSE,
@@ -95,6 +96,35 @@ def load_queries():
     """
     return sql
 
+
+def generate_report (workspace, df_list, sheet_list,filename):
+    """ Exports dataframes to multi-tab excel spreasheet"""
+    file_name = os.path.join(workspace, filename+'.xlsx')
+
+    writer = pd.ExcelWriter(file_name,engine='xlsxwriter')
+
+    for dataframe, sheet in zip(df_list, sheet_list):
+        dataframe = dataframe.reset_index(drop=True)
+        dataframe.index = dataframe.index + 1
+
+        dataframe.to_excel(writer, sheet_name=sheet, index=False, startrow=0 , startcol=0)
+
+        worksheet = writer.sheets[sheet]
+
+        worksheet.set_column(0, dataframe.shape[1], 20)
+
+        col_names = [{'header': col_name} for col_name in dataframe.columns[1:-1]]
+        col_names.insert(0,{'header' : dataframe.columns[0], 'total_string': 'Total'})
+        col_names.append ({'header' : dataframe.columns[-1], 'total_function': 'count'})
+
+
+        worksheet.add_table(0, 0, dataframe.shape[0]+1, dataframe.shape[1]-1, {
+            'total_row': True,
+            'columns': col_names})
+
+    writer.save()
+    
+    
 if __name__==__name__:
     
     print ('\nConnecting to BCGW...')
@@ -107,3 +137,10 @@ if __name__==__name__:
     sql = load_queries ()
     
     df= pd.read_sql(sql['cmb'], connection)
+    df['RECEIVED_DATE'] =  pd.to_datetime(df['RECEIVED_DATE'], infer_datetime_format=True, errors = 'coerce').dt.date
+    
+    df.drop_duplicates(['FILE_NBR'], inplace= True)
+    
+    print ("\nExporting Results...")
+    workspace= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231024_campbellRiver_landApplics'
+    generate_report (workspace, [df], ['list'],'20231024_campbellRiv_landsApplics')
