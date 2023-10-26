@@ -52,20 +52,22 @@ FROM WHSE_TANTALIS.TA_DISPOSITION_TRANSACTIONS DT
     ON SH.INTRID_SID = IP.INTRID_SID)TN 
     
 WHERE TN.UNIT_NAME = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION'
+  AND TN.STAGE IN ('TENURE', 'CROWN GRANT')
   AND TN.STATUS = 'EXPIRED'
   
   AND TN.FILE_NBR NOT IN (SELECT CROWN_LANDS_FILE 
                           FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW
                           WHERE RESPONSIBLE_BUSINESS_UNIT = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION' 
                              AND TENURE_STATUS IN ('ACCEPTED', 'OFFERED', 'OFFER ACCEPTED', 'DISPOSITION IN GOOD STANDING', 'ACTIVE'))   
- 
-                               
-  AND TN.EXPIRY_DATE = (SELECT MAX(TG.EXPIRY_DATE)
+                            
+  AND TN.EXPIRY_DATE = (SELECT 
+                          MAX(TG.EXPIRY_DATE)
                         FROM (SELECT
                                   CAST(IP.INTRID_SID AS NUMBER) INTRID_SID,
                                   CAST(DT.DISPOSITION_TRANSACTION_SID AS NUMBER) DISPOSITION_TRANSACTION_SID,
                                   DS.FILE_CHR AS FILE_NBR,
                                   DT.EXPIRY_DAT AS EXPIRY_DATE,
+                                  SG.STAGE_NME AS STAGE,
                                   TT.STATUS_NME AS STATUS
     
                               FROM WHSE_TANTALIS.TA_DISPOSITION_TRANSACTIONS DT 
@@ -94,8 +96,9 @@ WHERE TN.UNIT_NAME = 'VI - LAND MGMNT - VANCOUVER ISLAND SERVICE REGION'
                                  JOIN WHSE_TANTALIS.TA_ORGANIZATION_UNITS OU 
                                   ON OU.ORG_UNIT_SID = DT.ORG_UNIT_SID)TG
                                   
-                                WHERE TG.STATUS = 'EXPIRED'
-                               AND  TG.FILE_NBR = TN.FILE_NBR
+                                WHERE TG.STAGE IN ('TENURE', 'CROWN GRANT')
+								  AND TG.STATUS = 'EXPIRED'
+                                  AND TG.FILE_NBR = TN.FILE_NBR
                                 
                           GROUP BY TG.FILE_NBR)
 
