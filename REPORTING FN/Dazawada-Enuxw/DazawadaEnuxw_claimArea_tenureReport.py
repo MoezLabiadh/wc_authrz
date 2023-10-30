@@ -51,7 +51,7 @@ def get_wkb(gdf):
         wkb_aoi = wkb.dumps(geom, output_dimension=2)
     else:
         wkb_aoi = geom.wkb
-
+    
     return wkb_aoi
 
 
@@ -75,7 +75,7 @@ if __name__==__name__:
     
     print("\nReading the Claim Area dataset...")
     wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231030_DazawadaEnuxw_claimArea'
-    clm_ar= os.path.join(wks, 'claim_area_tempo.shp')
+    clm_ar= os.path.join(wks, 'test_shape.shp')
     gdf_clm= esri_to_gdf (clm_ar)
     
     wkb_aoi= get_wkb (gdf_clm)
@@ -84,9 +84,12 @@ if __name__==__name__:
     sql = load_queries ()
     
     res_dfs={}
+    sheets= []
     
+    nbr_queries= len(sql)
+    counter= 1
     for k, v in sql.items():
-        print(f"....running {k}")
+        print(f"....running query {counter} of {nbr_queries}: {k}")
         cursor.setinputsizes(wkb_aoi=cx_Oracle.BLOB)
         bvars = {'wkb_aoi': wkb_aoi}
         
@@ -98,8 +101,10 @@ if __name__==__name__:
             if 'DATE' in col:
                 df[col] =  pd.to_datetime(df[col], infer_datetime_format=True, errors = 'coerce').dt.date
             
-            
         res_dfs[k]= df
+        sheets.append(k)
+        
+        counter+= 1
         
     
     
