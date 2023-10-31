@@ -6,6 +6,7 @@ import cx_Oracle
 import pandas as pd
 import geopandas as gpd
 from shapely import wkb
+from datetime import date
 from load_sqls import load_queries
 
 
@@ -55,6 +56,7 @@ def get_wkb(gdf):
     return wkb_aoi
 
 
+
 def read_query(connection,cursor,query,bvars):
     "Returns a df containing SQL Query results"
     cursor.execute(query, bvars)
@@ -65,6 +67,35 @@ def read_query(connection,cursor,query,bvars):
     return df 
 
 
+
+def generate_report (workspace, df_list, sheet_list,filename):
+    """ Exports dataframes to multi-tab excel spreasheet"""
+    file_name = os.path.join(workspace, filename+'.xlsx')
+
+    writer = pd.ExcelWriter(file_name,engine='xlsxwriter')
+
+    for dataframe, sheet in zip(df_list, sheet_list):
+        dataframe = dataframe.reset_index(drop=True)
+        dataframe.index = dataframe.index + 1
+
+        dataframe.to_excel(writer, sheet_name=sheet, index=False, startrow=0 , startcol=0)
+
+        worksheet = writer.sheets[sheet]
+
+        worksheet.set_column(0, dataframe.shape[1], 20)
+
+        col_names = [{'header': col_name} for col_name in dataframe.columns[1:-1]]
+        col_names.insert(0,{'header' : dataframe.columns[0], 'total_string': 'Total'})
+        col_names.append ({'header' : dataframe.columns[-1], 'total_function': 'count'})
+
+
+        worksheet.add_table(0, 0, dataframe.shape[0]+1, dataframe.shape[1]-1, {
+            'total_row': True,
+            'columns': col_names})
+
+    writer.save()
+    
+    
 if __name__==__name__:
     
     print ('\nConnecting to BCGW...')
@@ -83,7 +114,7 @@ if __name__==__name__:
     print ("\nRunning SQL queries...")
     sql = load_queries ()
     
-    res_dfs={}
+    dfs=[]
     sheets= []
     
     nbr_queries= len(sql)
@@ -95,16 +126,23 @@ if __name__==__name__:
         
         df= read_query(connection, cursor, sql[k], bvars)
         
-        df.drop('SHAPE', axis=1, inplace= True)
+        df.drop(['SHAPE', 'UNIT_NAME'], axis=1, inplace= True)
         
         for col in df.columns:
             if 'DATE' in col:
                 df[col] =  pd.to_datetime(df[col], infer_datetime_format=True, errors = 'coerce').dt.date
             
-        res_dfs[k]= df
+        dfs.append(df)
         sheets.append(k)
         
         counter+= 1
+    
+    print ("\nExporting the report...")
+    today = date.today().strftime('%Y%m%d')
+    filename= today+'DazawadaEnuxw_claimArea_tenureReport'
+    
+    generate_report (wks, dfs, sheets, filename)
+    
         
     
     

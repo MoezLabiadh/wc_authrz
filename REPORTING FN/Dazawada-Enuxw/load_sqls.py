@@ -142,7 +142,7 @@ def load_queries():
         """
     
     
-    sql['Expired tenures - replacement Applics']= """
+    sql['Expired tenures - repl. applics']= """
             SELECT* FROM(
             SELECT
                   --CAST(IP.INTRID_SID AS NUMBER) INTRID_SID,
@@ -455,7 +455,7 @@ def load_queries():
             ORDER BY TN.EFFECTIVE_DATE DESC
         """ 
     
-    sql['Cancelled applications - historic']= """
+    sql['Cancelled applics - historic']= """
              SELECT* FROM(
             SELECT
                   --CAST(IP.INTRID_SID AS NUMBER) INTRID_SID,
