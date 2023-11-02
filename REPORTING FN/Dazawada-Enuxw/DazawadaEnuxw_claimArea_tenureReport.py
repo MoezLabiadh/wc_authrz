@@ -106,7 +106,7 @@ if __name__==__name__:
     
     print("\nReading the Claim Area dataset...")
     wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231030_DazawadaEnuxw_claimArea'
-    clm_ar= os.path.join(wks, 'test_shape.shp')
+    clm_ar= os.path.join(wks, 'exclusive_claim_area.shp')
     gdf_clm= esri_to_gdf (clm_ar)
     
     wkb_aoi= get_wkb (gdf_clm)
@@ -146,7 +146,7 @@ if __name__==__name__:
         
     
     
-    
+ #t= ",".join(str(x) for x in dfs[1]['PARCEL_ID'].to_list())   
     
     
     
