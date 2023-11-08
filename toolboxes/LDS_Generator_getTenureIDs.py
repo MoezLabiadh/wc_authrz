@@ -40,12 +40,12 @@ def main ():
     sql = """
            SELECT
                CROWN_LANDS_FILE, DISPOSITION_TRANSACTION_SID, INTRID_SID, 
-               TENURE_STAGE, TENURE_STATUS
+               TENURE_STAGE, TENURE_STATUS, APPLICATION_TYPE_CDE
                   
            FROM WHSE_TANTALIS.TA_CROWN_TENURES_SVW
      
           WHERE CROWN_LANDS_FILE =  '{t}'
-            """
+          """
     in_tenure_nbr =   input('Enter File Number:')
     query = sql.format(t = str(in_tenure_nbr).strip())
     pd.set_option('display.max_columns', None)
