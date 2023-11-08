@@ -146,7 +146,7 @@ if __name__==__name__:
         
     
     
- #t= ",".join(str(x) for x in dfs[1]['PARCEL_ID'].to_list())   
+ #t= ",".join(str(x) for x in dfs[0]['PARCEL_ID'].to_list())   
     
     
     
