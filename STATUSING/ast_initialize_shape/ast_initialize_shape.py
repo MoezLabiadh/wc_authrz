@@ -52,7 +52,7 @@ if __name__ == "__main__":
     in_tenure_nbr= str(in_tenure_nbr).strip()
     
     print("\nCreate Statusing folders")
-    stat_dir= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231108_landStatusing_folder_script\Lands_Statusing'
+    stat_dir= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing'
     tn_stat_dir= create_dir (stat_dir, in_tenure_nbr)
     this_month= date.today().strftime("%b%Y").lower()
     month_dir= create_dir (tn_stat_dir, this_month)
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     
     
     if len(disps)==1:
-        print (f"..This file has {len(disps)} active dispositions")
+        print (f"..This file has {len(disps)} active disposition")
         if len(prcls)==1:
             print (f"...This file has {len(prcls)} parcel ")
             gdf.to_file(os.path.join(month_dir, in_tenure_nbr+'.shp'))
@@ -101,8 +101,4 @@ if __name__ == "__main__":
                 gdf_prcl.to_file(os.path.join(prcl_dir, prcl_str+'.shp'))
                 
     else:
-        print ("..This file has MULTIPLE active dispositions. Check file.")
-            
-#1415503 (1 parcel)    
-#1409871 (2 parcels)          
-            
+        print ("..This file has MULTIPLE active dispositions. Check records.")
