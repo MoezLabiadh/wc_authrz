@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # Name:        Komoks Water Applications
 #
-# Purpose:     This script generates a report on Water applications
+# Purpose:     This script generates a repor on Water applications
 #              (New and Existing Use) within Komoks First Nation Territory.
 #
 # Input(s):    (1) Workspace (folder) where outputs will be generated.
@@ -48,6 +48,25 @@ def create_dir (path, dir):
         pass
 
     return os.path.join(path,dir)
+
+
+def esri_to_gdf (aoi):
+    """Returns a Geopandas file (gdf) based on 
+       an ESRI format vector (shp or featureclass/gdb)"""
+    
+    if '.shp' in aoi: 
+        gdf = gpd.read_file(aoi)
+    
+    elif '.gdb' in aoi:
+        l = aoi.split ('.gdb')
+        gdb = l[0] + '.gdb'
+        fc = os.path.basename(aoi)
+        gdf = gpd.read_file(filename= gdb, layer= fc)
+        
+    else:
+        raise Exception ('Format not recognized. Please provide a shp or featureclass (gdb)!')
+    
+    return gdf
 
 
 def prep_data(f_eug,f_new):
@@ -159,25 +178,6 @@ def add_aquifer_info(df,connection,sql):
         
     return df
 
-
-
-def esri_to_gdf (aoi):
-    """Returns a Geopandas file (gdf) based on 
-       an ESRI format vector (shp or featureclass/gdb)"""
-    
-    if '.shp' in aoi: 
-        gdf = gpd.read_file(aoi)
-    
-    elif '.gdb' in aoi:
-        l = aoi.split ('.gdb')
-        gdb = l[0] + '.gdb'
-        fc = os.path.basename(aoi)
-        gdf = gpd.read_file(filename= gdb, layer= fc)
-        
-    else:
-        raise Exception ('Format not recognized. Please provide a shp or featureclass (gdb)!')
-    
-    return gdf
 
 
 def add_southKFN_info (df, gdf_skfn, gdf_wapp):
@@ -293,3 +293,4 @@ def main():
     
     
 main()
+
