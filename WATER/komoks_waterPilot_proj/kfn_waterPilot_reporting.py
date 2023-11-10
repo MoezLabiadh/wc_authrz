@@ -173,22 +173,29 @@ def filter_kfn(df, gdf_wapp, gdf_kfn_pip):
     
     df['WITHIN_KFN']= 'YES'
     
+    df= df.drop('geometry', axis=1)
+    
     df.reset_index(drop=True, inplace= True)
         
     return df
 
 
-def add_aquifer_info(df,connection,sql):
+def add_aquifer_info(df,connection):
+    """Add aquifer overlap info """
+    sql= """
+           SELECT AQUIFER_ID
+           FROM WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW aqf
+           WHERE  SDO_RELATE (aqf.GEOMETRY, SDO_GEOMETRY('POINT({long} {lat})', 4326),
+                                      'mask=ANYINTERACT') = 'TRUE'
+           """
     for index, row in df.iterrows():
         print('...working on row {}'.format(index))
-        #app_typ = row['APPLICATION_TYPE']
+
         
-        #if app_typ in ('Existing Use - Groundwater', 'Water Licence - Ground', 
-                      # 'Abandon - Ground', 'Amendment - Ground'):
         long = row['LONGITUDE']
         lat = row['LATITUDE']
             
-        query = sql['aqf'].format(lat=lat,long=long)
+        query = sql.format(lat=lat,long=long)
         df_q = pd.read_sql(query,connection)
             
         if df_q.shape[0] > 0:
@@ -205,11 +212,8 @@ def add_aquifer_info(df,connection,sql):
     return df
 
 
-
-def add_southKFN_info (df, gdf_skfn, gdf_wapp):
+def add_southKFN_info (df, gdf_wapp, gdf_skfn):
     """ Overlay with south KFN """
-    gdf_skfn = gdf_skfn.to_crs({'init': 'epsg:4326'})
-    
     gdf_int= gpd.overlay(gdf_wapp, gdf_skfn, how='intersection')
     
     skfn_l = gdf_int['UNIQUE_ID'].to_list()
@@ -217,8 +221,29 @@ def add_southKFN_info (df, gdf_skfn, gdf_wapp):
     df['WITHIN_SOUTH_KFN'] = 'NO'
     df.loc[ df['UNIQUE_ID'].isin(skfn_l), 'WITHIN_SOUTH_KFN'] = "YES"
     
+    return df
+
+
+def add_drght_wshd_info (df, gdf_wapp, gdf_drgh):
+    """ Overlay with south KFN """
+    
+    df['WITHIN_DROUGHT_WSHD']= 'NO'
+    
+    gdf_intr= gpd.overlay(gdf_wapp, gdf_drgh, how='intersection')
+    
+    drgh_wshd_l = gdf_intr['UNIQUE_ID'].to_list()
+    df.loc[df['UNIQUE_ID'].isin(drgh_wshd_l), 'WITHIN_DROUGHT_WSHD'] = "YES"
+
+    df_intr= gdf_intr.groupby('UNIQUE_ID')['DROUGHT_WSHD_NAME']\
+              .agg(lambda x: ', '.join(x)).reset_index()
+    
+    df= pd.merge(df, df_intr, how='left', on='UNIQUE_ID')
+    
     
     return df
+
+
+
 
 
 def export_shp (gdf, out_dir, shp_name):
@@ -274,36 +299,33 @@ bcgw_pwd = os.getenv('bcgw_pwd')
 connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
 
 
-print ('\nAdding KFN info')
+print ('\nFiltering applications within KFN territory')
 gdf_wapp= wapp_to_gdf(df)
 
 gdf_kfn_pip= prepare_geo_data(os.path.join(in_gdb, 'kfn_consultation_area'))
 
-
 df= filter_kfn(df, gdf_wapp, gdf_kfn_pip)
 
-
-
-
-'''
-print ('\nFiltering Applications within KFN')
-df = df.loc[df['WITHIN_KFN']== 'YES']
-df.reset_index(drop=True, inplace= True)
-
-print ('\nAdding Aquifer info')
-df = add_aquifer_info(df,connection,sql)
+print ('\nAdding Aquifer info *********REMINDER TO ADD THIS SECTION*********')
+#df = add_aquifer_info(df,connection)
 
 
 
 print ("\nOverlaying with South KFN boundary")
-skfn_fc = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\local_datasets.gdb\komoks_southern_core'
+gdf_skfn= prepare_geo_data(os.path.join(in_gdb, 'kfn_southern_core'))
+df= add_southKFN_info (df, gdf_wapp, gdf_skfn)
 
-gdf_skfn= esri_to_gdf (skfn_fc)
+print ("\nOverlaying with Drought Watershed")
+gdf_drgh= prepare_geo_data(os.path.join(in_gdb, 'drought_watershed'))
+df= add_drght_wshd_info (df, gdf_wapp, gdf_drgh)
 
-gdf_wapp = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['LONGITUDE'], df['LATITUDE']))
-gdf_wapp.set_crs('epsg:4326', inplace=True)
 
-add_southKFN_info (df, gdf_skfn, gdf_wapp)
+
+'''
+
+
+
+
 
 print ('\nExporting results')
 out_path = create_dir (workspace, 'OUTPUTS')
