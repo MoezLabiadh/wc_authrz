@@ -1,17 +1,18 @@
 #-------------------------------------------------------------------------------
 # Name:        Komoks Water Applications
 #
-# Purpose:     This script generates a repor on Water applications
-#              (New and Existing Use) within Komoks First Nation Territory.
+# Purpose:     This script generates a reporting materials for 
+#              Komoks Water Pilot Project
 #
 # Input(s):    (1) Workspace (folder) where outputs will be generated.
 #              (2) New Water Applications ledger(xlsx)
 #              (3) Existing Use Applications ledger(xlsx)
 #              (4) BCGW connection parameters
+#              (5) GDB containing input datasets
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     29-09-2023
+# Created:     10-11-2023
 # Updated:     
 #-------------------------------------------------------------------------------
 
@@ -68,15 +69,22 @@ def esri_to_gdf (aoi):
     
     return gdf
 
-
+def reproject_wgs84(gdf):
+    """ Reproject geodataframes to wgs84"""
+    if gdf.crs != 'EPSG:4326':
+        gdf= gdf.to_crs('EPSG:4326')
+    else:
+        pass
+    
+    return gdf
+            
+    
 def prep_data(f_eug,f_new):
     df_eug = pd.read_excel(f_eug, 'Existing Use Applications', usecols="A:AG")
     df_new = pd.read_excel(f_new, 'Active Applications',converters={'File Number':str})
     
     df_new.dropna(subset=['Application Type'],inplace=True)
     types = [x for x in df_new['Application Type'].unique() if 'Cancellation' not in x]
-    #types= ['Water Licence - Ground','Water Licence',
-     #       'Water Licence - Surface','Water Licence - Ground / Surface']
     
     df_new = df_new.loc[df_new['Application Type'].isin(types)]
     
@@ -89,9 +97,10 @@ def prep_data(f_eug,f_new):
     
     df_eug ['APPLICATION TYPE'] = 'Existing Use - Groundwater'
     df_new ['ATS NUMBER'] = ''
+    df_eug ['HOUSING'] = ''
     
     cols = ['APPLICATION TYPE','FILE NUMBER','ATS NUMBER', 
-            'APPLICANT','PURPOSE','STATUS','LATITUDE', 'LONGITUDE']
+            'APPLICANT','PURPOSE','STATUS','LATITUDE', 'LONGITUDE', 'HOUSING']
 
     df_eug = df_eug[cols+['SOURCE_AQUIFER','VOLUME']]
     df_new = df_new[cols]
@@ -113,16 +122,6 @@ def prep_data(f_eug,f_new):
 
 def load_sql ():
     sql = {}
-    sql['kfn'] = """
-                SELECT CNSLTN_AREA_NAME
-                
-                FROM WHSE_ADMIN_BOUNDARIES.PIP_CONSULTATION_AREAS_SP pip
-                
-                WHERE pip.CNSLTN_AREA_NAME = q'[K'omoks First Nation]'
-                      AND SDO_RELATE (pip.SHAPE, SDO_GEOMETRY('POINT({long} {lat})', 4326),
-                                      'mask=ANYINTERACT') = 'TRUE'
-                """
-
     sql['aqf'] = """
                 SELECT AQUIFER_ID
                 
@@ -229,68 +228,77 @@ def generate_report (workspace, df_list, sheet_list,filename):
     writer.save()
     
     
-def main():  
-    start_t = timeit.default_timer() #start time
-        
-    print ('\nPreparing Input dataset')
-    workspace= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230929_komoks_waterApplics'
-    f_eug = os.path.join(workspace,'20290929_Existing_Use_Groundwater.xlsx')
-    f_new = os.path.join(workspace,'20290929_Water Application Ledger.xlsx')
-    df = prep_data(f_eug,f_new)
+#def main():  
+start_t = timeit.default_timer() #start time
     
-    print ('\nConnecting to BCGW.')
-    hostname = 'bcgw.bcgov/idwprod1.bcgov'
-    bcgw_user = os.getenv('bcgw_user')
-    bcgw_pwd = os.getenv('bcgw_pwd')
-    connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
+print ('\nPreparing Input dataset')
+in_gdb= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\KFN_waterPilot_proj.gdb'
+workspace= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow\ledgers'
+
+f_eug = os.path.join(workspace,'Existing_Use_Groundwater.xlsx')
+f_new = os.path.join(workspace,'Water Application Ledger.xlsx')
+df = prep_data(f_eug,f_new)
+
+
+print ('\nConnecting to BCGW.')
+hostname = 'bcgw.bcgov/idwprod1.bcgov'
+bcgw_user = os.getenv('bcgw_user')
+bcgw_pwd = os.getenv('bcgw_pwd')
+connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
+
+print ('\nLoading SQL queries')
+sql = load_sql ()
+
+print ('\nAdding KFN info')
+gdf_wapp = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['LONGITUDE'], df['LATITUDE']))
+gdf_wapp.crs = 'EPSG:4326'
+gdf_kfn_pip= esri_to_gdf (os.path.join(in_gdb, 'kfn_consultation_area'))
+
+
+#df = add_kfn_info(df,connection,sql)
+
+'''
+print ('\nFiltering Applications within KFN')
+df = df.loc[df['WITHIN_KFN']== 'YES']
+df.reset_index(drop=True, inplace= True)
+
+print ('\nAdding Aquifer info')
+df = add_aquifer_info(df,connection,sql)
+
+df['UNIQUE_ID'] = df['FILE_NUMBER']
+df['UNIQUE_ID'].fillna(df['ATS_NUMBER'], inplace=True)
+df = df[ ['UNIQUE_ID'] + [ col for col in df.columns if col != 'UNIQUE_ID' ]]
+
+print ("\nOverlaying with South KFN boundary")
+skfn_fc = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\local_datasets.gdb\komoks_southern_core'
+
+gdf_skfn= esri_to_gdf (skfn_fc)
+
+gdf_wapp = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['LONGITUDE'], df['LATITUDE']))
+gdf_wapp.set_crs('epsg:4326', inplace=True)
+
+add_southKFN_info (df, gdf_skfn, gdf_wapp)
+
+print ('\nExporting results')
+out_path = create_dir (workspace, 'OUTPUTS')
+spatial_path = create_dir (out_path, 'SPATAL')
+excel_path = create_dir (out_path, 'SPREADSHEET')
     
-    print ('\nLoading SQL queries')
-    sql = load_sql ()
-    
-    print ('\nAdding KFN info')
-    df = add_kfn_info(df,connection,sql)
-    
-    print ('\nFiltering Applications within KFN')
-    df = df.loc[df['WITHIN_KFN']== 'YES']
-    df.reset_index(drop=True, inplace= True)
-    
-    print ('\nAdding Aquifer info')
-    df = add_aquifer_info(df,connection,sql)
-    
-    df['UNIQUE_ID'] = df['FILE_NUMBER']
-    df['UNIQUE_ID'].fillna(df['ATS_NUMBER'], inplace=True)
-    df = df[ ['UNIQUE_ID'] + [ col for col in df.columns if col != 'UNIQUE_ID' ]]
-    
-    print ("\nOverlaying with South KFN boundary")
-    skfn_fc = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\local_datasets.gdb\komoks_southern_core'
-    
-    gdf_skfn= esri_to_gdf (skfn_fc)
-    
-    gdf_wapp = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['LONGITUDE'], df['LATITUDE']))
-    gdf_wapp.set_crs('epsg:4326', inplace=True)
-    
-    add_southKFN_info (df, gdf_skfn, gdf_wapp)
-    
-    print ('\nExporting results')
-    out_path = create_dir (workspace, 'OUTPUTS')
-    spatial_path = create_dir (out_path, 'SPATAL')
-    excel_path = create_dir (out_path, 'SPREADSHEET')
-        
-    df = df.drop('geometry', axis=1)
-    
-    today = datetime.today().strftime('%Y%m%d')
-    
-    filename= f'{today}_waterApplics_KFN' 
-    generate_report (excel_path, [df], ['Water Applics - KFN territory'], filename)
-    
-    export_shp (gdf_wapp, spatial_path, filename)
-    
-    finish_t = timeit.default_timer() #finish time
-    t_sec = round(finish_t-start_t)
-    mins = int (t_sec/60)
-    secs = int (t_sec%60)
-    print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs)) 
-    
-    
-main()
+df = df.drop('geometry', axis=1)
+
+today = datetime.today().strftime('%Y%m%d')
+
+filename= f'{today}_waterApplics_KFN' 
+generate_report (excel_path, [df], ['Water Applics - KFN territory'], filename)
+
+export_shp (gdf_wapp, spatial_path, filename)
+
+finish_t = timeit.default_timer() #finish time
+t_sec = round(finish_t-start_t)
+mins = int (t_sec/60)
+secs = int (t_sec%60)
+print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs)) 
+
+'''
+#main()
 
