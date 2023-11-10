@@ -24,6 +24,7 @@ import os
 import cx_Oracle
 import pandas as pd
 import geopandas as gpd
+from shapely import wkb
 from datetime import datetime
 import timeit
 
@@ -69,17 +70,36 @@ def esri_to_gdf (aoi):
     
     return gdf
 
-def reproject_wgs84(gdf):
-    """ Reproject geodataframes to wgs84"""
-    if gdf.crs != 'EPSG:4326':
-        gdf= gdf.to_crs('EPSG:4326')
-    else:
-        pass
+
+def flatten_to_2d(gdf):
+    """Flattens 3D geometries to 2D"""
+    for i, row in gdf.iterrows():
+        geom = row.geometry
+        if geom.has_z:
+            geom_2d = wkb.loads(wkb.dumps(geom, output_dimension=2))
+            gdf.at[i, 'geometry'] = geom_2d
     
+    return gdf
+
+
+def reproject_to_bcalbers(gdf):
+    """ Reprojects a gdf to bc albers"""
+    if gdf.crs != 'epsg:4326':
+        gdf = gdf.to_crs('epsg:4326')
+    
+    return gdf
+
+
+def prepare_geo_data(aoi):
+    """ Runs data preparation functions"""
+    gdf = esri_to_gdf(aoi)
+    gdf = flatten_to_2d(gdf)
+    gdf = reproject_to_bcalbers(gdf)
+
     return gdf
             
     
-def prep_data(f_eug,f_new):
+def process_ledgers(f_eug,f_new):
     df_eug = pd.read_excel(f_eug, 'Existing Use Applications', usecols="A:AG")
     df_new = pd.read_excel(f_new, 'Active Applications',converters={'File Number':str})
     
@@ -111,15 +131,26 @@ def prep_data(f_eug,f_new):
     df['VOLUME_UNIT'] = 'm3/year'
  
     df ['DECISION TIMEFRAME'] = ''
-    df ['WITHIN_KFN'] = 'NO'
     
     df.dropna(subset=['LATITUDE', 'LONGITUDE'], inplace=True)
     
     df.columns = df.columns.str.replace(' ', '_')
     
+    df['UNIQUE_ID'] = df['FILE_NUMBER']
+    df['UNIQUE_ID'].fillna(df['ATS_NUMBER'], inplace=True)
+    df = df[['UNIQUE_ID'] + [ col for col in df.columns if col != 'UNIQUE_ID' ]]
+    
     return df
 
 
+def wapp_to_gdf(df):
+    """Converts the water applications df into a gdf """
+    gdf= gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['LONGITUDE'], df['LATITUDE']))
+    gdf.crs = 'EPSG:4326'
+    
+    return gdf
+    
+    
 def load_sql ():
     sql = {}
     sql['aqf'] = """
@@ -134,19 +165,15 @@ def load_sql ():
     return sql
 
 
-def add_kfn_info(df,connection,sql):
-    for index, row in df.iterrows():
-        print('...working on row {}'.format(index))
-        long = row['LONGITUDE']
-        lat = row['LATITUDE']
-        
-        query = sql['kfn'].format(lat=lat,long=long)
-        df_s = pd.read_sql(query,connection)
-        
-        if df_s.shape[0] > 0:
-            df.at[index,'WITHIN_KFN'] = 'YES'
-        else:
-            pass
+def filter_kfn(df, gdf_wapp, gdf_kfn_pip):
+    """Filters water applications within KFN territory"""
+    intr = gpd.overlay(gdf_wapp, gdf_kfn_pip, how='intersection')
+    
+    df= df.loc[df['UNIQUE_ID'].isin(intr['UNIQUE_ID'].to_list())]
+    
+    df['WITHIN_KFN']= 'YES'
+    
+    df.reset_index(drop=True, inplace= True)
         
     return df
 
@@ -231,13 +258,13 @@ def generate_report (workspace, df_list, sheet_list,filename):
 #def main():  
 start_t = timeit.default_timer() #start time
     
-print ('\nPreparing Input dataset')
+print ('\nProcessing input water ledgers')
 in_gdb= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\KFN_waterPilot_proj.gdb'
 workspace= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow\ledgers'
 
 f_eug = os.path.join(workspace,'Existing_Use_Groundwater.xlsx')
 f_new = os.path.join(workspace,'Water Application Ledger.xlsx')
-df = prep_data(f_eug,f_new)
+df = process_ledgers(f_eug,f_new)
 
 
 print ('\nConnecting to BCGW.')
@@ -246,16 +273,17 @@ bcgw_user = os.getenv('bcgw_user')
 bcgw_pwd = os.getenv('bcgw_pwd')
 connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
 
-print ('\nLoading SQL queries')
-sql = load_sql ()
 
 print ('\nAdding KFN info')
-gdf_wapp = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['LONGITUDE'], df['LATITUDE']))
-gdf_wapp.crs = 'EPSG:4326'
-gdf_kfn_pip= esri_to_gdf (os.path.join(in_gdb, 'kfn_consultation_area'))
+gdf_wapp= wapp_to_gdf(df)
+
+gdf_kfn_pip= prepare_geo_data(os.path.join(in_gdb, 'kfn_consultation_area'))
 
 
-#df = add_kfn_info(df,connection,sql)
+df= filter_kfn(df, gdf_wapp, gdf_kfn_pip)
+
+
+
 
 '''
 print ('\nFiltering Applications within KFN')
@@ -265,9 +293,7 @@ df.reset_index(drop=True, inplace= True)
 print ('\nAdding Aquifer info')
 df = add_aquifer_info(df,connection,sql)
 
-df['UNIQUE_ID'] = df['FILE_NUMBER']
-df['UNIQUE_ID'].fillna(df['ATS_NUMBER'], inplace=True)
-df = df[ ['UNIQUE_ID'] + [ col for col in df.columns if col != 'UNIQUE_ID' ]]
+
 
 print ("\nOverlaying with South KFN boundary")
 skfn_fc = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\local_datasets.gdb\komoks_southern_core'
