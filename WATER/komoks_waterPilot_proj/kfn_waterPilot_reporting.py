@@ -46,7 +46,7 @@ def create_dir (path, dir):
       os.makedirs(os.path.join(path,dir))
 
     except OSError:
-        print('Folder {} already exists!'.format(dir))
+        print('...Folder {} already exists!'.format(dir))
         pass
 
     return os.path.join(path,dir)
@@ -188,8 +188,9 @@ def add_aquifer_info(df,connection):
            WHERE  SDO_RELATE (aqf.GEOMETRY, SDO_GEOMETRY('POINT({long} {lat})', 4326),
                                       'mask=ANYINTERACT') = 'TRUE'
            """
+      
     for index, row in df.iterrows():
-        print('...working on row {}'.format(index))
+        print(f'...working on row {index+1} of {len(df)}')
 
         
         long = row['LONGITUDE']
@@ -338,82 +339,80 @@ def generate_report (workspace, df_list, sheet_list,filename):
     writer.save()
     
     
-#def main():  
-start_t = timeit.default_timer() #start time
+if __name__ == '__main__':
+    start_t = timeit.default_timer() #start time
+        
+    print ('\nProcessing input water ledgers')
+    out_wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow'
+    in_gdb= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\KFN_waterPilot_proj.gdb'
+    in_ldgrs= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow\ledgers'
     
-print ('\nProcessing input water ledgers')
-out_wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow'
-in_gdb= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\KFN_waterPilot_proj.gdb'
-in_wapp_ldgr= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow\ledgers'
-
-f_eug = os.path.join(workspace,'Existing_Use_Groundwater.xlsx')
-f_new = os.path.join(workspace,'Water Application Ledger.xlsx')
-df = process_ledgers(f_eug,f_new)
-
-
-print ('\nConnecting to BCGW.')
-hostname = 'bcgw.bcgov/idwprod1.bcgov'
-bcgw_user = os.getenv('bcgw_user')
-bcgw_pwd = os.getenv('bcgw_pwd')
-connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-
-
-print ('\nFiltering applications within KFN territory')
-gdf_wapp= wapp_to_gdf(df)
-
-gdf_kfn_pip= prepare_geo_data(os.path.join(in_gdb, 'kfn_consultation_area'))
-
-df= filter_kfn(df, gdf_wapp, gdf_kfn_pip)
-
-print ('\nAdding Aquifer info *********REMINDER TO ADD THIS SECTION*********')
-#df = add_aquifer_info(df,connection)
-
-
-
-print ("\nOverlaying with South KFN boundary")
-gdf_skfn= prepare_geo_data(os.path.join(in_gdb, 'kfn_southern_core'))
-df= add_southKFN_info (df, gdf_wapp, gdf_skfn)
-
-print ("\nOverlaying with Drought Watershed")
-gdf_drgh= prepare_geo_data(os.path.join(in_gdb, 'drought_watershed'))
-df= add_drght_wshd_info (df, gdf_wapp, gdf_drgh)
-
-print ("\nOverlaying with KFN Areas of Concern")
-gdf_crna= prepare_geo_data(os.path.join(in_gdb, 'kfn_concern_area'))
-df= add_cnrn_area_info (df, gdf_wapp, gdf_crna)
-
-print ("\nOverlaying with Monitored Watersheds")
-gdf_mwsh= prepare_geo_data(os.path.join(in_gdb, 'monitored_watersheds'))
-df= add_mntrd_wshd_info (df, gdf_wapp, gdf_mwsh)
-
-print ("\nOverlaying with Monitored Aquifers")
-gdf_mnaq= prepare_geo_data(os.path.join(in_gdb, 'aquifers_obs_well'))
-df= add_mntrd_aqfr_info (df, gdf_wapp, gdf_mnaq)
-
-
-
-
-
-
-print ('\nExporting results')
-out_path = create_dir (workspace, 'OUTPUTS')
-spatial_path = create_dir (out_path, 'SPATAL')
-excel_path = create_dir (out_path, 'SPREADSHEET')
+    f_eug = os.path.join(in_ldgrs,'Existing_Use_Groundwater.xlsx')
+    f_new = os.path.join(in_ldgrs,'Water Application Ledger.xlsx')
+    df = process_ledgers(f_eug,f_new)
     
-
-today = datetime.today().strftime('%Y%m%d')
-
-filename= f'{today}_waterApplics_KFN' 
-generate_report (excel_path, [df], ['Water Applics - KFN territory'], filename)
-
-export_shp (gdf_wapp, spatial_path, filename)
-
-finish_t = timeit.default_timer() #finish time
-t_sec = round(finish_t-start_t)
-mins = int (t_sec/60)
-secs = int (t_sec%60)
-print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs)) 
-
-'''
-#main()
+    
+    print ('\nConnecting to BCGW.')
+    hostname = 'bcgw.bcgov/idwprod1.bcgov'
+    bcgw_user = os.getenv('bcgw_user')
+    bcgw_pwd = os.getenv('bcgw_pwd')
+    connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
+    
+    
+    print ('\nFiltering applications within KFN territory')
+    gdf_wapp= wapp_to_gdf(df)
+    
+    gdf_kfn_pip= prepare_geo_data(os.path.join(in_gdb, 'kfn_consultation_area'))
+    
+    df= filter_kfn(df, gdf_wapp, gdf_kfn_pip)
+    
+    
+    
+    
+    
+    
+    print ('\nAdding Aquifer info *********REMINDER TO ADD THIS SECTION*********')
+    df = add_aquifer_info(df,connection)
+    
+    
+    
+    print ("\nOverlaying with South KFN boundary")
+    gdf_skfn= prepare_geo_data(os.path.join(in_gdb, 'kfn_southern_core'))
+    df= add_southKFN_info (df, gdf_wapp, gdf_skfn)
+    
+    print ("\nOverlaying with Drought Watershed")
+    gdf_drgh= prepare_geo_data(os.path.join(in_gdb, 'drought_watershed'))
+    df= add_drght_wshd_info (df, gdf_wapp, gdf_drgh)
+    
+    print ("\nOverlaying with KFN Areas of Concern")
+    gdf_crna= prepare_geo_data(os.path.join(in_gdb, 'kfn_concern_area'))
+    df= add_cnrn_area_info (df, gdf_wapp, gdf_crna)
+    
+    print ("\nOverlaying with Monitored Watersheds")
+    gdf_mwsh= prepare_geo_data(os.path.join(in_gdb, 'monitored_watersheds'))
+    df= add_mntrd_wshd_info (df, gdf_wapp, gdf_mwsh)
+    
+    print ("\nOverlaying with Monitored Aquifers")
+    gdf_mnaq= prepare_geo_data(os.path.join(in_gdb, 'aquifers_obs_well'))
+    df= add_mntrd_aqfr_info (df, gdf_wapp, gdf_mnaq)
+    
+    
+    print ('\nExporting results')
+    out_path = create_dir (out_wks, 'OUTPUTS')
+    spatial_path = create_dir (out_path, 'SPATAL')
+    excel_path = create_dir (out_path, 'SPREADSHEET')
+        
+    today = datetime.today().strftime('%Y%m%d')
+    
+    filename= f'{today}_waterApplics_KFN' 
+    generate_report (excel_path, [df], ['Water Applics - KFN territory'], filename)
+    
+    gdf_wapp= wapp_to_gdf(df)
+    export_shp (gdf_wapp, spatial_path, filename)
+    
+    finish_t = timeit.default_timer() #finish time
+    t_sec = round(finish_t-start_t)
+    mins = int (t_sec/60)
+    secs = int (t_sec%60)
+    print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs)) 
 
