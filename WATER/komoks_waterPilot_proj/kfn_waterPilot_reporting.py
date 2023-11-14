@@ -225,7 +225,7 @@ def add_southKFN_info (df, gdf_wapp, gdf_skfn):
 
 
 def add_drght_wshd_info (df, gdf_wapp, gdf_drgh):
-    """ Overlay with south KFN """
+    """ Overlay with drought watersheds """
     
     df['WITHIN_DROUGHT_WSHD']= 'NO'
     
@@ -243,7 +243,65 @@ def add_drght_wshd_info (df, gdf_wapp, gdf_drgh):
     return df
 
 
+def add_cnrn_area_info (df, gdf_wapp, gdf_crna):
+    """ Overlay with concern areas """
+    
+    df['WITHIN_CONCERN_AREA']= 'NO'
+    
+    gdf_intr= gpd.overlay(gdf_wapp, gdf_crna, how='intersection')
+    
+    drgh_wshd_l = gdf_intr['UNIQUE_ID'].to_list()
+    df.loc[df['UNIQUE_ID'].isin(drgh_wshd_l), 'WITHIN_CONCERN_AREA'] = "YES"
+        
+    df_intr= gdf_intr.groupby('UNIQUE_ID')['CONCERN_AREA_NAME']\
+              .agg(lambda x: ', '.join(x)).reset_index()
+    
+    df= pd.merge(df, df_intr, how='left', on='UNIQUE_ID')
+    
+    
+    return df
 
+
+def add_mntrd_wshd_info (df, gdf_wapp, gdf_mwsh):
+    """ Overlay with concern areas """
+    
+    df['WITHIN_MNTRD_WSHD']= 'NO'
+    
+    gdf_intr= gpd.overlay(gdf_wapp, gdf_mwsh, how='intersection')
+    
+    drgh_wshd_l = gdf_intr['UNIQUE_ID'].to_list()
+    df.loc[df['UNIQUE_ID'].isin(drgh_wshd_l), 'WITHIN_MNTRD_WSHD'] = "YES"
+
+    df_intr= gdf_intr.groupby('UNIQUE_ID')['NameNom']\
+              .agg(lambda x: ', '.join(x)).reset_index()
+    
+    df= pd.merge(df, df_intr, how='left', on='UNIQUE_ID')
+    
+    df.rename(columns={'NameNom': 'HYDRO_STATION_NAME'}, inplace= True)
+    
+    
+    return df
+
+
+def add_mntrd_aqfr_info (df, gdf_wapp, gdf_mnaq):
+    """ Overlay with concern areas """
+    
+    df['WITHIN_MNTRD_AQFR']= 'NO'
+    
+    gdf_intr= gpd.overlay(gdf_wapp, gdf_mnaq, how='intersection')
+    
+    drgh_wshd_l = gdf_intr['UNIQUE_ID'].to_list()
+    df.loc[df['UNIQUE_ID'].isin(drgh_wshd_l), 'WITHIN_MNTRD_AQFR'] = "YES"
+    
+    gdf_intr['AQUIFER_ID'] = gdf_intr['AQUIFER_ID'].astype(str)
+    
+    df_intr= gdf_intr.groupby('UNIQUE_ID')['AQUIFER_ID']\
+              .agg(lambda x: ', '.join(x)).reset_index()
+    
+    df= pd.merge(df, df_intr, how='left', on='UNIQUE_ID')
+    
+
+    return df
 
 
 def export_shp (gdf, out_dir, shp_name):
@@ -284,8 +342,9 @@ def generate_report (workspace, df_list, sheet_list,filename):
 start_t = timeit.default_timer() #start time
     
 print ('\nProcessing input water ledgers')
+out_wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow'
 in_gdb= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\KFN_waterPilot_proj.gdb'
-workspace= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow\ledgers'
+in_wapp_ldgr= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow\ledgers'
 
 f_eug = os.path.join(workspace,'Existing_Use_Groundwater.xlsx')
 f_new = os.path.join(workspace,'Water Application Ledger.xlsx')
@@ -319,9 +378,18 @@ print ("\nOverlaying with Drought Watershed")
 gdf_drgh= prepare_geo_data(os.path.join(in_gdb, 'drought_watershed'))
 df= add_drght_wshd_info (df, gdf_wapp, gdf_drgh)
 
+print ("\nOverlaying with KFN Areas of Concern")
+gdf_crna= prepare_geo_data(os.path.join(in_gdb, 'kfn_concern_area'))
+df= add_cnrn_area_info (df, gdf_wapp, gdf_crna)
 
+print ("\nOverlaying with Monitored Watersheds")
+gdf_mwsh= prepare_geo_data(os.path.join(in_gdb, 'monitored_watersheds'))
+df= add_mntrd_wshd_info (df, gdf_wapp, gdf_mwsh)
 
-'''
+print ("\nOverlaying with Monitored Aquifers")
+gdf_mnaq= prepare_geo_data(os.path.join(in_gdb, 'aquifers_obs_well'))
+df= add_mntrd_aqfr_info (df, gdf_wapp, gdf_mnaq)
+
 
 
 
@@ -332,7 +400,6 @@ out_path = create_dir (workspace, 'OUTPUTS')
 spatial_path = create_dir (out_path, 'SPATAL')
 excel_path = create_dir (out_path, 'SPREADSHEET')
     
-df = df.drop('geometry', axis=1)
 
 today = datetime.today().strftime('%Y%m%d')
 
