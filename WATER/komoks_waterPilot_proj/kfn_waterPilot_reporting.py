@@ -25,6 +25,8 @@ import cx_Oracle
 import pandas as pd
 import geopandas as gpd
 from shapely import wkb
+import folium
+from folium.plugins import MeasureControl
 from datetime import datetime
 import timeit
 
@@ -310,6 +312,102 @@ def export_shp (gdf, out_dir, shp_name):
     shp_f = os.path.join(out_dir, shp_name+'.shp')
     gdf.to_file(shp_f, driver="ESRI Shapefile")
     
+
+def create_html_map(gdf_skfn):
+    """Creates a HTML map"""
+    # Create a map object
+    map_obj = folium.Map()
+    
+    # Add GeoBC basemap to the map
+    wms_url = 'https://maps.gov.bc.ca/arcgis/rest/services/province/web_mercator_cache/MapServer/tile/{z}/{y}/{x}'
+    wms_attribution = 'GeoBC, DataBC, TomTom, © OpenStreetMap Contributors'
+    folium.TileLayer(
+        tiles=wms_url,
+        name='GeoBC Basemap',
+        attr=wms_attribution,
+        overlay=False,
+        control=True,
+        transparent=True).add_to(map_obj)
+    
+    # Add a satellite basemap to the map
+    satellite_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+    satellite_attribution = 'Tiles &copy; Esri'
+    folium.TileLayer(
+        tiles=satellite_url,
+        name='Imagery Basemap',
+        attr=satellite_attribution,
+        overlay=False,
+        control=True).add_to(map_obj)
+    
+    
+    
+    #Add Aquifers layer to the map
+    aq_group = folium.FeatureGroup(name='Aquifer Classification', show=False)
+    
+    # Add WMS layer to the feature group
+    aq_url = 'https://openmaps.gov.bc.ca/geo/pub/WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW/ows?service=WMS'
+    aq_layer = folium.raster_layers.WmsTileLayer(
+        url=aq_url,
+        name='BC Aquifers',
+        fmt='image/png',
+        layers='WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW',
+        transparent=True,
+        overlay=False,
+    )
+    aq_layer.add_to(aq_group)
+    
+    # Add the feature group to the map
+    aq_group.add_to(map_obj)
+
+    #Add PMBC layer to the map
+    pm_group = folium.FeatureGroup(name='Cadastre Parcels', show=False)
+    
+    # Add WMS layer to the feature group
+    pm_url = 'https://openmaps.gov.bc.ca/geo/pub/WHSE_CADASTRE.PMBC_PARCEL_FABRIC_POLY_SVW/ows?service=WMS'
+    pm_layer = folium.raster_layers.WmsTileLayer(
+        url=pm_url,
+        name='PMBC',
+        fmt='image/png',
+        layers='WHSE_CADASTRE.PMBC_PARCEL_FABRIC_POLY_SVW',
+        transparent=True,
+        overlay=False,
+    )
+    pm_layer.add_to(pm_group)
+    
+    # Add the feature group to the map
+    pm_group.add_to(map_obj)  
+    
+    
+    # Add KFN layer
+    gdf_skfn.explore(m=map_obj, color='blue')
+    
+    
+    
+    
+    
+    # Add measure controls to the map
+    map_obj.add_child(MeasureControl(primary_length_unit='meters', 
+                                     secondary_length_unit='kilometers',
+                                     primary_area_unit='hectares'))
+    
+    # create a title
+    title_txt= 'Water Applications within KFN territory'
+    title_obj = """
+    
+        <div style="position: fixed; 
+             top: 8px; left: 70px; width: 150px; height: 70px; 
+             background-color:transparent; border:0px solid grey;z-index: 900;">
+             <h5 style="font-weight:bold;color:#DE1610;white-space:nowrap;">{}</h5>
+        </div>
+        
+        """.format(title_txt)   
+    map_obj.get_root().html.add_child(folium.Element(title_obj))
+    
+    lyr_cont= folium.LayerControl()
+    lyr_cont.add_to(map_obj)
+    
+    return map_obj
+
     
 def generate_report (workspace, df_list, sheet_list,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
@@ -372,7 +470,7 @@ if __name__ == '__main__':
     
     
     print ('\nAdding Aquifer info *********REMINDER TO ADD THIS SECTION*********')
-    df = add_aquifer_info(df,connection)
+    #df = add_aquifer_info(df,connection)
     
     
     
@@ -380,6 +478,8 @@ if __name__ == '__main__':
     gdf_skfn= prepare_geo_data(os.path.join(in_gdb, 'kfn_southern_core'))
     df= add_southKFN_info (df, gdf_wapp, gdf_skfn)
     
+    
+    '''
     print ("\nOverlaying with Drought Watershed")
     gdf_drgh= prepare_geo_data(os.path.join(in_gdb, 'drought_watershed'))
     df= add_drght_wshd_info (df, gdf_wapp, gdf_drgh)
@@ -410,9 +510,19 @@ if __name__ == '__main__':
     gdf_wapp= wapp_to_gdf(df)
     export_shp (gdf_wapp, spatial_path, filename)
     
+    '''
+    
+    gdf_wapp= wapp_to_gdf(df)
+    map_obj= create_html_map(gdf_skfn)
+    map_obj.save(os.path.join(out_wks, 'interactive_map.html'))
+    
+    
+    
     finish_t = timeit.default_timer() #finish time
     t_sec = round(finish_t-start_t)
     mins = int (t_sec/60)
     secs = int (t_sec%60)
     print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs)) 
+
+
 
