@@ -350,7 +350,7 @@ def export_shp (gdf, out_dir, shp_name):
     gdf.to_file(shp_f, driver="ESRI Shapefile")
     
 
-def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp):
+def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     """Creates a HTML map"""
     # Create a map object
     map_obj = folium.Map()
@@ -378,16 +378,6 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp):
             min_opacity= 0.4,
             blur= 20).add_to(folium.FeatureGroup(name='Heatmap of Water applics').add_to(map_obj))
     
-    # Add KFN south layer
-    gdf_skfn.explore(
-        m=map_obj, 
-        name="Southern KFN Area",
-        tooltip= False,
-        #legend= True,
-        style_kwds=dict(fill= False, 
-                        color="red", 
-                        weight=3)
-         )
     
     # Add KFN pip layer
     gdf_kfn_pip.explore(
@@ -401,16 +391,20 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp):
                         weight=3)
          )
     
-    # Add GeoBC basemap to the map
-    wms_url = 'https://maps.gov.bc.ca/arcgis/rest/services/province/web_mercator_cache/MapServer/tile/{z}/{y}/{x}'
-    wms_attribution = 'GeoBC, DataBC, TomTom, © OpenStreetMap Contributors'
-    folium.TileLayer(
-        tiles=wms_url,
-        name='GeoBC Basemap',
-        attr=wms_attribution,
-        overlay=False,
-        control=True,
-        transparent=True).add_to(map_obj)
+    
+    # Add KFN south layer
+    gdf_skfn.explore(
+        m=map_obj, 
+        name="Southern KFN Area",
+        tooltip= False,
+        #legend= True,
+        style_kwds=dict(fill= False, 
+                        color="red", 
+                        weight=3)
+         )
+    
+
+
     
     # Add a satellite basemap to the map
     satellite_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
@@ -421,48 +415,68 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp):
         attr=satellite_attribution,
         overlay=False,
         control=True).add_to(map_obj)
-    
+
+
     #Add Aquifers layer to the map
     aq_group = folium.FeatureGroup(name='Aquifer Classification', show=False)
-    
-    # Add WMS layer to the feature group
     aq_url = 'https://openmaps.gov.bc.ca/geo/pub/WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW/ows?service=WMS'
     aq_layer = folium.raster_layers.WmsTileLayer(
         url=aq_url,
-        name='BC Aquifers',
         fmt='image/png',
         layers='WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW',
         transparent=True,
-        overlay=False,
-    )
+        overlay=False)
     aq_layer.add_to(aq_group)
-    
-    # Add the feature group to the map
     aq_group.add_to(map_obj)
 
+
+    #Add Watersheds layer to the map
+    ws_group = folium.FeatureGroup(name='Water Licensing Watersheds', show=False)
+    ws_url = 'https://openmaps.gov.bc.ca/geo/pub/WHSE_WATER_MANAGEMENT.WLS_WATER_LIC_WATERSHEDS_SP/ows?service=WMS'
+    ws_layer = folium.raster_layers.WmsTileLayer(
+        url=ws_url,
+        fmt='image/png',
+        layers='WHSE_WATER_MANAGEMENT.WLS_WATER_LIC_WATERSHEDS_SP',
+        transparent=True,
+        overlay=False)
+    ws_layer.add_to(ws_group)
+    ws_group.add_to(map_obj)  
+    
+    
+    # Add hydrometric stations layer
+    gdf_hydr.explore(
+        m=map_obj, 
+        name="Active Hydrometric Gauges",
+        tooltip= True,
+        popup= True,
+        show=False,
+        style_kwds=dict(fill= True, 
+                        color="black", 
+                        weight=4))
+
+    # Add hydrometric stations layer
+    gdf_obsw.explore(
+        m=map_obj, 
+        name="Active GW Observation Wells",
+        tooltip= True,
+        popup= True,
+        show=False,
+        style_kwds=dict(fill= True, 
+                        color="purple", 
+                        weight=4))
+    
+    
     #Add PMBC layer to the map
     pm_group = folium.FeatureGroup(name='Cadastre Parcels', show=False)
-    
-    # Add WMS layer to the feature group
     pm_url = 'https://openmaps.gov.bc.ca/geo/pub/WHSE_CADASTRE.PMBC_PARCEL_FABRIC_POLY_SVW/ows?service=WMS'
     pm_layer = folium.raster_layers.WmsTileLayer(
         url=pm_url,
-        name='PMBC',
         fmt='image/png',
         layers='WHSE_CADASTRE.PMBC_PARCEL_FABRIC_POLY_SVW',
         transparent=True,
-        overlay=False,
-    )
+        overlay=False)
     pm_layer.add_to(pm_group)
-    
-    # Add the feature group to the map
     pm_group.add_to(map_obj)  
-    
-    
-    # Add measure controls to the map
-   # map_obj.add_child(MeasureControl(primary_length_unit='meters', 
-    #                                 secondary_length_unit='kilometers',
-     #                                primary_area_unit='hectares'))
     
     # create a title
     title_txt1= 'KFN Water Pilot Project'
@@ -591,7 +605,11 @@ if __name__ == '__main__':
     gdf_wapp= wapp_to_gdf(df)
     gdf_wapp= modify_applic_types(gdf_wapp)
     
-    map_obj= create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp)
+    gdf_hydr= prepare_geo_data(os.path.join(in_gdb, 'active_hydrometric_gauges'))
+    
+    gdf_obsw= prepare_geo_data(os.path.join(in_gdb, 'active_gw_obseration_wells'))
+    
+    map_obj= create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw)
     map_obj.save(os.path.join(out_wks, 'interactive_map.html'))
     
     
