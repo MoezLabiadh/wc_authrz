@@ -26,7 +26,7 @@ import pandas as pd
 import geopandas as gpd
 from shapely import wkb
 import folium
-from folium.plugins import MeasureControl
+from folium.plugins import HeatMap
 from datetime import datetime
 import timeit
 
@@ -355,7 +355,7 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp):
     # Create a map object
     map_obj = folium.Map()
     
-    xmin,ymin,xmax,ymax = gdf_skfn.to_crs(4326)['geometry'].total_bounds
+    xmin,ymin,xmax,ymax = gdf_kfn_pip['geometry'].total_bounds
     map_obj.fit_bounds([[ymin, xmin], [ymax, xmax]])
     
     # Add water applications
@@ -363,15 +363,20 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp):
         m=map_obj, 
         name="Water Applications",
         column= 'APPLICATION_TYPE',
-        cmap= 'tab10',
+        cmap= 'Paired',
         tooltip= True,
         popup= True,
         legend= True,
         style_kwds=dict(
             fill=True,
-            weight=4)
+            weight=2)
         )
-        
+       
+    #Add a heatmap
+    heat_data = [[point.xy[1][0], point.xy[0][0]] for point in gdf_wapp.geometry]
+    HeatMap(heat_data, 
+            min_opacity= 0.4,
+            blur= 20).add_to(folium.FeatureGroup(name='Heatmap of Water applics').add_to(map_obj))
     
     # Add KFN south layer
     gdf_skfn.explore(
