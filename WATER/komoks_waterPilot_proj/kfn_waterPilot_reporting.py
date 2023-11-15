@@ -142,7 +142,44 @@ def process_ledgers(f_eug,f_new):
     df['UNIQUE_ID'].fillna(df['ATS_NUMBER'], inplace=True)
     df = df[['UNIQUE_ID'] + [ col for col in df.columns if col != 'UNIQUE_ID' ]]
     
+    # Add suffixes to duplicate IDs
+    df['UNIQUE_ID'] = df['UNIQUE_ID'].astype(str)
+    
+    duplicates = df.duplicated(subset=['UNIQUE_ID'], keep=False)
+    id_counts = {}
+    
+    def modify_duplicates(row):
+        if duplicates[row.name]:
+            current_id = row['UNIQUE_ID']
+            count = id_counts.get(current_id, 1)
+            new_id = f"{current_id}-{count}"
+            id_counts[current_id] = count + 1
+            
+            return new_id
+        
+        return row['UNIQUE_ID']
+
+    df['UNIQUE_ID'] = df.apply(modify_duplicates, axis=1)
+
     return df
+
+
+def modify_applic_types(gdf_wapp):
+    """Add prefixes to Applications types - for mapping purposes"""
+    dict = {'Water Licence - Surface': '1-Water Licence - Surface', 
+            'Water Licence - Ground' : '2-Water Licence - Ground',
+            'Amendment - Surface'    : '3-Amendment - Surface',
+            'Amendment - Ground'     : '4-Amendment - Ground',
+            'Amendment - Ground / Surface': '5-Amendment - Ground / Surface',
+            'Abandon - Surface': '6-Abandon - Surface',
+            'Abandon - Ground': '7-Abandon - Ground',
+            'Existing Use - Groundwater': '8-Existing Use - Groundwater',
+            }
+
+    df['APPLICATION_TYPE'] = df['APPLICATION_TYPE'].replace(dict)
+    
+
+    return gdf_wapp
 
 
 def wapp_to_gdf(df):
@@ -313,10 +350,51 @@ def export_shp (gdf, out_dir, shp_name):
     gdf.to_file(shp_f, driver="ESRI Shapefile")
     
 
-def create_html_map(gdf_skfn):
+def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp):
     """Creates a HTML map"""
     # Create a map object
     map_obj = folium.Map()
+    
+    xmin,ymin,xmax,ymax = gdf_skfn.to_crs(4326)['geometry'].total_bounds
+    map_obj.fit_bounds([[ymin, xmin], [ymax, xmax]])
+    
+    # Add water applications
+    gdf_wapp.explore(
+        m=map_obj, 
+        name="Water Applications",
+        column= 'APPLICATION_TYPE',
+        cmap= 'tab10',
+        tooltip= True,
+        popup= True,
+        legend= True,
+        style_kwds=dict(
+            fill=True,
+            weight=4)
+        )
+        
+    
+    # Add KFN south layer
+    gdf_skfn.explore(
+        m=map_obj, 
+        name="Southern KFN Area",
+        tooltip= False,
+        #legend= True,
+        style_kwds=dict(fill= False, 
+                        color="red", 
+                        weight=3)
+         )
+    
+    # Add KFN pip layer
+    gdf_kfn_pip.explore(
+        m=map_obj, 
+        name="KFN Consultation Area",
+        #column= 'NAME',
+        tooltip= False,
+        #legend= True,
+        style_kwds=dict(fill= False, 
+                        color="black", 
+                        weight=3)
+         )
     
     # Add GeoBC basemap to the map
     wms_url = 'https://maps.gov.bc.ca/arcgis/rest/services/province/web_mercator_cache/MapServer/tile/{z}/{y}/{x}'
@@ -338,8 +416,6 @@ def create_html_map(gdf_skfn):
         attr=satellite_attribution,
         overlay=False,
         control=True).add_to(map_obj)
-    
-    
     
     #Add Aquifers layer to the map
     aq_group = folium.FeatureGroup(name='Aquifer Classification', show=False)
@@ -378,29 +454,24 @@ def create_html_map(gdf_skfn):
     pm_group.add_to(map_obj)  
     
     
-    # Add KFN layer
-    gdf_skfn.explore(m=map_obj, color='blue')
-    
-    
-    
-    
-    
     # Add measure controls to the map
-    map_obj.add_child(MeasureControl(primary_length_unit='meters', 
-                                     secondary_length_unit='kilometers',
-                                     primary_area_unit='hectares'))
+   # map_obj.add_child(MeasureControl(primary_length_unit='meters', 
+    #                                 secondary_length_unit='kilometers',
+     #                                primary_area_unit='hectares'))
     
     # create a title
-    title_txt= 'Water Applications within KFN territory'
+    title_txt1= 'KFN Water Pilot Project'
+    title_txt2= 'Water Applications within KFN territory'
     title_obj = """
-    
-        <div style="position: fixed; 
-             top: 8px; left: 70px; width: 150px; height: 70px; 
-             background-color:transparent; border:0px solid grey;z-index: 900;">
-             <h5 style="font-weight:bold;color:#DE1610;white-space:nowrap;">{}</h5>
-        </div>
         
-        """.format(title_txt)   
+            <div style="position: fixed; 
+                 top: 8px; left: 70px; 
+                 background-color:#f0f0eb; border:0px solid grey;z-index: 900; padding:0.5%;">
+                 <h3 style="font-weight:bold;color:#DE1610;white-space:nowrap;">{}</h3>
+                 <h4 style="font-weight:bold;color:#DE1610;white-space:nowrap;">{}</h4>
+            </div>
+        
+        """.format(title_txt1, title_txt2)   
     map_obj.get_root().html.add_child(folium.Element(title_obj))
     
     lyr_cont= folium.LayerControl()
@@ -511,9 +582,11 @@ if __name__ == '__main__':
     export_shp (gdf_wapp, spatial_path, filename)
     
     '''
-    
+    # Create the html map
     gdf_wapp= wapp_to_gdf(df)
-    map_obj= create_html_map(gdf_skfn)
+    gdf_wapp= modify_applic_types(gdf_wapp)
+    
+    map_obj= create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp)
     map_obj.save(os.path.join(out_wks, 'interactive_map.html'))
     
     
