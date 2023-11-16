@@ -564,11 +564,9 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     #add the legend to the individual maps
     m.get_root().html.add_child(folium.Element(legend_html))
            
-    
     lyr_cont= folium.LayerControl(collapsed=False)
     lyr_cont.add_to(m)
     
-
     
     return m
 
@@ -607,10 +605,13 @@ if __name__ == '__main__':
     print ('\nProcessing input water ledgers')
     out_wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow'
     in_gdb= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\KFN_waterPilot_proj.gdb'
-    in_ldgrs= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow\ledgers'
+    #in_ldgrs= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow\ledgers'
     
-    f_eug = os.path.join(in_ldgrs,'Existing_Use_Groundwater.xlsx')
-    f_new = os.path.join(in_ldgrs,'Water Application Ledger.xlsx')
+    in_wap_ldgr= r'\\sfp.idir.bcgov\S140\S40133\WaterStewardship_Share\WSD\Allocation\Application Database'
+    in_eug_ldgr= r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Logs'
+    
+    f_eug = os.path.join(in_eug_ldgr,'Existing_Use_Groundwater.xlsx')
+    f_new = os.path.join(in_wap_ldgr,'Water Application Ledger.xlsx')
     df = process_ledgers(f_eug,f_new)
     
     
@@ -627,23 +628,14 @@ if __name__ == '__main__':
     gdf_kfn_pip= prepare_geo_data(os.path.join(in_gdb, 'kfn_consultation_area'))
     
     df= filter_kfn(df, gdf_wapp, gdf_kfn_pip)
-    
-    
-    
-    
-    
-    
+
     print ('\nAdding Aquifer info *********REMINDER TO ADD THIS SECTION*********')
-    #df = add_aquifer_info(df,connection)
-    
-    
+    df = add_aquifer_info(df,connection)
     
     print ("\nOverlaying with South KFN boundary")
     gdf_skfn= prepare_geo_data(os.path.join(in_gdb, 'kfn_southern_core'))
     df= add_southKFN_info (df, gdf_wapp, gdf_skfn)
     
-    
-    '''
     print ("\nOverlaying with Drought Watershed")
     gdf_drgh= prepare_geo_data(os.path.join(in_gdb, 'drought_watershed'))
     df= add_drght_wshd_info (df, gdf_wapp, gdf_drgh)
@@ -660,21 +652,20 @@ if __name__ == '__main__':
     gdf_mnaq= prepare_geo_data(os.path.join(in_gdb, 'aquifers_obs_well'))
     df= add_mntrd_aqfr_info (df, gdf_wapp, gdf_mnaq)
     
-    
     print ('\nExporting results')
     out_path = create_dir (out_wks, 'OUTPUTS')
-    spatial_path = create_dir (out_path, 'SPATAL')
-    excel_path = create_dir (out_path, 'SPREADSHEET')
+    #spatial_path = create_dir (out_path, 'SPATAL')
+    #excel_path = create_dir (out_path, 'SPREADSHEET')
         
     today = datetime.today().strftime('%Y%m%d')
     
-    filename= f'{today}_waterApplics_KFN' 
-    generate_report (excel_path, [df], ['Water Applics - KFN territory'], filename)
+    xls_name= f'{today}_KFN_waterPilot_report' 
+    map_name= f'{today}_KFN_waterPilot_map' 
+    generate_report (out_path, [df], ['Water Applics - KFN territory'], xls_name)
     
     gdf_wapp= wapp_to_gdf(df)
-    export_shp (gdf_wapp, spatial_path, filename)
-    
-    '''
+    #export_shp (gdf_wapp, spatial_path, filename)
+
     # Create the html map
     gdf_wapp= wapp_to_gdf(df)
     gdf_wapp= modify_applic_types(gdf_wapp)
@@ -685,7 +676,7 @@ if __name__ == '__main__':
     gdf_obsw=gdf_obsw[['WELL_TAG', 'AQUIFER_ID', 'COMPANY', 'FNSH_DEPTH', 'geometry']]
     
     m= create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw)
-    m.save(os.path.join(out_wks, 'interactive_map.html'))
+    m.save(os.path.join(out_path, map_name + '.html'))
     
     
     
