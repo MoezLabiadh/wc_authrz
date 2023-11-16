@@ -99,6 +99,8 @@ if __name__ == "__main__":
                 
                 gdf_prcl= gdf.loc[gdf['INTRID_SID']==prcl]
                 gdf_prcl.to_file(os.path.join(prcl_dir, prcl_str+'.shp'))
+        
+        print(month_dir)
                 
     else:
         print ("..This file has MULTIPLE active dispositions. Check records.")
