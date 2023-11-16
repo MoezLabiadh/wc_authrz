@@ -12,7 +12,7 @@
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     10-11-2023
+# Created:     16-11-2023
 # Updated:     
 #-------------------------------------------------------------------------------
 
@@ -150,6 +150,7 @@ def process_ledgers(f_eug,f_new):
     id_counts = {}
     
     def modify_duplicates(row):
+        """ Add count prefixes to duplicated Unique IDs """
         if duplicates[row.name]:
             current_id = row['UNIQUE_ID']
             count = id_counts.get(current_id, 1)
@@ -189,20 +190,6 @@ def wapp_to_gdf(df):
     gdf.crs = 'EPSG:4326'
     
     return gdf
-    
-    
-def load_sql ():
-    sql = {}
-    sql['aqf'] = """
-                SELECT AQUIFER_ID
-                
-                FROM WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW aqf
-                
-                WHERE  SDO_RELATE (aqf.GEOMETRY, SDO_GEOMETRY('POINT({long} {lat})', 4326),
-                                      'mask=ANYINTERACT') = 'TRUE'
-                """
-    
-    return sql
 
 
 def filter_kfn(df, gdf_wapp, gdf_kfn_pip):
@@ -685,6 +672,3 @@ if __name__ == '__main__':
     mins = int (t_sec/60)
     secs = int (t_sec%60)
     print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs)) 
-
-
-
