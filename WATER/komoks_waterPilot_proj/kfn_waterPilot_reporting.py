@@ -27,6 +27,7 @@ import geopandas as gpd
 from shapely import wkb
 import folium
 from folium.plugins import HeatMap
+from folium.plugins import Search
 from datetime import datetime
 import timeit
 
@@ -353,14 +354,15 @@ def export_shp (gdf, out_dir, shp_name):
 def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     """Creates a HTML map"""
     # Create a map object
-    map_obj = folium.Map()
+    m = folium.Map()
     
     xmin,ymin,xmax,ymax = gdf_kfn_pip['geometry'].total_bounds
-    map_obj.fit_bounds([[ymin, xmin], [ymax, xmax]])
+    m.fit_bounds([[ymin, xmin], [ymax, xmax]])
     
     # Add water applications
+    '''
     gdf_wapp.explore(
-        m=map_obj, 
+        m=m, 
         name="Water Applications",
         column= 'APPLICATION_TYPE',
         cmap= 'Paired',
@@ -371,17 +373,45 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
             fill=True,
             weight=2)
         )
-       
+    
+    '''
+    cols = list(gdf_wapp.columns.drop('geometry'))
+    
+    cmap= {
+        '1-Water Licence - Surface': '#2874ed',
+        '2-Water Licence - Ground': '#3db31d',
+        '3-Amendment - Surface': '#eb67ca',
+        '4-Amendment - Ground': '#d93b23',
+        '5-Amendment - Ground / Surface': '#eb9e3b',
+        '6-Abandon - Surface': '#be68e3',
+        '7-Abandon - Grounde': '#e0de53',
+        '8-Existing Use - Groundwater': '#8a6c49'}
+
+    gdf_wapp['color']= gdf_wapp['APPLICATION_TYPE'].map(cmap)
+    
+    wapp_lyr = folium.GeoJson(
+        data=gdf_wapp,
+        name='Water Applications',
+        marker=folium.Circle(radius=5),
+        style_function= lambda x: {'fillColor': x['properties']['color'],
+                                   'color': x['properties']['color'],
+                                   'weight': 5},
+        tooltip= folium.features.GeoJsonTooltip(fields=cols, labels=True),
+        popup= folium.features.GeoJsonPopup(fields=cols, sticky=False, max_width=380)
+    ).add_to(m)
+
+     
+    
     #Add a heatmap
     heat_data = [[point.xy[1][0], point.xy[0][0]] for point in gdf_wapp.geometry]
     HeatMap(heat_data, 
             min_opacity= 0.4,
-            blur= 20).add_to(folium.FeatureGroup(name='Heatmap of Water applics').add_to(map_obj))
+            blur= 20).add_to(folium.FeatureGroup(name='Heatmap of Water applics').add_to(m))
     
     
     # Add KFN pip layer
     gdf_kfn_pip.explore(
-        m=map_obj, 
+        m=m, 
         name="KFN Consultation Area",
         #column= 'NAME',
         tooltip= False,
@@ -394,18 +424,16 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     
     # Add KFN south layer
     gdf_skfn.explore(
-        m=map_obj, 
+        m=m, 
         name="Southern KFN Area",
         tooltip= False,
         #legend= True,
         style_kwds=dict(fill= False, 
-                        color="red", 
+                        color="#707070", 
                         weight=3)
          )
     
 
-
-    
     # Add a satellite basemap to the map
     satellite_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
     satellite_attribution = 'Tiles &copy; Esri'
@@ -414,7 +442,7 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         name='Imagery Basemap',
         attr=satellite_attribution,
         overlay=False,
-        control=True).add_to(map_obj)
+        control=True).add_to(m)
 
 
     #Add Aquifers layer to the map
@@ -427,7 +455,7 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         transparent=True,
         overlay=False)
     aq_layer.add_to(aq_group)
-    aq_group.add_to(map_obj)
+    aq_group.add_to(m)
 
 
     #Add Watersheds layer to the map
@@ -440,12 +468,12 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         transparent=True,
         overlay=False)
     ws_layer.add_to(ws_group)
-    ws_group.add_to(map_obj)  
+    ws_group.add_to(m)  
     
     
     # Add hydrometric stations layer
     gdf_hydr.explore(
-        m=map_obj, 
+        m=m, 
         name="Active Hydrometric Gauges",
         tooltip= True,
         popup= True,
@@ -456,7 +484,7 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
 
     # Add hydrometric stations layer
     gdf_obsw.explore(
-        m=map_obj, 
+        m=m, 
         name="Active GW Observation Wells",
         tooltip= True,
         popup= True,
@@ -476,7 +504,7 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         transparent=True,
         overlay=False)
     pm_layer.add_to(pm_group)
-    pm_group.add_to(map_obj)  
+    pm_group.add_to(m)  
     
     # create a title
     title_txt1= 'KFN Water Pilot Project'
@@ -484,19 +512,65 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     title_obj = """
         
             <div style="position: fixed; 
-                 top: 8px; left: 70px; 
+                 top: 740px; left: 30px; 
                  background-color:#f0f0eb; border:0px solid grey;z-index: 900; padding:0.5%;">
-                 <h3 style="font-weight:bold;color:#DE1610;white-space:nowrap;">{}</h3>
-                 <h4 style="font-weight:bold;color:#DE1610;white-space:nowrap;">{}</h4>
+                 <h2 style="font-weight:bold;color:#992c25;white-space:nowrap;">{}</h2>
+                 <h4 style="font-weight:bold;color:#992c25;white-space:nowrap;">{}</h4>
             </div>
         
         """.format(title_txt1, title_txt2)   
-    map_obj.get_root().html.add_child(folium.Element(title_obj))
+    m.get_root().html.add_child(folium.Element(title_obj))
     
-    lyr_cont= folium.LayerControl()
-    lyr_cont.add_to(map_obj)
+
+    folium.plugins.Fullscreen(
+        position="topright",
+        title="Expand me",
+        title_cancel="Exit me",
+        force_separate_button=True).add_to(m)
     
-    return map_obj
+    Search(
+        layer=wapp_lyr,
+        geom_type="Point",
+        placeholder="Search Water Applications by Unique ID",
+        search_label="UNIQUE_ID",
+        weight=3,
+    ).add_to(m)
+    
+    
+    #Create a Legend
+    #start the div tag and set the legend size and position
+    legend_html = '''
+                <div id="legend" style="position: fixed; 
+                bottom: 30px; right: 30px; z-index: 1000; 
+                background-color: #fff; padding: 10px; 
+                border-radius: 5px; border: 1px solid grey;">
+                '''
+    #add a header to the legend            
+    legend_html += '''
+                <div style="font-weight: bold; 
+                margin-bottom: 5px;">APPLICATION TYPE</div>
+                '''
+    #add items to the legend
+    for name, color in cmap.items():
+        legend_html += '''
+                        <div style="display: inline-block; 
+                        margin-right: 10px;background-color: {0}; 
+                        width: 15px; height: 15px;"></div>{1}<br>
+                        '''.format(color, name)
+    #close the div tag
+    legend_html += '</div>'
+    
+
+    #add the legend to the individual maps
+    m.get_root().html.add_child(folium.Element(legend_html))
+           
+    
+    lyr_cont= folium.LayerControl(collapsed=False)
+    lyr_cont.add_to(m)
+    
+
+    
+    return m
 
     
 def generate_report (workspace, df_list, sheet_list,filename):
@@ -608,9 +682,10 @@ if __name__ == '__main__':
     gdf_hydr= prepare_geo_data(os.path.join(in_gdb, 'active_hydrometric_gauges'))
     
     gdf_obsw= prepare_geo_data(os.path.join(in_gdb, 'active_gw_obseration_wells'))
+    gdf_obsw=gdf_obsw[['WELL_TAG', 'AQUIFER_ID', 'COMPANY', 'FNSH_DEPTH', 'geometry']]
     
-    map_obj= create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw)
-    map_obj.save(os.path.join(out_wks, 'interactive_map.html'))
+    m= create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw)
+    m.save(os.path.join(out_wks, 'interactive_map.html'))
     
     
     
