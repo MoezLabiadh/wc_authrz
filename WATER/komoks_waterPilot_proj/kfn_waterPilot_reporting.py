@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # Name:        Komoks Water Applications
 #
-# Purpose:     This script generates a reporting materials for 
+# Purpose:     This script generates reporting materials for 
 #              Komoks Water Pilot Project
 #
 # Input(s):    (1) Workspace (folder) where outputs will be generated.
