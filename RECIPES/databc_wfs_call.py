@@ -15,7 +15,9 @@ def wfs_to_gdf (crs, bbox, layername):
                   bbox=f'{",".join(str(value) for value in bbox)},{crs}',
                   outputFormat='json')
     
-    request_url = Request('GET', owsrootUrl, params=params).prepare().url
+    request_url = Request('GET', 
+                          owsrootUrl, 
+                          params=params).prepare().url
     
     
     return gpd.read_file(request_url)
