@@ -12,7 +12,7 @@
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     16-11-2023
+# Created:     22-11-2023
 # Updated:     
 #-------------------------------------------------------------------------------
 
@@ -387,14 +387,11 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         popup= folium.features.GeoJsonPopup(fields=cols, sticky=False, max_width=380)
     ).add_to(m)
 
-     
-    
     #Add a heatmap
     heat_data = [[point.xy[1][0], point.xy[0][0]] for point in gdf_wapp.geometry]
     HeatMap(heat_data, 
             min_opacity= 0.4,
             blur= 20).add_to(folium.FeatureGroup(name='Heatmap of Water applics').add_to(m))
-    
     
     # Add KFN pip layer
     gdf_kfn_pip.explore(
@@ -408,7 +405,6 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
                         weight=3)
          )
     
-    
     # Add KFN south layer
     gdf_skfn.explore(
         m=m, 
@@ -420,7 +416,6 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
                         weight=3)
          )
     
-
     # Add a satellite basemap to the map
     satellite_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
     satellite_attribution = 'Tiles &copy; Esri'
@@ -430,7 +425,6 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         attr=satellite_attribution,
         overlay=False,
         control=True).add_to(m)
-
 
     #Add Aquifers layer to the map
     aq_group = folium.FeatureGroup(name='Aquifer Classification', show=False)
@@ -444,7 +438,6 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     aq_layer.add_to(aq_group)
     aq_group.add_to(m)
 
-
     #Add Watersheds layer to the map
     ws_group = folium.FeatureGroup(name='Water Licensing Watersheds', show=False)
     ws_url = 'https://openmaps.gov.bc.ca/geo/pub/WHSE_WATER_MANAGEMENT.WLS_WATER_LIC_WATERSHEDS_SP/ows?service=WMS'
@@ -456,7 +449,6 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         overlay=False)
     ws_layer.add_to(ws_group)
     ws_group.add_to(m)  
-    
     
     # Add hydrometric stations layer
     gdf_hydr.explore(
@@ -480,7 +472,6 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
                         color="purple", 
                         weight=4))
     
-    
     #Add PMBC layer to the map
     pm_group = folium.FeatureGroup(name='Cadastre Parcels', show=False)
     pm_url = 'https://openmaps.gov.bc.ca/geo/pub/WHSE_CADASTRE.PMBC_PARCEL_FABRIC_POLY_SVW/ows?service=WMS'
@@ -497,7 +488,6 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     title_txt1= 'KFN Water Pilot Project'
     title_txt2= 'Water Applications within KFN territory'
     title_obj = """
-        
             <div style="position: fixed; 
                  top: 740px; left: 30px; 
                  background-color:#f0f0eb; border:0px solid grey;z-index: 900; padding:0.5%;">
@@ -508,6 +498,17 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         """.format(title_txt1, title_txt2)   
     m.get_root().html.add_child(folium.Element(title_obj))
     
+    mapinfo_txt= f"Map generated on: {datetime.today().strftime('%B %d, %Y')}"
+    mapinfo_obj = """
+        <div style="position: fixed; 
+             top: 870px; left: 30px; 
+             border:0px solid grey;z-index: 900; padding:0.5%;">
+             <p style="font-weight:bold;color:black;font-style:italic;
+                font-size:9px;white-space:nowrap;">{}</p>
+        </div>
+        
+        """.format(mapinfo_txt)   
+    m.get_root().html.add_child(folium.Element(mapinfo_obj))
 
     folium.plugins.Fullscreen(
         position="topright",
@@ -601,7 +602,6 @@ if __name__ == '__main__':
     f_new = os.path.join(in_wap_ldgr,'Water Application Ledger.xlsx')
     df = process_ledgers(f_eug,f_new)
     
-    
     print ('\nConnecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
@@ -616,7 +616,7 @@ if __name__ == '__main__':
     
     df= filter_kfn(df, gdf_wapp, gdf_kfn_pip)
 
-    print ('\nAdding Aquifer info *********REMINDER TO ADD THIS SECTION*********')
+    print ('\nAdding Aquifer info')
     df = add_aquifer_info(df,connection)
     
     print ("\nOverlaying with South KFN boundary")
@@ -638,7 +638,7 @@ if __name__ == '__main__':
     print ("\nOverlaying with Monitored Aquifers")
     gdf_mnaq= prepare_geo_data(os.path.join(in_gdb, 'aquifers_obs_well'))
     df= add_mntrd_aqfr_info (df, gdf_wapp, gdf_mnaq)
-    
+
     print ('\nExporting results')
     out_path = create_dir (out_wks, 'OUTPUTS')
     #spatial_path = create_dir (out_path, 'SPATAL')
@@ -652,7 +652,7 @@ if __name__ == '__main__':
     
     gdf_wapp= wapp_to_gdf(df)
     #export_shp (gdf_wapp, spatial_path, filename)
-
+    
     # Create the html map
     gdf_wapp= wapp_to_gdf(df)
     gdf_wapp= modify_applic_types(gdf_wapp)
@@ -665,8 +665,7 @@ if __name__ == '__main__':
     m= create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw)
     m.save(os.path.join(out_path, map_name + '.html'))
     
-    
-    
+
     finish_t = timeit.default_timer() #finish time
     t_sec = round(finish_t-start_t)
     mins = int (t_sec/60)
