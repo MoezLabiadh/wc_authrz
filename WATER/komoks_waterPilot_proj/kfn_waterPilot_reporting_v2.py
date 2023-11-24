@@ -32,7 +32,9 @@ from shapely import wkb
 import folium
 from folium.plugins import HeatMap
 from folium.plugins import Search
+from folium.plugins import MiniMap
 from folium.plugins import GroupedLayerControl
+
 
 from branca.element import Template, MacroElement
 
@@ -356,7 +358,11 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     
     xmin,ymin,xmax,ymax = gdf_kfn_pip['geometry'].total_bounds
     m.fit_bounds([[ymin, xmin], [ymax, xmax]])
-  
+    
+    #Add a mini map
+    MiniMap(toggle_display=True).add_to(m)
+    
+    #Add fullscreen button
     folium.plugins.Fullscreen(
         position="topright",
         title="Expand me",
@@ -524,34 +530,7 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     # Adding style to the map
     m.get_root().add_child(style)
         
-    
-    # create a title
-    title_txt1= 'KFN Water Pilot Project'
-    title_txt2= 'Water Applications within KFN territory'
-    title_obj = """
-            <div style="position: fixed; 
-                 top: 740px; left: 30px; 
-                 background-color:#f0f0eb; border:0px solid grey;z-index: 900; padding:0.5%;">
-                 <h2 style="font-weight:bold;color:#992c25;white-space:nowrap;">{}</h2>
-                 <h4 style="font-weight:bold;color:#992c25;white-space:nowrap;">{}</h4>
-            </div>
-        
-        """.format(title_txt1, title_txt2)   
-    m.get_root().html.add_child(folium.Element(title_obj))
-    
-    mapinfo_txt= f"Map generated on: {datetime.today().strftime('%B %d, %Y')}"
-    mapinfo_obj = """
-        <div style="position: fixed; 
-             top: 870px; left: 30px; 
-             border:0px solid grey;z-index: 900; padding:0.5%;">
-             <p style="font-weight:bold;color:black;font-style:italic;
-                font-size:9px;white-space:nowrap;">{}</p>
-        </div>
-        
-        """.format(mapinfo_txt)   
-    m.get_root().html.add_child(folium.Element(mapinfo_obj))
-
-    
+    #Add Search function
     Search(
         layer=wapp_lyr,
         geom_type="Point",
@@ -560,34 +539,49 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         weight=3,
     ).add_to(m)
     
+
+    # create a title and legend box
+    title_txt1= 'KFN Water Pilot Project'
+    title_txt2= 'Water Applications within KFN territory'
+
     
     #Create a Legend
-    #start the div tag and set the legend size and position
-    legend_html = '''
+    legend_obj = '''
                 <div id="legend" style="position: fixed; 
-                bottom: 30px; right: 30px; z-index: 1000; 
+                bottom: 50px; left: 30px; z-index: 1000; 
                 background-color: #fff; padding: 10px; 
                 border-radius: 5px; border: 1px solid grey;">
-                '''
-    #add a header to the legend            
-    legend_html += '''
+                
+                <h2 style="font-weight:bold;color:#992c25;white-space:nowrap;">{}</h2>
+                <h4 style="font-weight:bold;color:#992c25;white-space:nowrap;">{}</h4>
+
                 <div style="font-weight: bold; 
-                margin-bottom: 5px;">APPLICATION TYPE</div>
-                '''
-    #add items to the legend
+                margin-bottom: 3px;margin-top: 20px;">Application Type </div>
+                '''  .format(title_txt1, title_txt2)   
+                
     for name, color in cmap.items():
-        legend_html += '''
+        legend_obj += '''
                         <div style="display: inline-block; 
                         margin-right: 10px;background-color: {0}; 
                         width: 15px; height: 15px;"></div>{1}<br>
                         '''.format(color, name)
-    #close the div tag
-    legend_html += '</div>'
-    
+      
+        
+    mapdate_txt= f"Map generated on: {datetime.today().strftime('%B %d, %Y')}"
+    legend_obj += '''
+                 <p style="font-weight:bold;color:black;font-style:italic;
+                    font-size:9px;white-space:nowrap;margin-top: 30px;">{}</p>
 
-    #add the legend to the individual maps
-    m.get_root().html.add_child(folium.Element(legend_html))
+                  '''.format(mapdate_txt)                  
+      
+    legend_obj += '</div>'
+    
+    m.get_root().html.add_child(folium.Element(legend_obj))
           
+ 
+    
+ 
+ 
     
     return m
 
