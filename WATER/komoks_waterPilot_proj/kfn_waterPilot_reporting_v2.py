@@ -1,8 +1,8 @@
 #-------------------------------------------------------------------------------
 # Name:        Komoks Water Applications
 #
-# Purpose:     This script generates reporting materials for 
-#              Komoks Water Pilot Project
+# Purpose:     This script generates reporting materials 
+#              (spreadsheet + html map) for Komoks Water Pilot Project
 #
 # Input(s):    (1) Workspace (folder) where outputs will be generated.
 #              (2) New Water Applications ledger(xlsx)
@@ -12,7 +12,7 @@
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     22-11-2023
+# Created:     24-11-2023
 # Updated:     
 #-------------------------------------------------------------------------------
 
@@ -353,39 +353,6 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         title_cancel="Exit me",
         force_separate_button=True).add_to(m)
     
-    # Add water applications
-    cols = list(gdf_wapp.columns.drop('geometry'))
-    
-    cmap= {
-        '1-Water Licence - Surface': '#2874ed',
-        '2-Water Licence - Ground': '#3db31d',
-        '3-Amendment - Surface': '#eb67ca',
-        '4-Amendment - Ground': '#d93b23',
-        '5-Amendment - Ground / Surface': '#eb9e3b',
-        '6-Abandon - Surface': '#be68e3',
-        '7-Abandon - Grounde': '#e0de53',
-        '8-Existing Use - Groundwater': '#8a6c49'}
-
-    gdf_wapp['color']= gdf_wapp['APPLICATION_TYPE'].map(cmap)
-    
-    wapp_lyr = folium.GeoJson(
-        data=gdf_wapp,
-        name='Water Applications',
-        marker=folium.Circle(radius=5),
-        style_function= lambda x: {'fillColor': x['properties']['color'],
-                                   'color': x['properties']['color'],
-                                   'weight': 5},
-        tooltip= folium.features.GeoJsonTooltip(fields=cols, labels=True),
-        popup= folium.features.GeoJsonPopup(fields=cols, sticky=False, max_width=380)
-    ).add_to(m)
-
-    #Add a heatmap
-    heat_group= folium.FeatureGroup(name='Heatmap of Water applics', show=True)
-    heat_data = [[point.xy[1][0], point.xy[0][0]] for point in gdf_wapp.geometry]
-    heat_lyr= HeatMap(heat_data, min_opacity= 0.4,blur= 20)
-    heat_lyr.add_to(heat_group)
-    heat_group.add_to(m)
-    
     # Add KFN south layer
     skfn_group= folium.FeatureGroup(name='KFN Southern Area')
     skfn_lyr= folium.GeoJson(
@@ -406,6 +373,41 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     pip_lyr.add_to(pip_group)
     pip_group.add_to(m) 
     
+    # Add water applications
+    cols = list(gdf_wapp.columns.drop('geometry'))
+    
+    cmap= {
+        '1-Water Licence - Surface': '#2874ed',
+        '2-Water Licence - Ground': '#3db31d',
+        '3-Amendment - Surface': '#eb67ca',
+        '4-Amendment - Ground': '#d93b23',
+        '5-Amendment - Ground / Surface': '#eb9e3b',
+        '6-Abandon - Surface': '#be68e3',
+        '7-Abandon - Grounde': '#e0de53',
+        '8-Existing Use - Groundwater': '#8a6c49'}
+
+    gdf_wapp['color']= gdf_wapp['APPLICATION_TYPE'].map(cmap)
+    
+    wapp_group= folium.FeatureGroup(name='Water Applications')
+    wapp_lyr = folium.GeoJson(
+        data=gdf_wapp,
+        name='Water Applications',
+        marker=folium.Circle(radius=5),
+        style_function= lambda x: {'fillColor': x['properties']['color'],
+                                   'color': x['properties']['color'],
+                                   'weight': 5},
+        tooltip= folium.features.GeoJsonTooltip(fields=cols, labels=True),
+        popup= folium.features.GeoJsonPopup(fields=cols, sticky=False, max_width=380))
+    wapp_lyr.add_to(wapp_group)
+    wapp_group.add_to(m)
+    
+
+    #Add a heatmap
+    heat_group= folium.FeatureGroup(name='Heatmap of Water applics')
+    heat_data = [[point.xy[1][0], point.xy[0][0]] for point in gdf_wapp.geometry]
+    heat_lyr= HeatMap(heat_data, min_opacity= 0.4,blur= 20)
+    heat_lyr.add_to(heat_group)
+    heat_group.add_to(m)
     
     # Add a satellite basemap to the map
     satellite_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
@@ -485,10 +487,17 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     pm_layer.add_to(pm_group)
     pm_group.add_to(m)  
     
-    
 
     lyr_cont= folium.LayerControl(collapsed=False)
     lyr_cont.add_to(m)
+    
+    GroupedLayerControl(
+    groups={
+    "---WATER APPLICATIONS---": [wapp_group, heat_group]
+        },
+    exclusive_groups=False,
+    collapsed=False
+        ).add_to(m)
     
     GroupedLayerControl(
     groups={
