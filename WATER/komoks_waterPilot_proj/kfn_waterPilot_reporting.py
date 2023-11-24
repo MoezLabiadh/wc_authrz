@@ -1,8 +1,8 @@
 #-------------------------------------------------------------------------------
 # Name:        Komoks Water Applications
 #
-# Purpose:     This script generates reporting materials for 
-#              Komoks Water Pilot Project
+# Purpose:     This script generates reporting materials 
+#              (spreadsheet + html map) for Komoks Water Pilot Project
 #
 # Input(s):    (1) Workspace (folder) where outputs will be generated.
 #              (2) New Water Applications ledger(xlsx)
@@ -12,7 +12,7 @@
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     22-11-2023
+# Created:     24-11-2023
 # Updated:     
 #-------------------------------------------------------------------------------
 
@@ -21,13 +21,25 @@ import warnings
 warnings.simplefilter(action='ignore')
 
 import os
+
 import cx_Oracle
+
 import pandas as pd
+
 import geopandas as gpd
 from shapely import wkb
+
 import folium
 from folium.plugins import HeatMap
 from folium.plugins import Search
+from folium.plugins import MiniMap
+from folium.plugins import GroupedLayerControl
+
+
+from branca.element import Template, MacroElement
+
+import mapstyle
+
 from datetime import datetime
 import timeit
 
@@ -346,22 +358,37 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     xmin,ymin,xmax,ymax = gdf_kfn_pip['geometry'].total_bounds
     m.fit_bounds([[ymin, xmin], [ymax, xmax]])
     
-    # Add water applications
-    '''
-    gdf_wapp.explore(
-        m=m, 
-        name="Water Applications",
-        column= 'APPLICATION_TYPE',
-        cmap= 'Paired',
-        tooltip= True,
-        popup= True,
-        legend= True,
-        style_kwds=dict(
-            fill=True,
-            weight=2)
-        )
+    #Add a mini map
+    MiniMap(toggle_display=True).add_to(m)
     
-    '''
+    #Add fullscreen button
+    folium.plugins.Fullscreen(
+        position="topright",
+        title="Expand me",
+        title_cancel="Exit me",
+        force_separate_button=True).add_to(m)
+    
+    # Add KFN south layer
+    skfn_group= folium.FeatureGroup(name='KFN Southern Area')
+    skfn_lyr= folium.GeoJson(
+        data=gdf_skfn,
+        style_function= lambda x: {'fillColor': 'transparent',
+                                   'color': '#707070',
+                                   'weight':3})
+    skfn_lyr.add_to(skfn_group)
+    skfn_group.add_to(m) 
+    
+    # Add KFN pip layer
+    pip_group= folium.FeatureGroup(name='KFN Consultation Area')
+    pip_lyr= folium.GeoJson(
+        data=gdf_kfn_pip,
+        style_function= lambda x: {'fillColor': 'transparent',
+                                   'color': 'black',
+                                   'weight':3})
+    pip_lyr.add_to(pip_group)
+    pip_group.add_to(m) 
+    
+    # Add water applications
     cols = list(gdf_wapp.columns.drop('geometry'))
     
     cmap= {
@@ -376,6 +403,7 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
 
     gdf_wapp['color']= gdf_wapp['APPLICATION_TYPE'].map(cmap)
     
+    wapp_group= folium.FeatureGroup(name='Water Applications')
     wapp_lyr = folium.GeoJson(
         data=gdf_wapp,
         name='Water Applications',
@@ -384,37 +412,17 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
                                    'color': x['properties']['color'],
                                    'weight': 5},
         tooltip= folium.features.GeoJsonTooltip(fields=cols, labels=True),
-        popup= folium.features.GeoJsonPopup(fields=cols, sticky=False, max_width=380)
-    ).add_to(m)
+        popup= folium.features.GeoJsonPopup(fields=cols, sticky=False, max_width=380))
+    wapp_lyr.add_to(wapp_group)
+    wapp_group.add_to(m)
+    
 
     #Add a heatmap
+    heat_group= folium.FeatureGroup(name='Heatmap of Water applics')
     heat_data = [[point.xy[1][0], point.xy[0][0]] for point in gdf_wapp.geometry]
-    HeatMap(heat_data, 
-            min_opacity= 0.4,
-            blur= 20).add_to(folium.FeatureGroup(name='Heatmap of Water applics').add_to(m))
-    
-    # Add KFN pip layer
-    gdf_kfn_pip.explore(
-        m=m, 
-        name="KFN Consultation Area",
-        #column= 'NAME',
-        tooltip= False,
-        #legend= True,
-        style_kwds=dict(fill= False, 
-                        color="black", 
-                        weight=3)
-         )
-    
-    # Add KFN south layer
-    gdf_skfn.explore(
-        m=m, 
-        name="Southern KFN Area",
-        tooltip= False,
-        #legend= True,
-        style_kwds=dict(fill= False, 
-                        color="#707070", 
-                        weight=3)
-         )
+    heat_lyr= HeatMap(heat_data, min_opacity= 0.4,blur= 20)
+    heat_lyr.add_to(heat_group)
+    heat_group.add_to(m)
     
     # Add a satellite basemap to the map
     satellite_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
@@ -451,26 +459,36 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     ws_group.add_to(m)  
     
     # Add hydrometric stations layer
-    gdf_hydr.explore(
-        m=m, 
-        name="Active Hydrometric Gauges",
-        tooltip= True,
-        popup= True,
-        show=False,
-        style_kwds=dict(fill= True, 
-                        color="black", 
-                        weight=4))
+    hydr_group= folium.FeatureGroup(name='Active Hydrometric Gauges', show=False)
+    hydr_lyr= folium.GeoJson(
+        data=gdf_hydr,
+        marker=folium.Circle(radius=5),
+        style_function= lambda x: {'color':'black','weight': 4},
+        tooltip= folium.features.GeoJsonTooltip(fields=list(gdf_hydr.columns)[:-1], 
+                                                labels=True),
+        popup= folium.features.GeoJsonPopup(fields=list(gdf_hydr.columns)[:-1], 
+                                            sticky=False, 
+                                            max_width=380)
+    )
 
+    hydr_lyr.add_to(hydr_group)
+    hydr_group.add_to(m) 
+        
     # Add hydrometric stations layer
-    gdf_obsw.explore(
-        m=m, 
-        name="Active GW Observation Wells",
-        tooltip= True,
-        popup= True,
-        show=False,
-        style_kwds=dict(fill= True, 
-                        color="purple", 
-                        weight=4))
+    obsw_group= folium.FeatureGroup(name='Active GW Observation Wells', show=False)
+    obsw_lyr= folium.GeoJson(
+        data=gdf_obsw,
+        marker=folium.Circle(radius=5),
+        style_function= lambda x: {'color': 'purple','weight': 4},
+        tooltip= folium.features.GeoJsonTooltip(fields=list(gdf_obsw.columns)[:-1], 
+                                                labels=True),
+        popup= folium.features.GeoJsonPopup(fields=list(gdf_obsw.columns)[:-1], 
+                                            sticky=False, 
+                                            max_width=380)
+    )
+
+    obsw_lyr.add_to(obsw_group)
+    obsw_group.add_to(m) 
     
     #Add PMBC layer to the map
     pm_group = folium.FeatureGroup(name='Cadastre Parcels', show=False)
@@ -484,38 +502,34 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     pm_layer.add_to(pm_group)
     pm_group.add_to(m)  
     
-    # create a title
-    title_txt1= 'KFN Water Pilot Project'
-    title_txt2= 'Water Applications within KFN territory'
-    title_obj = """
-            <div style="position: fixed; 
-                 top: 740px; left: 30px; 
-                 background-color:#f0f0eb; border:0px solid grey;z-index: 900; padding:0.5%;">
-                 <h2 style="font-weight:bold;color:#992c25;white-space:nowrap;">{}</h2>
-                 <h4 style="font-weight:bold;color:#992c25;white-space:nowrap;">{}</h4>
-            </div>
-        
-        """.format(title_txt1, title_txt2)   
-    m.get_root().html.add_child(folium.Element(title_obj))
     
-    mapinfo_txt= f"Map generated on: {datetime.today().strftime('%B %d, %Y')}"
-    mapinfo_obj = """
-        <div style="position: fixed; 
-             top: 870px; left: 30px; 
-             border:0px solid grey;z-index: 900; padding:0.5%;">
-             <p style="font-weight:bold;color:black;font-style:italic;
-                font-size:9px;white-space:nowrap;">{}</p>
-        </div>
-        
-        """.format(mapinfo_txt)   
-    m.get_root().html.add_child(folium.Element(mapinfo_obj))
+    #AddLayer Controls
+    lyr_cont= folium.LayerControl(collapsed=False)
+    lyr_cont.add_to(m)
+    
+    #Add Layers Groups
+    GroupedLayerControl(
+    groups={
+    "WATER APPLICATIONS": [wapp_group, heat_group],
+    "KFN BOUNDARIES": [pip_group, skfn_group],
+    "MONITORING STATIONS": [hydr_group, obsw_group],
+    "AQUIFERS & WATERSHEDS": [aq_group, ws_group],
+    "OTHER LAYERS": [pm_group]
+        },
+    exclusive_groups=False,
+    collapsed=False
+        ).add_to(m)
 
-    folium.plugins.Fullscreen(
-        position="topright",
-        title="Expand me",
-        title_cancel="Exit me",
-        force_separate_button=True).add_to(m)
+    # Injecting custom css through branca macro elements and template
+    app_css = mapstyle.map_css
+    # configuring the style
+    style = MacroElement()
+    style._template = Template(app_css)
     
+    # Adding style to the map
+    m.get_root().add_child(style)
+        
+    #Add Search function
     Search(
         layer=wapp_lyr,
         geom_type="Point",
@@ -524,38 +538,44 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         weight=3,
     ).add_to(m)
     
-    
-    #Create a Legend
-    #start the div tag and set the legend size and position
-    legend_html = '''
+
+    #Create a Map info box
+    title_txt1= 'KFN Water Pilot Project'
+    title_txt2= 'Water Applications within KFN territory'
+    mapdate_txt= f"Map generated on: {datetime.today().strftime('%B %d, %Y')}"
+
+
+    mapinfo_obj = '''
                 <div id="legend" style="position: fixed; 
-                bottom: 30px; right: 30px; z-index: 1000; 
+                bottom: 50px; left: 30px; z-index: 1000; 
                 background-color: #fff; padding: 10px; 
                 border-radius: 5px; border: 1px solid grey;">
-                '''
-    #add a header to the legend            
-    legend_html += '''
+                
+                <h2 style="font-weight:bold;color:#992c25;white-space:nowrap;">{}</h2>
+                <h4 style="font-weight:bold;color:#992c25;white-space:nowrap;">{}</h4>
+
                 <div style="font-weight: bold; 
-                margin-bottom: 5px;">APPLICATION TYPE</div>
-                '''
-    #add items to the legend
+                margin-bottom: 5px;margin-top: 20px;">Application Type </div>
+                '''  .format(title_txt1, title_txt2)   
+                
     for name, color in cmap.items():
-        legend_html += '''
+        mapinfo_obj += '''
                         <div style="display: inline-block; 
                         margin-right: 10px;background-color: {0}; 
                         width: 15px; height: 15px;"></div>{1}<br>
                         '''.format(color, name)
-    #close the div tag
-    legend_html += '</div>'
-    
+      
+    mapinfo_obj += '''
+                 <p style="font-weight:bold;color:black;font-style:italic;
+                    font-size:10px;white-space:nowrap;margin-top:25px;">{}</p>
 
-    #add the legend to the individual maps
-    m.get_root().html.add_child(folium.Element(legend_html))
-           
-    lyr_cont= folium.LayerControl(collapsed=False)
-    lyr_cont.add_to(m)
+                  '''.format(mapdate_txt)                  
+      
+    mapinfo_obj += '</div>'
     
-    
+    m.get_root().html.add_child(folium.Element(mapinfo_obj))
+          
+ 
     return m
 
     
