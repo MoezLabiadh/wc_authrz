@@ -21,16 +21,26 @@ import warnings
 warnings.simplefilter(action='ignore')
 
 import os
+
 import cx_Oracle
+
 import pandas as pd
+
 import geopandas as gpd
 from shapely import wkb
+
 import folium
 from folium.plugins import HeatMap
 from folium.plugins import Search
 from folium.plugins import GroupedLayerControl
+
+from branca.element import Template, MacroElement
+
+import mapstyle
+
 from datetime import datetime
 import timeit
+
 
 
 def connect_to_DB (username,password,hostname):
@@ -487,52 +497,33 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     pm_layer.add_to(pm_group)
     pm_group.add_to(m)  
     
-
+    
+    #AddLayer Controls
     lyr_cont= folium.LayerControl(collapsed=False)
     lyr_cont.add_to(m)
     
+    #Add Layers Groups
     GroupedLayerControl(
     groups={
-    "---WATER APPLICATIONS---": [wapp_group, heat_group]
+    "WATER APPLICATIONS": [wapp_group, heat_group],
+    "KFN BOUNDARIES": [pip_group, skfn_group],
+    "MONITORING STATIONS": [hydr_group, obsw_group],
+    "AQUIFERS & WATERSHEDS": [aq_group, ws_group],
+    "OTHER LAYERS": [pm_group]
         },
     exclusive_groups=False,
     collapsed=False
         ).add_to(m)
+
+    # Injecting custom css through branca macro elements and template
+    app_css = mapstyle.map_css
+    # configuring the style
+    style = MacroElement()
+    style._template = Template(app_css)
     
-    GroupedLayerControl(
-    groups={
-    "---KFN BOUNDARIES---": [pip_group, skfn_group]
-        },
-    exclusive_groups=False,
-    collapsed=False
-        ).add_to(m)
-    
-    GroupedLayerControl(
-    groups={
-    "---MONITORING STATIONS---": [hydr_group, obsw_group]
-        },
-    exclusive_groups=False,
-    collapsed=False
-        ).add_to(m)
-    
-    GroupedLayerControl(
-    groups={
-    "---AQUIFERS & WATERSHEDS---": [aq_group, ws_group]
-        },
-    exclusive_groups=False,
-    collapsed=False
-        ).add_to(m)
-    
-    GroupedLayerControl(
-    groups={
-    "---OTHER LAYERS---": [pm_group]
-        },
-    exclusive_groups=False,
-    collapsed=False
-        ).add_to(m)    
-    
-    
-    
+    # Adding style to the map
+    m.get_root().add_child(style)
+        
     
     # create a title
     title_txt1= 'KFN Water Pilot Project'
