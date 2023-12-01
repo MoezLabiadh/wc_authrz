@@ -21,27 +21,20 @@ import warnings
 warnings.simplefilter(action='ignore')
 
 import os
-
 import cx_Oracle
-
 import pandas as pd
-
 import geopandas as gpd
 from shapely import wkb
-
 import folium
 from folium.plugins import HeatMap
 from folium.plugins import Search
 from folium.plugins import MiniMap
 from folium.plugins import GroupedLayerControl
-
-
 from branca.element import Template, MacroElement
-
-import mapstyle
-
 from datetime import datetime
 import timeit
+
+import mapstyle
 
 
 def connect_to_DB (username,password,hostname):
