@@ -2,6 +2,7 @@ import warnings
 warnings.simplefilter(action='ignore')
 
 import pandas as pd
+from datetime import date
 
 
 def import_titan (tnt_f):
@@ -145,9 +146,9 @@ def generate_report (df_list, sheet_list,filename):
 
 
 
-def main():
+if __name__==__name__:
     tnt_f= 'TITAN_RPT009.xlsx'
-    ats_pt_f= '20230901_ats_pt.xls'
+    ats_pt_f= '20231201_ats_pt.xls'
     
     print ('Reading TITAN report')
     df_tnt= import_titan (tnt_f)
@@ -183,10 +184,12 @@ def main():
           ]
     
     df= df[cols]
+    df.sort_values(by='COMPLETED DATE', ascending= False, inplace= True)
     
     print ('Exportng final report')
-    generate_report ([df], ['ATS Unclosed Files'],'ATS_unclosed_files.xlsx')
-    
+    today= date.today().strftime('%Y%m%d')
+    filename= today + '_ATS_unclosed_files.xlsx'
+    generate_report ([df], ['ATS Unclosed Files'],filename)
 
-main ()
+
 
