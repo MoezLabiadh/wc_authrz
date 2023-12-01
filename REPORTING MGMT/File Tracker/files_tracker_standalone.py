@@ -14,7 +14,7 @@
 #   
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     2023-09-12
+# Created:     2023-12-01
 # Updated:
 #-------------------------------------------------------------------------------
 
@@ -1145,19 +1145,19 @@ def main():
     print ('\nImporting Input files')
     
     print('...TITAN workledger spreadsheet')
-    tnt_f = os.path.join(wks,'INPUTS/TITAN_RPT009.xlsx')
+    tnt_f = os.path.join(wks,'00_INPUTS/TITAN_RPT009.xlsx')
     df_tnt = import_titan (tnt_f)
     
     print ('...ATS on-hold spreadsheet')
-    ats_oh_f = os.path.join(wks,'INPUTS/20231101_ats_oh.xls')
+    ats_oh_f = os.path.join(wks,'00_INPUTS/20231201_ats_oh.xls')
     df_onh= import_ats_oh (ats_oh_f)
     
     print ('...ATS bring-forward spreadsheet')
-    ats_bf_f = os.path.join(wks,'INPUTS/20231101_ats_bf.xls')
+    ats_bf_f = os.path.join(wks,'00_INPUTS/20231201_ats_bf.xls')
     df_bfw= import_ats_bf (ats_bf_f)
     
     print('...ats report: processing time')
-    ats_pt_f = os.path.join(wks,'INPUTS/20231101_ats_pt.xls')
+    ats_pt_f = os.path.join(wks,'00_INPUTS/20231201_ats_pt.xls')
     df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
     
     print('\nComputing Reports.')
@@ -1260,12 +1260,12 @@ def main():
     df_sum_mtr_rp= create_summary_mtr(df_mtrs_rp)
     
     print ('\nCreating Analysis tables')
-    tmplt_anlz = os.path.join(wks,'TEMPLATE/anz_template.xlsx')
+    tmplt_anlz = os.path.join(wks,'00_TEMPLATE/anz_template.xlsx')
     df_anz_tim_nw, df_anz_off_nw= analysis_tables (tmplt_anlz,df_sum_rpt_nw,df_sum_mtr_nw)
     df_anz_tim_rp, df_anz_off_rp= analysis_tables (tmplt_anlz,df_sum_rpt_rp,df_sum_mtr_rp)
     
     
-    template = os.path.join(wks,'TEMPLATE/rpt_template.xlsx')
+    template = os.path.join(wks,'00_TEMPLATE/rpt_template.xlsx')
     df_sum_all_nw= create_summary_all(template,df_sum_rpt_nw,df_sum_mtr_nw)
     df_sum_all_rp= create_summary_all(template,df_sum_rpt_rp,df_sum_mtr_rp)
     
@@ -1319,6 +1319,7 @@ def main():
     nw_rp= 'REP'
     add_charts(nw_rp, out_folder, outfile_main_rpt,figname_rp)
     
-    readme_xlsx= os.path.join(wks,'TEMPLATE/readme_template.xlsx')
+    readme_xlsx= os.path.join(wks,'00_TEMPLATE/readme_template.xlsx')
     add_readme_page(readme_xlsx, out_folder, outfile_main_rpt)
+    
 main()
