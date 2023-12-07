@@ -677,7 +677,6 @@ if __name__ == '__main__':
     
     m= create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw)
     m.save(os.path.join(out_path, map_name + '.html'))
-    
 
     finish_t = timeit.default_timer() #finish time
     t_sec = round(finish_t-start_t)
