@@ -225,6 +225,7 @@ def create_rpt_01(rpt_date,df_tnt,df_ats):
     #active = ats_a['File Number'].to_list()
     
     df_01= ats_a.loc[(ats_a['Received Date'].notnull()) &
+                     (ats_a['Received Date'] <= rpt_date) &
                      (ats_a['Submission Review Complete Date'].isnull())]
     
     
@@ -268,7 +269,8 @@ def create_rpt_02(rpt_date,df_tnt,df_ats):
                       (df_tnt['FILE NUMBER'].isin(active)) &
                       (df_tnt['OTHER EMPLOYEES ASSIGNED TO'].str.contains('WCR_', na=False) | 
                        df_tnt['OTHER EMPLOYEES ASSIGNED TO'].isnull()) &
-                      (df_tnt['STATUS'] == 'ACCEPTED')]
+                      (df_tnt['STATUS'] == 'ACCEPTED') &
+                      (df_tnt['CREATED DATE'] <= rpt_date)]
 
     df_02.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
     df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
@@ -330,7 +332,8 @@ def create_rpt_03 (rpt_date,df_tnt,df_ats):
                        (df_tnt['REPORTED DATE'].isnull()) &
                        (~df_tnt['FILE NUMBER'].isin(onhold)) &
                        (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
-                       (df_tnt['STATUS'] == 'ACCEPTED')]
+                       (df_tnt['STATUS'] == 'ACCEPTED') &
+                       (df_tnt['CREATED DATE'] <= rpt_date)]
  
     df_03.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
     df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
@@ -435,7 +438,8 @@ def create_rpt_04 (rpt_date,df_tnt,df_ats):
     df_04= df_tnt.loc[(df_tnt['REPORTED DATE'].notnull()) &
                     (df_tnt['ADJUDICATED DATE'].isnull()) &
                     (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &
-                    (df_tnt['STATUS'] == 'ACCEPTED')]
+                    (df_tnt['STATUS'] == 'ACCEPTED') &
+                    (df_tnt['REPORTED DATE'] <= rpt_date)]
 
     df_04.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
     df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
@@ -492,7 +496,8 @@ def create_rpt_05 (rpt_date,df_tnt,df_ats):
     df_05= df_tnt.loc[(df_tnt['ADJUDICATED DATE'].notnull()) &
                      (df_tnt['OFFERED DATE'].isnull()) &
                      (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
-                     (df_tnt['STATUS'] == 'ACCEPTED')]
+                     (df_tnt['STATUS'] == 'ACCEPTED') &
+                     (df_tnt['ADJUDICATED DATE'] <= rpt_date)]
 
     df_05.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
     df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
@@ -539,7 +544,8 @@ def create_rpt_06 (rpt_date,df_tnt,df_ats):
     df_06= df_tnt.loc[(df_tnt['OFFERED DATE'].notnull()) &
                       (df_tnt['OFFER ACCEPTED DATE'].isnull())&
                       (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &                      
-                      (df_tnt['STATUS'] == 'OFFERED')]
+                      (df_tnt['STATUS'] == 'OFFERED') &
+                      (df_tnt['OFFERED DATE'] <= rpt_date)]
     
     df_06.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
     df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
@@ -584,7 +590,8 @@ def create_rpt_07 (rpt_date,df_tnt,df_ats):
     df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
     df_07= df_tnt.loc[(df_tnt['OFFER ACCEPTED DATE'].notnull()) &
                      (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &                      
-                      (df_tnt['STATUS'] == 'OFFER ACCEPTED')]
+                      (df_tnt['STATUS'] == 'OFFER ACCEPTED') &
+                      (df_tnt['OFFER ACCEPTED DATE'] <= rpt_date)]
     
     df_ats['Join Start Date'] = df_ats['Accepted Date'] - pd.DateOffset(months=6)
     df_ats['Join End Date'] = df_ats['Accepted Date'] + pd.DateOffset(months=6)
@@ -630,7 +637,8 @@ def create_rpt_08 (rpt_date,df_tnt,df_ats):
     df_08= df_tnt.loc[(df_tnt['COMPLETED DATE'].notnull()) &
                       (df_tnt['COMPLETED DATE'] >= first_day_of_month) &
                       (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &
-                      (df_tnt['STATUS'] == 'DISPOSITION IN GOOD STANDING')]
+                      (df_tnt['STATUS'] == 'DISPOSITION IN GOOD STANDING') &
+                      (df_tnt['COMPLETED DATE'] <= rpt_date)]
     
     df_ats['Join Start Date'] = df_ats['Accepted Date'] - pd.DateOffset(months=6)
     df_ats['Join End Date'] = df_ats['Accepted Date'] + pd.DateOffset(months=6)
@@ -672,7 +680,9 @@ def create_rpt_08 (rpt_date,df_tnt,df_ats):
 def create_rpt_09 (rpt_date,df_tnt,df_ats):
     """ Creates Report 09 - Files On Hold"""
     df_ats = df_ats.loc[(df_ats['Authorization Status']== 'On Hold') &
-                        (df_ats['Accepted Date'].notnull())]
+                        (df_ats['Accepted Date'].notnull()) &
+                        (df_ats['On Hold Start Date'] <= rpt_date)]
+    
     hold_l = df_ats['File Number'].to_list()
     
     df_09= df_tnt.loc[(df_tnt['STATUS'] == 'ACCEPTED') & 
@@ -1115,7 +1125,7 @@ def add_readme_page(readme_xlsx, out_folder, filename):
                 
 
 
- 
+
 def main():
 
     print ('\nConnecting to BCGW.')
