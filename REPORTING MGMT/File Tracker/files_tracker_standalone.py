@@ -219,7 +219,7 @@ def calculate_metrics(df , grp_col, mtr_ids):
     return df_mtr
 
 
-def create_rpt_01(today,df_tnt,df_ats):
+def create_rpt_01(rpt_date,df_tnt,df_ats):
     """ Creates Report 01- Files with FCBC"""
     ats_a = df_ats.loc[df_ats['Authorization Status'] == 'Active']
     #active = ats_a['File Number'].to_list()
@@ -245,11 +245,11 @@ def create_rpt_01(today,df_tnt,df_ats):
     df_01_nw= df_01.loc[df_01['Authorization Type']!='Replacements']
     df_01_rp= df_01.loc[df_01['Authorization Type']=='Replacements']
     
-    #today = date.today()
+    #rpt_date = date.rpt_date()
 
     for df in [df_01,df_01_nw,df_01_rp]:
         
-        df['mtr01']  = (today - df['Received Date']).dt.days
+        df['mtr01']  = (rpt_date - df['Received Date']).dt.days
         
     metrics = ['mtr01']
     df_01_mtr_nw = calculate_metrics(df_01_nw , 'DISTRICT OFFICE',metrics)
@@ -259,7 +259,7 @@ def create_rpt_01(today,df_tnt,df_ats):
     return df_01,df_01_nw,df_01_rp,df_01_mtr_nw,df_01_mtr_rp
 
 
-def create_rpt_02(today,df_tnt,df_ats):
+def create_rpt_02(rpt_date,df_tnt,df_ats):
     """ Creates Report 02- Files in Queue"""
     ats_r = df_ats.loc[df_ats['Authorization Status']=='Active']
     active = ats_r['File Number'].to_list()
@@ -296,7 +296,7 @@ def create_rpt_02(today,df_tnt,df_ats):
 
     #Calulcate metrics
     
-    today = pd.to_datetime(today)
+    rpt_date = pd.to_datetime(rpt_date)
     
     df_02['Submission Review Complete Date'] = pd.to_datetime(df_02['Submission Review Complete Date']
                                              .fillna(pd.NaT), errors='coerce')
@@ -309,7 +309,7 @@ def create_rpt_02(today,df_tnt,df_ats):
     
     for df in [df_02,df_02_nw,df_02_rp]:
         df['mtr02'] = (df['Submission Review Complete Date'] - df['Received Date']).dt.days
-        df['mtr03']  = (today - df['Submission Review Complete Date']).dt.days
+        df['mtr03']  = (rpt_date - df['Submission Review Complete Date']).dt.days
 
     metrics= ['mtr02','mtr03']
     df_02_mtr_nw = calculate_metrics(df_02_nw , 'DISTRICT OFFICE',metrics) 
@@ -318,7 +318,7 @@ def create_rpt_02(today,df_tnt,df_ats):
     return df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp
 
 
-def create_rpt_03 (today,df_tnt,df_ats):
+def create_rpt_03 (rpt_date,df_tnt,df_ats):
     """ Creates Report 03- Files in Active Review"""
     df_ats_h = df_ats.loc[df_ats['Authorization Status'] == 'On Hold']
     onhold= df_ats_h['File Number'].to_list()
@@ -356,7 +356,7 @@ def create_rpt_03 (today,df_tnt,df_ats):
     df_03['Total On Hold Time'].fillna(0, inplace=True)
 
     #Calulcate metrics
-    today = pd.to_datetime(today)
+    rpt_date = pd.to_datetime(rpt_date)
     
     # for replacements only, use RECEIVED DATE instead of submisson review date to calculate mtr4
     df_03.loc[df_03['TASK DESCRIPTION'] == 'REPLACEMENT APPLICATION', 'Submission Review Complete Date'] = df_03['RECEIVED DATE']
@@ -378,9 +378,9 @@ def create_rpt_03 (today,df_tnt,df_ats):
     
     for df in [df_03,df_03_nw,df_03_rp]:
         df['mtr04'] = (df['Bring Forward Date'] - df['Submission Review Complete Date']).dt.days
-        #df['mtr05'] = (today - df['First Nation Start Date']).dt.days
+        #df['mtr05'] = (rpt_date - df['First Nation Start Date']).dt.days
         df['mtr06'] = (df['First Nation Completion Date'] - df['First Nation Start Date']).dt.days
-        df['mtr07'] = (today - df['Bring Forward Date']).dt.days
+        df['mtr07'] = (rpt_date - df['Bring Forward Date']).dt.days
 
     metrics= ['mtr04','mtr06','mtr07']
     df_03_mtr_nw = calculate_metrics(df_03_nw , 'DISTRICT OFFICE', metrics ) 
@@ -390,7 +390,7 @@ def create_rpt_03 (today,df_tnt,df_ats):
     return df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold
 
 
-def create_rpt_03_1 (today,df03):
+def create_rpt_03_1 (rpt_date,df03):
     """ Creates Report 03-1- Files in Consultation"""
     df_031= df03.loc[(df03['First Nation Start Date'].notnull()) &
                      (df03['First Nation Completion Date'].isnull())]
@@ -403,7 +403,7 @@ def create_rpt_03_1 (today,df03):
     df_031['Total On Hold Time'].fillna(0, inplace=True)
 
     #Calulcate metrics
-    today = pd.to_datetime(today)
+    rpt_date = pd.to_datetime(rpt_date)
     
     # for replacements only, use RECEIVED DATE instead of submisson review date to calculate mtr4
     df_031.loc[df_031['TASK DESCRIPTION'] == 'REPLACEMENT APPLICATION', 'Submission Review Complete Date'] = df_031['RECEIVED DATE']
@@ -418,7 +418,7 @@ def create_rpt_03_1 (today,df03):
     
     for df in [df_031,df_031_nw,df_031_rp]:
 
-        df['mtr05'] = (today - df['First Nation Start Date']).dt.days
+        df['mtr05'] = (rpt_date - df['First Nation Start Date']).dt.days
 
     metrics= ['mtr05']
     df_031_mtr_nw = calculate_metrics(df_031_nw , 'DISTRICT OFFICE', metrics ) 
@@ -428,7 +428,7 @@ def create_rpt_03_1 (today,df03):
     return df_031,df_031_nw,df_031_rp,df_031_mtr_nw,df_031_mtr_rp
 
 
-def create_rpt_04 (today,df_tnt,df_ats):
+def create_rpt_04 (rpt_date,df_tnt,df_ats):
     """ Creates Report 04- Files Awaiting Decision"""
     df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
     
@@ -461,7 +461,7 @@ def create_rpt_04 (today,df_tnt,df_ats):
     df_04['Total On Hold Time'].fillna(0, inplace=True)
 
     #Calulcate metrics
-    today = pd.to_datetime(today)
+    rpt_date = pd.to_datetime(rpt_date)
 
     df_04['Bring Forward Date'] = pd.to_datetime(df_04['Bring Forward Date']
                                                  .fillna(pd.NaT), errors='coerce')
@@ -476,7 +476,7 @@ def create_rpt_04 (today,df_tnt,df_ats):
     for df in [df_04,df_04_nw,df_04_rp]:
 
         df['mtr08'] = (df['REPORTED DATE'] - df['Bring Forward Date']).dt.days
-        df['mtr09'] = (today - df['REPORTED DATE']).dt.days
+        df['mtr09'] = (rpt_date - df['REPORTED DATE']).dt.days
 
     metrics= ['mtr08','mtr09']
     df_04_mtr_nw = calculate_metrics(df_04_nw , 'DISTRICT OFFICE', metrics )  
@@ -485,7 +485,7 @@ def create_rpt_04 (today,df_tnt,df_ats):
     return df_04,df_04_nw,df_04_rp,df_04_mtr_nw,df_04_mtr_rp
 
 
-def create_rpt_05 (today,df_tnt,df_ats):
+def create_rpt_05 (rpt_date,df_tnt,df_ats):
     """ Creates Report 05- Files Awaiting Offer"""
     df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
     
@@ -521,11 +521,10 @@ def create_rpt_05 (today,df_tnt,df_ats):
     df_05_nw= df_05.loc[df_05['TASK DESCRIPTION']=='NEW APPLICATION']
     df_05_rp= df_05.loc[df_05['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']  
     
-    #today = date.today()
-    
+
     for df in [df_05,df_05_nw,df_05_rp]:
         df['mtr10'] = (df['ADJUDICATED DATE'] - df['REPORTED DATE']).dt.days
-        df['mtr11'] = (today - df['ADJUDICATED DATE']).dt.days
+        df['mtr11'] = (rpt_date - df['ADJUDICATED DATE']).dt.days
 
     metrics= ['mtr10','mtr11']
     df_05_mtr_nw = calculate_metrics(df_05_nw , 'DISTRICT OFFICE', metrics )  
@@ -534,7 +533,7 @@ def create_rpt_05 (today,df_tnt,df_ats):
     return df_05,df_05_nw,df_05_rp,df_05_mtr_nw,df_05_mtr_rp
 
 
-def create_rpt_06 (today,df_tnt,df_ats):
+def create_rpt_06 (rpt_date,df_tnt,df_ats):
     """ Creates Report 06- Files awaiting Offer Acceptance"""
     df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
     df_06= df_tnt.loc[(df_tnt['OFFERED DATE'].notnull()) &
@@ -568,12 +567,10 @@ def create_rpt_06 (today,df_tnt,df_ats):
     #Calulcate metrics
     df_06_nw= df_06.loc[df_06['TASK DESCRIPTION']=='NEW APPLICATION']
     df_06_rp= df_06.loc[df_06['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']  
-    
-    #today = date.today()
 
     for df in [df_06,df_06_nw,df_06_rp]:
         df['mtr12'] = (df['OFFERED DATE'] - df['ADJUDICATED DATE']).dt.days
-        df['mtr13'] = (today - df['OFFERED DATE']).dt.days
+        df['mtr13'] = (rpt_date - df['OFFERED DATE']).dt.days
     
     metrics= ['mtr12','mtr13']
     df_06_mtr_nw = calculate_metrics(df_06_nw , 'DISTRICT OFFICE', metrics )  
@@ -582,7 +579,7 @@ def create_rpt_06 (today,df_tnt,df_ats):
     return df_06,df_06_nw,df_06_rp,df_06_mtr_nw,df_06_mtr_rp
 
 
-def create_rpt_07 (today,df_tnt,df_ats):
+def create_rpt_07 (rpt_date,df_tnt,df_ats):
     """ Creates Report 07- Files with Offer Accepted"""
     df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
     df_07= df_tnt.loc[(df_tnt['OFFER ACCEPTED DATE'].notnull()) &
@@ -613,11 +610,9 @@ def create_rpt_07 (today,df_tnt,df_ats):
     df_07_nw= df_07.loc[df_07['TASK DESCRIPTION']=='NEW APPLICATION']
     df_07_rp= df_07.loc[df_07['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']  
     
-    #today = date.today()
-
     for df in [df_07,df_07_nw,df_07_rp]:
         df['mtr14'] = (df['OFFER ACCEPTED DATE'] - df['OFFERED DATE']).dt.days
-        df['mtr15'] = (today - df['OFFER ACCEPTED DATE']).dt.days
+        df['mtr15'] = (rpt_date - df['OFFER ACCEPTED DATE']).dt.days
     
     metrics= ['mtr14','mtr15']
     df_07_mtr_nw = calculate_metrics(df_07_nw , 'DISTRICT OFFICE', metrics )  
@@ -626,11 +621,11 @@ def create_rpt_07 (today,df_tnt,df_ats):
     return df_07,df_07_nw,df_07_rp,df_07_mtr_nw,df_07_mtr_rp
 
 
-def create_rpt_08 (today,df_tnt,df_ats):
+def create_rpt_08 (rpt_date,df_tnt,df_ats):
     """ Creates Report 08- Files Completed"""
     df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
     
-    first_day_of_month = today.replace(day=1)
+    first_day_of_month = rpt_date.replace(day=1)
     
     df_08= df_tnt.loc[(df_tnt['COMPLETED DATE'].notnull()) &
                       (df_tnt['COMPLETED DATE'] >= first_day_of_month) &
@@ -661,8 +656,7 @@ def create_rpt_08 (today,df_tnt,df_ats):
     df_08_nw= df_08.loc[df_08['TASK DESCRIPTION']=='NEW APPLICATION']
     df_08_rp= df_08.loc[df_08['TASK DESCRIPTION']=='REPLACEMENT APPLICATION'] 
     
-    #today = date.today()
-    
+
     for df in [df_08,df_08_nw,df_08_rp]:
         df['mtr16'] = (df['COMPLETED DATE'] - df['ADJUDICATED DATE']).dt.days
         df['mtr17'] = (df['COMPLETED DATE'] - df['RECEIVED DATE']).dt.days
@@ -675,7 +669,7 @@ def create_rpt_08 (today,df_tnt,df_ats):
     return df_08,df_08_nw,df_08_rp,df_08_mtr_nw,df_08_mtr_rp
 
 
-def create_rpt_09 (today,df_tnt,df_ats):
+def create_rpt_09 (rpt_date,df_tnt,df_ats):
     """ Creates Report 09 - Files On Hold"""
     df_ats = df_ats.loc[(df_ats['Authorization Status']== 'On Hold') &
                         (df_ats['Accepted Date'].notnull())]
@@ -697,7 +691,7 @@ def create_rpt_09 (today,df_tnt,df_ats):
     df_09['Total On Hold Time'].fillna(0, inplace=True)
 
     #Calulcate metrics
-    today = pd.to_datetime(today)
+    rpt_date = pd.to_datetime(rpt_date)
 
     df_09['On Hold Start Date'] = pd.to_datetime(df_09['On Hold Start Date']
                                                  .fillna(pd.NaT), errors='coerce')
@@ -709,7 +703,7 @@ def create_rpt_09 (today,df_tnt,df_ats):
     df_09_rp= df_09.loc[df_09['TASK DESCRIPTION']=='REPLACEMENT APPLICATION'] 
     
     for df in [df_09,df_09_nw,df_09_rp]:
-        df['mtr18'] = (today - df['On Hold Start Date']).dt.days
+        df['mtr18'] = (rpt_date - df['On Hold Start Date']).dt.days
 
     
     metrics= ['mtr18']
@@ -1134,30 +1128,31 @@ def main():
     
     # The first day of previous month. Will be used to calculate Metrics
     today = date.today()
-    today = today.replace(day=1)
-    today= today - timedelta(days=1)
+    first_day_month = today.replace(day=1)
+    rpt_date= first_day_month - timedelta(days=1)
     
-    today_str = today.strftime("%b%Y").lower()
+    rpt_month_str = rpt_date.strftime("%b%Y").lower()
     
     
         
         
     print ('\nImporting Input files')
     
+    ats_date_tag= first_day_month.strftime("%Y%m%d")
     print('...TITAN workledger spreadsheet')
     tnt_f = os.path.join(wks,'00_INPUTS/TITAN_RPT009.xlsx')
     df_tnt = import_titan (tnt_f)
     
     print ('...ATS on-hold spreadsheet')
-    ats_oh_f = os.path.join(wks,'00_INPUTS/20231201_ats_oh.xls')
+    ats_oh_f = os.path.join(wks, f'00_INPUTS/{ats_date_tag}_ats_oh.xls')
     df_onh= import_ats_oh (ats_oh_f)
     
     print ('...ATS bring-forward spreadsheet')
-    ats_bf_f = os.path.join(wks,'00_INPUTS/20231201_ats_bf.xls')
+    ats_bf_f = os.path.join(wks, f'00_INPUTS/{ats_date_tag}_ats_bf.xls')
     df_bfw= import_ats_bf (ats_bf_f)
     
     print('...ats report: processing time')
-    ats_pt_f = os.path.join(wks,'00_INPUTS/20231201_ats_pt.xls')
+    ats_pt_f = os.path.join(wks, f'00_INPUTS/{ats_date_tag}_ats_pt.xls')
     df_ats = import_ats_pt (ats_pt_f, df_onh,df_bfw)
     
     print('\nComputing Reports.')
@@ -1168,7 +1163,7 @@ def main():
     df_mtrs_rp = []
         
     print('...report 01')
-    df_01,df_01_nw,df_01_rp,df_01_mtr_nw,df_01_mtr_rp= create_rpt_01 (today,df_tnt,df_ats)
+    df_01,df_01_nw,df_01_rp,df_01_mtr_nw,df_01_mtr_rp= create_rpt_01 (rpt_date,df_tnt,df_ats)
     dfs.append(df_01)
     dfs_nw.append(df_01_nw)
     dfs_rp.append(df_01_rp)
@@ -1176,7 +1171,7 @@ def main():
     df_mtrs_rp.append(df_01_mtr_rp)
     
     print('...report 02')
-    df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp = create_rpt_02 (today,df_tnt,df_ats)
+    df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp = create_rpt_02 (rpt_date,df_tnt,df_ats)
     dfs.append(df_02)
     dfs_nw.append(df_02_nw)
     dfs_rp.append(df_02_rp)
@@ -1184,7 +1179,7 @@ def main():
     df_mtrs_rp.append(df_02_mtr_rp)
     
     print('...report 03')
-    df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold = create_rpt_03 (today,df_tnt,df_ats)
+    df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold = create_rpt_03 (rpt_date,df_tnt,df_ats)
     dfs.append(df_03)
     dfs_nw.append(df_03_nw)
     dfs_rp.append(df_03_rp)
@@ -1192,7 +1187,7 @@ def main():
     df_mtrs_rp.append(df_03_mtr_rp)
     
     print('...report 03-1')
-    df_031,df_031_nw,df_031_rp,df_031_mtr_nw,df_031_mtr_rp= create_rpt_03_1 (today,df_03)
+    df_031,df_031_nw,df_031_rp,df_031_mtr_nw,df_031_mtr_rp= create_rpt_03_1 (rpt_date,df_03)
     dfs.append(df_031)
     dfs_nw.append(df_031_nw)
     dfs_rp.append(df_031_rp)
@@ -1200,7 +1195,7 @@ def main():
     df_mtrs_rp.append(df_031_mtr_rp)
     
     print('...report 04')
-    df_04,df_04_nw,df_04_rp,df_04_mtr_nw,df_04_mtr_rp = create_rpt_04(today,df_tnt,df_ats)
+    df_04,df_04_nw,df_04_rp,df_04_mtr_nw,df_04_mtr_rp = create_rpt_04(rpt_date,df_tnt,df_ats)
     dfs.append(df_04)
     dfs_nw.append(df_04_nw)
     dfs_rp.append(df_04_rp)
@@ -1208,7 +1203,7 @@ def main():
     df_mtrs_rp.append(df_04_mtr_rp)
     
     print('...report 05')
-    df_05,df_05_nw,df_05_rp,df_05_mtr_nw,df_05_mtr_rp = create_rpt_05 (today,df_tnt,df_ats)
+    df_05,df_05_nw,df_05_rp,df_05_mtr_nw,df_05_mtr_rp = create_rpt_05 (rpt_date,df_tnt,df_ats)
     dfs.append(df_05)
     dfs_nw.append(df_05_nw)
     dfs_rp.append(df_05_rp)
@@ -1216,7 +1211,7 @@ def main():
     df_mtrs_rp.append(df_05_mtr_rp)
     
     print('...report 06')
-    df_06,df_06_nw,df_06_rp,df_06_mtr_nw,df_06_mtr_rp = create_rpt_06 (today,df_tnt,df_ats)
+    df_06,df_06_nw,df_06_rp,df_06_mtr_nw,df_06_mtr_rp = create_rpt_06 (rpt_date,df_tnt,df_ats)
     dfs.append(df_06)
     dfs_nw.append(df_06_nw)
     dfs_rp.append(df_06_rp)
@@ -1224,7 +1219,7 @@ def main():
     df_mtrs_rp.append(df_06_mtr_rp)
     
     print('...report 07')
-    df_07,df_07_nw,df_07_rp,df_07_mtr_nw,df_07_mtr_rp = create_rpt_07 (today,df_tnt,df_ats)
+    df_07,df_07_nw,df_07_rp,df_07_mtr_nw,df_07_mtr_rp = create_rpt_07 (rpt_date,df_tnt,df_ats)
     dfs.append(df_07)
     dfs_nw.append(df_07_nw)
     dfs_rp.append(df_07_rp)
@@ -1232,7 +1227,7 @@ def main():
     df_mtrs_rp.append(df_07_mtr_rp)
     
     print('...report 08')
-    df_08,df_08_nw,df_08_rp,df_08_mtr_nw,df_08_mtr_rp= create_rpt_08 (today,df_tnt,df_ats)
+    df_08,df_08_nw,df_08_rp,df_08_mtr_nw,df_08_mtr_rp= create_rpt_08 (rpt_date,df_tnt,df_ats)
     dfs.append(df_08)
     dfs_nw.append(df_08_nw)
     dfs_rp.append(df_08_rp)
@@ -1240,7 +1235,7 @@ def main():
     df_mtrs_rp.append(df_08_mtr_rp)
     
     print('...report 09')
-    df_09,df_09_nw,df_09_rp,df_09_mtr_nw,df_09_mtr_rp = create_rpt_09 (today,df_tnt,df_ats)
+    df_09,df_09_nw,df_09_rp,df_09_mtr_nw,df_09_mtr_rp = create_rpt_09 (rpt_date,df_tnt,df_ats)
     dfs.append(df_09)
     dfs_nw.append(df_09_nw)
     dfs_rp.append(df_09_rp)
@@ -1275,7 +1270,7 @@ def main():
     df_sum_all_rp.iloc[rows_range, cols_range] = 'n/a'
     
     print('\nCreating an Output folder')
-    out_folder = os.path.join(wks, today_str)
+    out_folder = os.path.join(wks, rpt_month_str)
     
     if not os.path.exists(out_folder):
         os.makedirs(out_folder)
@@ -1284,7 +1279,7 @@ def main():
     df_list = [df_sum_all_nw,df_sum_all_rp] + df_rpts 
     sheet_list = ['Summary - NEW Applics','Summary - REP Applics'] + rpt_ids
     
-    outfile_main_rpt = today_str + '_landFiles_tracker'
+    outfile_main_rpt = rpt_month_str + '_landFiles_tracker'
     
     create_report (df_list, sheet_list,out_folder,outfile_main_rpt)
     
@@ -1301,16 +1296,16 @@ def main():
                      'hitlist_rpt04','hitlist_rpt05','hitlist_rpt06','hitlist_rpt07',
                      'hitlist_rpt08','hitlist_rpt09']
     
-    outfile_hit = today_str + '_landFiles_tracker_hitlists'
+    outfile_hit = rpt_month_str + '_landFiles_tracker_hitlists'
     create_report (dfs_htlst, dfs_htlst_lbls, out_folder, outfile_hit)
     
     
     print ('\nComputing Charts')
-    figname_nw= today_str+'_chart_processingTimes_new'
+    figname_nw= rpt_month_str+'_chart_processingTimes_new'
     title_tag_nw= 'New Files'
     compute_chart (df_anz_tim_nw, title_tag_nw, out_folder, figname_nw)
     
-    figname_rp= today_str+'_chart_processingTimes_rep'
+    figname_rp= rpt_month_str+'_chart_processingTimes_rep'
     title_tag_rp= 'Replacement Files'
     compute_chart (df_anz_tim_rp, title_tag_rp, out_folder, figname_rp)
     
