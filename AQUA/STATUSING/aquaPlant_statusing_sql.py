@@ -16,7 +16,7 @@ import os
 import cx_Oracle
 import pandas as pd
 import geopandas as gpd
-from shapely import wkt, wkb
+from shapely import wkb
 
 
 def connect_to_DB (username,password,hostname):
@@ -70,20 +70,16 @@ def multipart_to_singlepart(gdf):
     return gdf
 
 
-def get_wkb_srid (gdf):
+def get_wkb_srid(gdf):
     """Returns SRID and WKB objects from gdf"""
-
     srid = gdf.crs.to_epsg()
-    
     geom = gdf['geometry'].iloc[0]
-
-    wkb_aoi = geom.to_wkb()
+    wkb_aoi = wkb.dumps(geom)
     
     # if geometry has Z values, flatten geometry
     if geom.has_z:
         wkb_aoi = wkb.dumps(geom, output_dimension=2)
         
-    
     return wkb_aoi, srid
 
 
@@ -168,15 +164,15 @@ def run_staus ():
     
     print ('Reading tool inputs.')
     workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240110_aquaWildPlants_2024_aplics_status'
-    rule_xls = os.path.join(workspace,'statusing','statusing_rules.xlsx')
+    rule_xls = os.path.join(workspace,'statusing_rules.xlsx')
     df_stat = pd.read_excel(rule_xls, 'rules')
     df_stat.fillna(value='nan',inplace=True)
-    hareas = os.path.join(workspace,'data.gdb','new_harvest_areas_2023_v2')
+    hareas = os.path.join(workspace,'harvest_areas_2024_applics_clean.shp')
     gdf_hareas = esri_to_gdf (hareas)
     
     sql = load_queries ()
     
-    hareas = gdf_hareas['harvest_area'].tolist()
+    hareas = gdf_hareas['harvest_ar'].tolist()
     
     print ('Running Analysis.')
     results = {} 
@@ -198,7 +194,7 @@ def run_staus ():
         dfs = []
         for harea in hareas:
             print (".....working on Harvest Area {} of {}: {}".format (c_ha, str(len(hareas)), harea))
-            gdf_ha = gdf_hareas.loc[gdf_hareas['harvest_area'] == harea]
+            gdf_ha = gdf_hareas.loc[gdf_hareas['harvest_ar'] == harea]
             
             if gdf_ha.shape[0] > 1:
                 gdf_ha =  multipart_to_singlepart(gdf_ha) 
@@ -251,7 +247,7 @@ def run_staus ():
         
     
     print ('\nGenerating the statusing Report.')    
-    filename = 'aquaPlants_wild_2023_newApplics_statusing'
+    filename = 'aquaPlants_wild_2024_Applics_statusing'
     df_list = list(results.values())
     sheet_list = list(results.keys())
     generate_report (workspace, df_list, sheet_list,filename)
