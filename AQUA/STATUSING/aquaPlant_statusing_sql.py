@@ -167,7 +167,7 @@ def run_staus ():
     connection, cursor = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
     print ('Reading tool inputs.')
-    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20221124_aquaWildPlants_2023_newApps'
+    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240110_aquaWildPlants_2024_aplics_status'
     rule_xls = os.path.join(workspace,'statusing','statusing_rules.xlsx')
     df_stat = pd.read_excel(rule_xls, 'rules')
     df_stat.fillna(value='nan',inplace=True)
