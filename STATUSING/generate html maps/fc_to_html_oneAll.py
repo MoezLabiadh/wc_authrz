@@ -335,6 +335,7 @@ def generate_html_maps(status_gdb):
     lyr_cont_all.add_to(map_all)
     
     # Save the all-layers map to html file
+    print('Crating the all-layers map')
     map_all.save(os.path.join(out_loc, '00_all_layers.html'))
     
 
