@@ -664,7 +664,7 @@ if __name__ == '__main__':
     generate_report (out_path, [df], ['Water Applics - KFN territory'], xls_name)
     
     gdf_wapp= wapp_to_gdf(df)
-    #export_shp (gdf_wapp, spatial_path, filename)
+    export_shp (gdf_wapp, spatial_path, filename)
     
     # Create the html map
     gdf_wapp= wapp_to_gdf(df)
