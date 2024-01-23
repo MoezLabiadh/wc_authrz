@@ -24,5 +24,5 @@ rem Launch ArcGIS Pro
 echo Launching ArcGIS Pro...
 start "" "E:\sw_nt\ArcGIS\Pro\bin\ArcGISPro.exe"
 
-rem Pause CMD window to check for execution messages. Can remove after testing.
-pause
+rem Pause CMD window for 10s to check for execution messages.
+timeout /t 10
