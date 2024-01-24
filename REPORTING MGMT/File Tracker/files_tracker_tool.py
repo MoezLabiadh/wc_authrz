@@ -272,7 +272,7 @@ class LandsTracker(QWidget):
             
             QApplication.processEvents()
             
-            df_01,df_01_nw,df_01_rp,df_01_mtr_nw,df_01_mtr_rp= self.create_rpt_01 (df_tnt,df_ats)
+            df_01,df_01_nw,df_01_rp,df_01_mtr_nw,df_01_mtr_rp= self.create_rpt_01 (rpt_date,df_tnt,df_ats)
             dfs.append(df_01)
             dfs_nw.append(df_01_nw)
             dfs_rp.append(df_01_rp)
@@ -289,7 +289,7 @@ class LandsTracker(QWidget):
             
             QApplication.processEvents()
             
-            df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp= self.create_rpt_02 (df_tnt,df_ats)
+            df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp= self.create_rpt_02 (rpt_date,df_tnt,df_ats)
             dfs.append(df_02)
             dfs_nw.append(df_02_nw)
             dfs_rp.append(df_02_rp)
@@ -306,12 +306,29 @@ class LandsTracker(QWidget):
             
             QApplication.processEvents()
             
-            df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold= self.create_rpt_03 (df_tnt,df_ats)
+            df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold= self.create_rpt_03 (rpt_date,df_tnt,df_ats)
             dfs.append(df_03)
             dfs_nw.append(df_03_nw)
             dfs_rp.append(df_03_rp)
             df_mtrs_nw.append(df_03_mtr_nw)
             df_mtrs_rp.append(df_03_mtr_rp)
+            
+            
+            time.sleep(1) 
+            print('...report 03-1')
+            rp31_label = QLabel(self)
+            rp31_label.setText('...report 03-1')
+            rp31_label.setStyleSheet("color: black;")
+            self.layout.addWidget(rp31_label)
+            
+            QApplication.processEvents()
+            
+            df_031,df_031_nw,df_031_rp,df_031_mtr_nw,df_031_mtr_rp= self.create_rpt_03_1 (rpt_date,df_03)
+            dfs.append(df_031)
+            dfs_nw.append(df_031_nw)
+            dfs_rp.append(df_031_rp)
+            df_mtrs_nw.append(df_031_mtr_nw)
+            df_mtrs_rp.append(df_031_mtr_rp)
             
             
             time.sleep(1) 
@@ -323,7 +340,7 @@ class LandsTracker(QWidget):
             
             QApplication.processEvents()
             
-            df_04,df_04_nw,df_04_rp,df_04_mtr_nw,df_04_mtr_rp= self.create_rpt_04 (df_tnt,df_ats)
+            df_04,df_04_nw,df_04_rp,df_04_mtr_nw,df_04_mtr_rp= self.create_rpt_04 (rpt_date,df_tnt,df_ats)
             dfs.append(df_04)
             dfs_nw.append(df_04_nw)
             dfs_rp.append(df_04_rp)
@@ -340,7 +357,7 @@ class LandsTracker(QWidget):
             
             QApplication.processEvents()
             
-            df_05,df_05_nw,df_05_rp,df_05_mtr_nw,df_05_mtr_rp= self.create_rpt_05 (df_tnt,df_ats)
+            df_05,df_05_nw,df_05_rp,df_05_mtr_nw,df_05_mtr_rp= self.create_rpt_05 (rpt_date,df_tnt,df_ats)
             dfs.append(df_05)
             dfs_nw.append(df_05_nw)
             dfs_rp.append(df_05_rp)
@@ -357,7 +374,7 @@ class LandsTracker(QWidget):
             
             QApplication.processEvents()
             
-            df_06,df_06_nw,df_06_rp,df_06_mtr_nw,df_06_mtr_rp= self.create_rpt_06 (df_tnt,df_ats)
+            df_06,df_06_nw,df_06_rp,df_06_mtr_nw,df_06_mtr_rp= self.create_rpt_06 (rpt_date,df_tnt,df_ats)
             dfs.append(df_06)
             dfs_nw.append(df_06_nw)
             dfs_rp.append(df_06_rp)
@@ -374,7 +391,7 @@ class LandsTracker(QWidget):
             
             QApplication.processEvents()
             
-            df_07,df_07_nw,df_07_rp,df_07_mtr_nw,df_07_mtr_rp= self.create_rpt_07 (df_tnt,df_ats)
+            df_07,df_07_nw,df_07_rp,df_07_mtr_nw,df_07_mtr_rp= self.create_rpt_07 (rpt_date,df_tnt,df_ats)
             dfs.append(df_07)
             dfs_nw.append(df_07_nw)
             dfs_rp.append(df_07_rp)
@@ -391,7 +408,7 @@ class LandsTracker(QWidget):
             
             QApplication.processEvents()
             
-            df_08,df_08_nw,df_08_rp,df_08_mtr_nw,df_08_mtr_rp= self.create_rpt_08 (df_tnt,df_ats)
+            df_08,df_08_nw,df_08_rp,df_08_mtr_nw,df_08_mtr_rp= self.create_rpt_08 (rpt_date,df_tnt,df_ats)
             dfs.append(df_08)
             dfs_nw.append(df_08_nw)
             dfs_rp.append(df_08_rp)
@@ -408,7 +425,7 @@ class LandsTracker(QWidget):
             
             QApplication.processEvents()
             
-            df_09,df_09_nw,df_09_rp,df_09_mtr_nw,df_09_mtr_rp= self.create_rpt_09 (df_tnt,df_ats)
+            df_09,df_09_nw,df_09_rp,df_09_mtr_nw,df_09_mtr_rp= self.create_rpt_09 (rpt_date,df_tnt,df_ats)
             dfs.append(df_09)
             dfs_nw.append(df_09_nw)
             dfs_rp.append(df_09_rp)
@@ -515,7 +532,7 @@ class LandsTracker(QWidget):
             self.create_report (dfs_htlst, dfs_htlst_lbls, out_folder, outfile_hit)            
             
             
-            print ('\nAddding Charts to Main Report')
+            print ('\nAdding Charts to Main Report')
             figname_nw= rpt_month_str+'_chart_processingTimes_new'
             title_tag_nw= 'New Files'
             self.compute_chart (df_anz_tim_nw, title_tag_nw, out_folder, figname_nw)
@@ -854,7 +871,7 @@ class LandsTracker(QWidget):
         return df_02,df_02_nw,df_02_rp,df_02_mtr_nw,df_02_mtr_rp
     
     
-    def create_rpt_03 (self, df_tnt,df_ats):
+    def create_rpt_03 (self, rpt_date,df_tnt,df_ats):
         """ Creates Report 03- Files in Active Review"""
         df_ats_h = df_ats.loc[df_ats['Authorization Status'] == 'On Hold']
         onhold= df_ats_h['File Number'].to_list()
@@ -863,11 +880,12 @@ class LandsTracker(QWidget):
         
         df_03= df_tnt.loc[((~df_tnt['OTHER EMPLOYEES ASSIGNED TO'].str.contains('WCR_',na=False)) & 
                            (df_tnt['OTHER EMPLOYEES ASSIGNED TO'].notnull())) &
-                          (df_tnt['REPORTED DATE'].isnull()) &
-                          (~df_tnt['FILE NUMBER'].isin(onhold)) &
-                          (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
-                          (df_tnt['STATUS'] == 'ACCEPTED')]
-
+                           (df_tnt['REPORTED DATE'].isnull()) &
+                           (~df_tnt['FILE NUMBER'].isin(onhold)) &
+                           (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
+                           (df_tnt['STATUS'] == 'ACCEPTED') &
+                           (df_tnt['CREATED DATE'] <= rpt_date)]
+     
         df_03.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
         df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
         
@@ -890,11 +908,11 @@ class LandsTracker(QWidget):
         df_03.reset_index(drop = True, inplace = True)
         
         df_03['Total On Hold Time'].fillna(0, inplace=True)
-
+    
         #Calulcate metrics
-        today = pd.to_datetime(date.today())
+        rpt_date = pd.to_datetime(rpt_date)
         
-        # for replacements, use acepted date instead of submisson review date to calculate mtr4
+        # for replacements only, use RECEIVED DATE instead of submisson review date to calculate mtr4
         df_03.loc[df_03['TASK DESCRIPTION'] == 'REPLACEMENT APPLICATION', 'Submission Review Complete Date'] = df_03['RECEIVED DATE']
         
         df_03['Bring Forward Date'] = pd.to_datetime(df_03['Bring Forward Date']
@@ -914,26 +932,65 @@ class LandsTracker(QWidget):
         
         for df in [df_03,df_03_nw,df_03_rp]:
             df['mtr04'] = (df['Bring Forward Date'] - df['Submission Review Complete Date']).dt.days
-            df['mtr05'] = (today - df['First Nation Start Date']).dt.days
+            #df['mtr05'] = (rpt_date - df['First Nation Start Date']).dt.days
             df['mtr06'] = (df['First Nation Completion Date'] - df['First Nation Start Date']).dt.days
-            df['mtr07'] = (today - df['Bring Forward Date']).dt.days
-
-        metrics= ['mtr04','mtr05','mtr06','mtr07']
+            df['mtr07'] = (rpt_date - df['Bring Forward Date']).dt.days
+    
+        metrics= ['mtr04','mtr06','mtr07']
         df_03_mtr_nw = self.calculate_metrics(df_03_nw , 'DISTRICT OFFICE', metrics ) 
         df_03_mtr_rp = self.calculate_metrics(df_03_rp , 'DISTRICT OFFICE', metrics ) 
-
-
+    
+    
         return df_03,df_03_nw,df_03_rp,df_03_mtr_nw,df_03_mtr_rp,onhold
+
+
+    def create_rpt_03_1 (self, rpt_date,df03):
+        """ Creates Report 03-1- Files in Consultation"""
+        df_031= df03.loc[(df03['First Nation Start Date'].notnull()) &
+                         (df03['First Nation Completion Date'].isnull())]
+    
+        df_031.drop(['mtr04','mtr06','mtr07'], axis=1, inplace=True)
+        
+        df_031.sort_values(by=['First Nation Start Date'], ascending=False, inplace=True)
+        df_031.reset_index(drop = True, inplace = True)
+        
+        df_031['Total On Hold Time'].fillna(0, inplace=True)
+    
+        #Calulcate metrics
+        rpt_date = pd.to_datetime(rpt_date)
+        
+        # for replacements only, use RECEIVED DATE instead of submisson review date to calculate mtr4
+        df_031.loc[df_031['TASK DESCRIPTION'] == 'REPLACEMENT APPLICATION', 'Submission Review Complete Date'] = df_031['RECEIVED DATE']
+        
+    
+        df_031['First Nation Start Date'] = pd.to_datetime(df_031['First Nation Start Date'])
+    
+        
+        df_031_nw= df_031.loc[df_031['TASK DESCRIPTION']=='NEW APPLICATION']
+        df_031_rp= df_031.loc[df_031['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']    
+        
+        
+        for df in [df_031,df_031_nw,df_031_rp]:
+    
+            df['mtr05'] = (rpt_date - df['First Nation Start Date']).dt.days
+    
+        metrics= ['mtr05']
+        df_031_mtr_nw = self.calculate_metrics(df_031_nw , 'DISTRICT OFFICE', metrics ) 
+        df_031_mtr_rp = self.calculate_metrics(df_031_rp , 'DISTRICT OFFICE', metrics ) 
     
     
-    def create_rpt_04 (self, df_tnt,df_ats):
+        return df_031,df_031_nw,df_031_rp,df_031_mtr_nw,df_031_mtr_rp    
+    
+
+    def create_rpt_04 (self, rpt_date,df_tnt,df_ats):
         """ Creates Report 04- Files Awaiting Decision"""
         df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
         
         df_04= df_tnt.loc[(df_tnt['REPORTED DATE'].notnull()) &
                         (df_tnt['ADJUDICATED DATE'].isnull()) &
                         (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &
-                        (df_tnt['STATUS'] == 'ACCEPTED')]
+                        (df_tnt['STATUS'] == 'ACCEPTED') &
+                        (df_tnt['REPORTED DATE'] <= rpt_date)]
     
         df_04.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
         df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
@@ -959,7 +1016,7 @@ class LandsTracker(QWidget):
         df_04['Total On Hold Time'].fillna(0, inplace=True)
     
         #Calulcate metrics
-        today = pd.to_datetime(date.today())
+        rpt_date = pd.to_datetime(rpt_date)
     
         df_04['Bring Forward Date'] = pd.to_datetime(df_04['Bring Forward Date']
                                                      .fillna(pd.NaT), errors='coerce')
@@ -974,7 +1031,7 @@ class LandsTracker(QWidget):
         for df in [df_04,df_04_nw,df_04_rp]:
     
             df['mtr08'] = (df['REPORTED DATE'] - df['Bring Forward Date']).dt.days
-            df['mtr09'] = (today - df['REPORTED DATE']).dt.days
+            df['mtr09'] = (rpt_date - df['REPORTED DATE']).dt.days
     
         metrics= ['mtr08','mtr09']
         df_04_mtr_nw = self.calculate_metrics(df_04_nw , 'DISTRICT OFFICE', metrics )  
@@ -983,14 +1040,15 @@ class LandsTracker(QWidget):
         return df_04,df_04_nw,df_04_rp,df_04_mtr_nw,df_04_mtr_rp
     
     
-    def create_rpt_05 (self, df_tnt,df_ats):
+    def create_rpt_05 (self, rpt_date,df_tnt,df_ats):
         """ Creates Report 05- Files Awaiting Offer"""
         df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
         
         df_05= df_tnt.loc[(df_tnt['ADJUDICATED DATE'].notnull()) &
                          (df_tnt['OFFERED DATE'].isnull()) &
                          (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &            
-                         (df_tnt['STATUS'] == 'ACCEPTED')]
+                         (df_tnt['STATUS'] == 'ACCEPTED') &
+                         (df_tnt['ADJUDICATED DATE'] <= rpt_date)]
     
         df_05.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
         df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
@@ -1019,11 +1077,10 @@ class LandsTracker(QWidget):
         df_05_nw= df_05.loc[df_05['TASK DESCRIPTION']=='NEW APPLICATION']
         df_05_rp= df_05.loc[df_05['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']  
         
-        today = date.today()
-        
+    
         for df in [df_05,df_05_nw,df_05_rp]:
             df['mtr10'] = (df['ADJUDICATED DATE'] - df['REPORTED DATE']).dt.days
-            df['mtr11'] = (today - df['ADJUDICATED DATE']).dt.days
+            df['mtr11'] = (rpt_date - df['ADJUDICATED DATE']).dt.days
     
         metrics= ['mtr10','mtr11']
         df_05_mtr_nw = self.calculate_metrics(df_05_nw , 'DISTRICT OFFICE', metrics )  
@@ -1032,13 +1089,14 @@ class LandsTracker(QWidget):
         return df_05,df_05_nw,df_05_rp,df_05_mtr_nw,df_05_mtr_rp
     
     
-    def create_rpt_06 (self, df_tnt,df_ats):
+    def create_rpt_06 (self, rpt_date,df_tnt,df_ats):
         """ Creates Report 06- Files awaiting Offer Acceptance"""
         df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
         df_06= df_tnt.loc[(df_tnt['OFFERED DATE'].notnull()) &
                           (df_tnt['OFFER ACCEPTED DATE'].isnull())&
                           (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &                      
-                          (df_tnt['STATUS'] == 'OFFERED')]
+                          (df_tnt['STATUS'] == 'OFFERED') &
+                          (df_tnt['OFFERED DATE'] <= rpt_date)]
         
         df_06.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
         df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
@@ -1066,12 +1124,10 @@ class LandsTracker(QWidget):
         #Calulcate metrics
         df_06_nw= df_06.loc[df_06['TASK DESCRIPTION']=='NEW APPLICATION']
         df_06_rp= df_06.loc[df_06['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']  
-        
-        today = date.today()
     
         for df in [df_06,df_06_nw,df_06_rp]:
             df['mtr12'] = (df['OFFERED DATE'] - df['ADJUDICATED DATE']).dt.days
-            df['mtr13'] = (today - df['OFFERED DATE']).dt.days
+            df['mtr13'] = (rpt_date - df['OFFERED DATE']).dt.days
         
         metrics= ['mtr12','mtr13']
         df_06_mtr_nw = self.calculate_metrics(df_06_nw , 'DISTRICT OFFICE', metrics )  
@@ -1080,12 +1136,13 @@ class LandsTracker(QWidget):
         return df_06,df_06_nw,df_06_rp,df_06_mtr_nw,df_06_mtr_rp
     
     
-    def create_rpt_07 (self, df_tnt,df_ats):
+    def create_rpt_07 (self, rpt_date,df_tnt,df_ats):
         """ Creates Report 07- Files with Offer Accepted"""
         df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
         df_07= df_tnt.loc[(df_tnt['OFFER ACCEPTED DATE'].notnull()) &
                          (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &                      
-                          (df_tnt['STATUS'] == 'OFFER ACCEPTED')]
+                          (df_tnt['STATUS'] == 'OFFER ACCEPTED') &
+                          (df_tnt['OFFER ACCEPTED DATE'] <= rpt_date)]
         
         df_ats['Join Start Date'] = df_ats['Accepted Date'] - pd.DateOffset(months=6)
         df_ats['Join End Date'] = df_ats['Accepted Date'] + pd.DateOffset(months=6)
@@ -1111,11 +1168,9 @@ class LandsTracker(QWidget):
         df_07_nw= df_07.loc[df_07['TASK DESCRIPTION']=='NEW APPLICATION']
         df_07_rp= df_07.loc[df_07['TASK DESCRIPTION']=='REPLACEMENT APPLICATION']  
         
-        today = date.today()
-    
         for df in [df_07,df_07_nw,df_07_rp]:
             df['mtr14'] = (df['OFFER ACCEPTED DATE'] - df['OFFERED DATE']).dt.days
-            df['mtr15'] = (today - df['OFFER ACCEPTED DATE']).dt.days
+            df['mtr15'] = (rpt_date - df['OFFER ACCEPTED DATE']).dt.days
         
         metrics= ['mtr14','mtr15']
         df_07_mtr_nw = self.calculate_metrics(df_07_nw , 'DISTRICT OFFICE', metrics )  
@@ -1124,19 +1179,17 @@ class LandsTracker(QWidget):
         return df_07,df_07_nw,df_07_rp,df_07_mtr_nw,df_07_mtr_rp
     
     
-    def create_rpt_08 (self, df_tnt,df_ats):
+    def create_rpt_08 (self, rpt_date,df_tnt,df_ats):
         """ Creates Report 08- Files Completed"""
         df_ats = df_ats.loc[df_ats['Authorization Status'].isin(['Active','Closed'])]
         
-        today = datetime.today()
-        first_day_last_month = datetime(today.year, today.month, 1) - timedelta(days=1)
-        first_day_last_month = datetime(first_day_last_month.year, first_day_last_month.month, 1)
-        first_day_last_month = first_day_last_month.date()
+        first_day_of_month = rpt_date.replace(day=1)
         
         df_08= df_tnt.loc[(df_tnt['COMPLETED DATE'].notnull()) &
-                          (df_tnt['COMPLETED DATE'] >= first_day_last_month) &
+                          (df_tnt['COMPLETED DATE'] >= first_day_of_month) &
                           (df_tnt['TASK DESCRIPTION'].isin(['NEW APPLICATION', 'REPLACEMENT APPLICATION'])) &
-                          (df_tnt['STATUS'] == 'DISPOSITION IN GOOD STANDING')]
+                          (df_tnt['STATUS'] == 'DISPOSITION IN GOOD STANDING') &
+                          (df_tnt['COMPLETED DATE'] <= rpt_date)]
         
         df_ats['Join Start Date'] = df_ats['Accepted Date'] - pd.DateOffset(months=6)
         df_ats['Join End Date'] = df_ats['Accepted Date'] + pd.DateOffset(months=6)
@@ -1162,8 +1215,7 @@ class LandsTracker(QWidget):
         df_08_nw= df_08.loc[df_08['TASK DESCRIPTION']=='NEW APPLICATION']
         df_08_rp= df_08.loc[df_08['TASK DESCRIPTION']=='REPLACEMENT APPLICATION'] 
         
-        #today = date.today()
-        
+    
         for df in [df_08,df_08_nw,df_08_rp]:
             df['mtr16'] = (df['COMPLETED DATE'] - df['ADJUDICATED DATE']).dt.days
             df['mtr17'] = (df['COMPLETED DATE'] - df['RECEIVED DATE']).dt.days
@@ -1176,10 +1228,12 @@ class LandsTracker(QWidget):
         return df_08,df_08_nw,df_08_rp,df_08_mtr_nw,df_08_mtr_rp
     
     
-    def create_rpt_09 (self, df_tnt,df_ats):
+    def create_rpt_09 (self, rpt_date,df_tnt,df_ats):
         """ Creates Report 09 - Files On Hold"""
         df_ats = df_ats.loc[(df_ats['Authorization Status']== 'On Hold') &
-                            (df_ats['Accepted Date'].notnull())]
+                            (df_ats['Accepted Date'].notnull()) &
+                            (df_ats['On Hold Start Date'] <= rpt_date)]
+        
         hold_l = df_ats['File Number'].to_list()
         
         df_09= df_tnt.loc[(df_tnt['STATUS'] == 'ACCEPTED') & 
@@ -1198,7 +1252,7 @@ class LandsTracker(QWidget):
         df_09['Total On Hold Time'].fillna(0, inplace=True)
     
         #Calulcate metrics
-        today = pd.to_datetime(date.today())
+        rpt_date = pd.to_datetime(rpt_date)
     
         df_09['On Hold Start Date'] = pd.to_datetime(df_09['On Hold Start Date']
                                                      .fillna(pd.NaT), errors='coerce')
@@ -1210,7 +1264,7 @@ class LandsTracker(QWidget):
         df_09_rp= df_09.loc[df_09['TASK DESCRIPTION']=='REPLACEMENT APPLICATION'] 
         
         for df in [df_09,df_09_nw,df_09_rp]:
-            df['mtr18'] = (today - df['On Hold Start Date']).dt.days
+            df['mtr18'] = (rpt_date - df['On Hold Start Date']).dt.days
     
         
         metrics= ['mtr18']
@@ -1299,7 +1353,7 @@ class LandsTracker(QWidget):
     
     def create_summary_rpt (self, df_rpts):
         """Creates a summary  -Nbr of Files"""
-        rpt_ids = ['rpt01','rpt02','rpt03','rpt04',
+        rpt_ids = ['rpt01','rpt02','rpt03','rpt03-1','rpt04',
                    'rpt05','rpt06','rpt07','rpt08','rpt09']
         
         df_grs = []
@@ -1474,7 +1528,7 @@ class LandsTracker(QWidget):
         writer.save()
     
 
-    def compute_chart (df, title_tag, out_folder, figname):
+    def compute_chart (self, df, title_tag, out_folder, figname):
         """Computes a barplot of number of # of files and processing times """
     
         fig = px.bar(df, x='Stage', y='# Files at Stage',template='plotly')
@@ -1504,6 +1558,7 @@ class LandsTracker(QWidget):
         
         out_chart= os.path.join('{}'.format(out_folder), figname+'.png')
         fig.write_image(out_chart, width=1200, height=800, scale=2)
+    
     
     
     def add_charts(self, nw_rp, out_folder, filename, figname):
@@ -1557,44 +1612,45 @@ class LandsTracker(QWidget):
         return dfs_htlst
            
         
-        def create_report (self, df_list, sheet_list,filename):
-            """ Exports dataframes to multi-tab excel spreasheet"""
-            writer = pd.ExcelWriter(filename+'.xlsx',engine='xlsxwriter')
-        
-            for dataframe, sheet in zip(df_list, sheet_list):
-                dataframe = dataframe.reset_index(drop=True)
-                dataframe.index = dataframe.index + 1
-        
-                dataframe.to_excel(writer, sheet_name=sheet, index=False, startrow=0 , startcol=0)
-        
-                worksheet = writer.sheets[sheet]
-                #workbook = writer.book
-                
-                if sheet == sheet_list[0] or sheet == sheet_list[1]:
-                    worksheet.set_column(0, 0, 11)
-                    worksheet.set_column(1, 1, 27)
-                    worksheet.set_column(2, 2, 11)
-                    worksheet.set_column(3, 3, 37)
-                    worksheet.set_column(4, dataframe.shape[1], 10)
-                
-                else:
-                    worksheet.set_column(0, dataframe.shape[1], 20)
-        
-                col_names = [{'header': col_name} for col_name in dataframe.columns[:]]
-        
-                worksheet.add_table(0, 0, dataframe.shape[0], dataframe.shape[1]-1, {
-                    'columns': col_names})
-        
-            writer.save()
-            writer.close()     
+    def create_report (self, df_list, sheet_list,out_folder,filename):
+        """ Exports dataframes to multi-tab excel spreasheet"""
+        out_file= os.path.join('{}'.format(out_folder), filename+'.xlsx')
+        writer = pd.ExcelWriter(out_file,engine='xlsxwriter')
+    
+        for dataframe, sheet in zip(df_list, sheet_list):
+            dataframe = dataframe.reset_index(drop=True)
+            dataframe.index = dataframe.index + 1
+    
+            dataframe.to_excel(writer, sheet_name=sheet, index=False, startrow=0 , startcol=0)
+    
+            worksheet = writer.sheets[sheet]
+            #workbook = writer.book
+            
+            if sheet in ['Summary - NEW Applics','Summary - REP Applics']:
+                worksheet.set_column(0, 0, 11)
+                worksheet.set_column(1, 1, 27)
+                worksheet.set_column(2, 2, 11)
+                worksheet.set_column(3, 3, 37)
+                worksheet.set_column(4, dataframe.shape[1], 10)
+            
+            else:
+                worksheet.set_column(0, dataframe.shape[1], 20)
+    
+            col_names = [{'header': col_name} for col_name in dataframe.columns[:]]
+    
+            worksheet.add_table(0, 0, dataframe.shape[0], dataframe.shape[1]-1, 
+                                {'columns': col_names})
+    
+        writer.save()
+        writer.close()     
 
 
 
-    def add_readme_page(self, filename,template_rdm):
-        source_workbook = openpyxl.load_workbook(template_rdm)
+    def add_readme_page(self, readme_xlsx, out_folder, filename):
+        source_workbook = openpyxl.load_workbook(readme_xlsx)
         source_sheet = source_workbook['README']
         
-        rpt_xlsx = filename+".xlsx"
+        rpt_xlsx = os.path.join('{}'.format(out_folder), filename+'.xlsx')
         target_workbook = openpyxl.load_workbook(rpt_xlsx)
         
         target_sheet = target_workbook.create_sheet(title=source_sheet.title, index=0)
@@ -1624,7 +1680,7 @@ class LandsTracker(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     
-    # Create the ExcelReader window
+    # Create the window
     window = LandsTracker()
     window.setWindowTitle('Lands File Tracker')
     
