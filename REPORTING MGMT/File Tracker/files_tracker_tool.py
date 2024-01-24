@@ -13,7 +13,7 @@
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
 # Created:     09-06-2023
-# Updated:
+# Updated:     01-24-2024
 #-------------------------------------------------------------------------------
 
 import warnings
@@ -22,12 +22,24 @@ warnings.simplefilter(action='ignore')
 import os
 import sys
 import time
-#import cx_Oracle
+
+import cx_Oracle
 import pandas as pd
 #import numpy as np
+
 import openpyxl
+from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
-from datetime import date, datetime, timedelta
+from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.drawing.image import Image
+
+from datetime import date, timedelta
+
+import plotly.express as px
+import plotly.graph_objects as go
+
+from PIL import Image as PILImage
+
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QFileDialog, QLabel, QVBoxLayout, QMessageBox,QSpacerItem,QSizePolicy
 
 
@@ -164,6 +176,15 @@ class LandsTracker(QWidget):
  
     def execute_program(self):
         """Executes the main Program"""
+        
+        # The first day of previous month. Will be used to calculate Metrics
+        today = date.today()
+        first_day_month = today.replace(day=1)
+        rpt_date= first_day_month - timedelta(days=1)
+        
+        rpt_month_str = rpt_date.strftime("%b%Y").lower()
+
+
         proc_label = QLabel(self)
         proc_label.setText('Program is running... ')
         proc_label.setStyleSheet("color: green;")
@@ -425,22 +446,41 @@ class LandsTracker(QWidget):
             df_sum_mtr_nw= self.create_summary_mtr(df_mtrs_nw)
             df_sum_mtr_rp= self.create_summary_mtr(df_mtrs_rp)
             
-            template_wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230303_lands_tracker\TEMPLATE'
-            template_rpt_f = 'rpt_template.xlsx'
-            template_rpt= os.path.join(template_wks,template_rpt_f)
-            df_sum_all_nw= self.create_summary_all(template_rpt,df_sum_rpt_nw,df_sum_mtr_nw)
-            df_sum_all_rp= self.create_summary_all(template_rpt,df_sum_rpt_rp,df_sum_mtr_rp)
+
+            time.sleep(1) 
+            print ('\nCreating Analysis tables')
+            wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\FILE_TRACKING'
+            tmplt_anlz = os.path.join(wks,'00_TEMPLATE/anz_template.xlsx')
+            df_anz_tim_nw, df_anz_off_nw= self.analysis_tables (tmplt_anlz,df_sum_rpt_nw,df_sum_mtr_nw)
+            df_anz_tim_rp, df_anz_off_rp= self.analysis_tables (tmplt_anlz,df_sum_rpt_rp,df_sum_mtr_rp)
+            anz_label = QLabel(self)
+            anz_label.setText('Creating Analysis tables')
+            anz_label.setStyleSheet("color: black;")
+            self.layout.addWidget(anz_label)
+            
+            QApplication.processEvents()
+                
+            template = os.path.join(wks,'00_TEMPLATE/rpt_template.xlsx')
+
+            df_sum_all_nw= self.create_summary_all(template,df_sum_rpt_nw,df_sum_mtr_nw)
+            df_sum_all_rp= self.create_summary_all(template,df_sum_rpt_rp,df_sum_mtr_rp)
             
             # set the first 3 rows of the replacement summary to N/A.
             rows_range = slice(0, 3)
             cols_range = slice(4, 26)
             df_sum_all_rp.iloc[rows_range, cols_range] = 'n/a'
             
+            print('\nCreating an Output folder')
+            out_folder = os.path.join(wks, rpt_month_str)
+            
+            if not os.path.exists(out_folder):
+                os.makedirs(out_folder)
+    
             
             time.sleep(1)
-            print('\nExporting the Final Report')
+            print('\nExporting the Main Report')
             fnr_label = QLabel(self)
-            fnr_label.setText('Exporting the Final Report')
+            fnr_label.setText('Exporting the Main Report')
             fnr_label.setStyleSheet("color: black;")
             self.layout.addWidget(fnr_label)
             
@@ -448,13 +488,49 @@ class LandsTracker(QWidget):
             
             df_list = [df_sum_all_nw,df_sum_all_rp] + df_rpts 
             sheet_list = ['Summary - NEW Applics','Summary - REP Applics'] + rpt_ids
-            today = date.today().strftime("%Y%m%d")
-            filename = today + '_landFiles_tracker'
-            self. create_report (df_list, sheet_list,filename)
+            outfile_main_rpt = rpt_month_str + '_landFiles_tracker'
+            self. create_report (df_list, sheet_list,out_folder,outfile_main_rpt)
             
-            template_rdm_f = 'readme_template.xlsx'
-            template_rdm= os.path.join(template_wks,template_rdm_f)
-            self.add_readme_page(filename,template_rdm)
+            nw_rp= 'NEW'
+            self.add_analysis_tables(df_anz_tim_nw,df_anz_off_nw,nw_rp,out_folder,outfile_main_rpt)
+            nw_rp= 'REP'
+            self.add_analysis_tables(df_anz_tim_rp,df_anz_off_rp,nw_rp,out_folder,outfile_main_rpt)
+            
+            time.sleep(1)
+            print ('\nExporting the Hitlists Report')
+            hit_label = QLabel(self)
+            hit_label.setText('Exporting the Hitlists Report')
+            hit_label.setStyleSheet("color: black;")
+            self.layout.addWidget(hit_label)
+            
+            QApplication.processEvents()
+            
+            dfs_htlst= self.create_hitlists (df_rpts)
+            
+            dfs_htlst_lbls= ['hitlist_rpt01','hitlist_rpt02','hitlist_rpt03','hitlist_rpt03-1',
+                             'hitlist_rpt04','hitlist_rpt05','hitlist_rpt06','hitlist_rpt07',
+                             'hitlist_rpt08','hitlist_rpt09']
+            
+            outfile_hit = rpt_month_str + '_landFiles_tracker_hitlists'
+            self.create_report (dfs_htlst, dfs_htlst_lbls, out_folder, outfile_hit)            
+            
+            
+            print ('\nAddding Charts to Main Report')
+            figname_nw= rpt_month_str+'_chart_processingTimes_new'
+            title_tag_nw= 'New Files'
+            self.compute_chart (df_anz_tim_nw, title_tag_nw, out_folder, figname_nw)
+            
+            figname_rp= rpt_month_str+'_chart_processingTimes_rep'
+            title_tag_rp= 'Replacement Files'
+            self.compute_chart (df_anz_tim_rp, title_tag_rp, out_folder, figname_rp)
+            
+            nw_rp= 'NEW'
+            self.add_charts(nw_rp, out_folder, outfile_main_rpt,figname_nw)
+            nw_rp= 'REP'
+            self. add_charts(nw_rp, out_folder, outfile_main_rpt,figname_rp)
+            
+            readme_xlsx= os.path.join(wks,'00_TEMPLATE/readme_template.xlsx')
+            self.add_readme_page(readme_xlsx, out_folder, outfile_main_rpt)
             
  
             time.sleep(1)
@@ -1284,51 +1360,231 @@ class LandsTracker(QWidget):
         return df_sum_all
 
 
-    def compute_plot (self, df_stats,filename):
-        """Computes a barplot of number of nbr applications per rpt_id and office """
-        df_pl = df_stats[['REPORT ID','AQUACULTURE', 'CAMPBELL RIVER', 
-                          'NANAIMO', 'PORT ALBERNI','PORT MCNEILL', 'HAIDA GWAII']]
+    def analysis_tables (self, tmplt_anlz,df_sum_rpt,df_sum_mtr):
+        """Create Analysis tables"""
+        df_tmp= pd.read_excel(tmplt_anlz)
+    
+        df_anz_tim= pd.merge(df_tmp,df_sum_mtr[['METRIC ID','WC avg','WC med']],
+                             how= 'left', on='METRIC ID')
         
-        df_pl = df_pl = df_pl[1:]
+        tm_stg= ['mtr01','mtr03','mtr07','mtr05','mtr09','mtr11','mtr13','mtr15','mtr18']
+        tm_prc= ['mtr02','mtr04','mtr08','mtr06','mtr10','mtr12','mtr14','mtr16']
         
-        ax = df_pl.plot.bar(x= 'REPORT ID',stacked=True, rot=0,figsize=(15, 8))
-        ax.set_ylabel("Nbr of Files")
-        ax.set_xlabel("Report ID")  
+        df_anz_tim.loc[df_anz_tim['METRIC ID'].isin(tm_stg),'METRIC ID']='Time of Files at Stage'
+        df_anz_tim.loc[df_anz_tim['METRIC ID'].isin(tm_prc),'METRIC ID']='Processing Time'
         
-        fig = ax.get_figure()
-        fig.savefig(filename+'_plot')  
+        df_anz_tim.rename(columns={'WC avg': 'Average','WC med': 'Median'}, inplace=True)
+    
+        df_anz_tim = df_anz_tim.pivot(index='REPORT NAME', columns='METRIC ID')
+        df_anz_tim.columns = [f'{col[0]}_{col[1]}' for col in df_anz_tim.columns]
+        df_anz_tim=df_anz_tim.reset_index()
+        
+        df_anz_tim.drop('REPORT ID_Processing Time', axis=1, inplace=True)
+        df_anz_tim.rename(columns={'REPORT ID_Time of Files at Stage': 'REPORT ID'}, inplace=True)
+        
+        df_anz_tim= pd.merge(df_anz_tim,df_sum_rpt[['REPORT ID','WC files']],
+                        how= 'left', on='REPORT ID')
+        df_anz_tim.rename(columns={'WC files': '# Files at Stage',
+                                   'REPORT NAME': 'Stage'}, inplace=True)  
+        
+        df_anz_tim.sort_values('REPORT ID', ascending=True, inplace=True)
+        
+        df_anz_tim = df_anz_tim[['Stage','# Files at Stage','Average_Time of Files at Stage',
+                         'Median_Time of Files at Stage','Average_Processing Time',
+                         'Median_Processing Time']]
+        
+        df_anz_tim=df_anz_tim.reset_index(drop= True)
+        
+        
+        df_tmp.drop_duplicates('REPORT ID', inplace= True)
+        df_tmp.drop('METRIC ID', axis=1, inplace=True)
+        df_tmp.loc[len(df_tmp)] = ['rpt08', 'Files Completed']
+        df_tmp.sort_values('REPORT ID', ascending=True, inplace=True)
+        
+        cols= ['REPORT ID','AQ files', 'CR files', 'HG files', 'NA files', 'PA files', 'PM files']
+        df_anz_off= pd.merge(df_tmp,df_sum_rpt[cols],
+                             how= 'left', on='REPORT ID')
+        
+        df_anz_off.rename(columns={'REPORT NAME': 'Stage',
+                                   'AQ files': 'Aquaculture', 
+                                   'NA files': 'Nanaimo',
+                                   'HG files': 'HGNRD',
+                                   'CR files': 'CRNRD',
+                                   'PA files': 'SINRD',
+                                   'PM files': 'NICCNRD'}, inplace=True)
+        
+        df_anz_off.drop('REPORT ID', axis=1, inplace=True)
+        df_anz_off = df_anz_off[['Stage','Nanaimo','Aquaculture','SINRD',
+                                 'CRNRD','NICCNRD','HGNRD']]
+        
+        return df_anz_tim,df_anz_off
+
+
+    def add_analysis_tables (self, df_anz_tim, df_anz_off, nw_rp, out_folder, filename):
+        """Adds the Executive Summaries to the Main report"""
+        out_file = os.path.join(out_folder, f"{filename}.xlsx")
+        
+    
+        workbook = load_workbook(out_file)
+        
+        writer = pd.ExcelWriter(out_file, engine='openpyxl')
+        writer.book = workbook
+        
+        if nw_rp == 'NEW':
+            sheet_index = 0
+            tab_tim_nme= 'Table3000'
+            tab_off_nme= 'Table3001'
+        else:
+            sheet_index = 1
+            tab_tim_nme= 'Table3002'
+            tab_off_nme= 'Table3003'
+            
+        sheet_name = workbook.sheetnames[sheet_index]
+    
+        start_row = 21
+        df_anz_tim.to_excel(writer, sheet_name=sheet_name, 
+                            startrow=start_row,
+                            startcol=1,
+                            index=False)
+    
+        df_anz_off.to_excel(writer, sheet_name=sheet_name, 
+                            startrow=start_row + len(df_anz_tim) + 3, 
+                            startcol=1,
+                            index=False)
+        
+        
+        worksheet = workbook[sheet_name]
+        
+       
+        tab_tim = Table(displayName= tab_tim_nme, ref="B22:G31")
+        tab_off = Table(displayName= tab_off_nme, ref="B34:H44")
+    
+        style = TableStyleInfo(name="TableStyleMedium9", showFirstColumn=True,
+                              showLastColumn=False, showRowStripes=True, showColumnStripes=True)
+        
+        tab_tim.tableStyleInfo = style
+        tab_off.tableStyleInfo = style
+    
+        worksheet.add_table(tab_tim)
+        worksheet.add_table(tab_off)
        
     
-    def create_report (self, df_list, sheet_list,filename):
-        """ Exports dataframes to multi-tab excel spreasheet"""
-        writer = pd.ExcelWriter(filename+'.xlsx',engine='xlsxwriter')
-    
-        for dataframe, sheet in zip(df_list, sheet_list):
-            dataframe = dataframe.reset_index(drop=True)
-            dataframe.index = dataframe.index + 1
-    
-            dataframe.to_excel(writer, sheet_name=sheet, index=False, startrow=0 , startcol=0)
-    
-            worksheet = writer.sheets[sheet]
-            #workbook = writer.book
-            
-            if sheet == sheet_list[0] or sheet == sheet_list[1]:
-                worksheet.set_column(0, 0, 11)
-                worksheet.set_column(1, 1, 27)
-                worksheet.set_column(2, 2, 11)
-                worksheet.set_column(3, 3, 37)
-                worksheet.set_column(4, dataframe.shape[1], 10)
-            
-            else:
-                worksheet.set_column(0, dataframe.shape[1], 20)
-    
-            col_names = [{'header': col_name} for col_name in dataframe.columns[:]]
-    
-            worksheet.add_table(0, 0, dataframe.shape[0], dataframe.shape[1]-1, {
-                'columns': col_names})
-    
         writer.save()
-        writer.close()     
+    
+
+    def compute_chart (df, title_tag, out_folder, figname):
+        """Computes a barplot of number of # of files and processing times """
+    
+        fig = px.bar(df, x='Stage', y='# Files at Stage',template='plotly')
+        fig.update_traces(texttemplate='<b>%{y}</b>', textposition='auto')
+        
+        fig.add_trace(go.Scatter(x=df['Stage'], y=df['Average_Time of Files at Stage'], 
+                                 mode='markers', name='Average Time', 
+                                 marker=dict(symbol='x', color='red', size=12), yaxis='y2'))
+        fig.add_trace(go.Scatter(x=df['Stage'], y=df['Median_Time of Files at Stage'], 
+                                 mode='markers', name='Median Time', 
+                                 marker=dict(symbol='circle', color='orange', size=12), yaxis='y2'))
+        
+    
+        exld= ['Files in Consultation (with LO)','Files On Hold']
+        df_sum= df.loc[~df['Stage'].isin(exld)]
+        nbr_files= int(df_sum['# Files at Stage'].sum())
+        title= """WCR Lands Applications Workflow Status - {} <br>[{} Total Files in Process, excl On Hold]
+               """.format(title_tag, nbr_files)
+        
+        fig.update_layout(
+            title=title,
+            title_x=0.5,  
+            yaxis=dict(title='# Files at Stage'),
+            yaxis2=dict(title='Time (Days)', overlaying='y', side='right'),
+            legend=dict(orientation='h', yanchor='top', y=1.06, xanchor='center', x=0.87)
+        )
+        
+        out_chart= os.path.join('{}'.format(out_folder), figname+'.png')
+        fig.write_image(out_chart, width=1200, height=800, scale=2)
+    
+    
+    def add_charts(self, nw_rp, out_folder, filename, figname):
+        """ "Adds the charts to the Main report """
+        
+        out_file = os.path.join(out_folder, f"{filename}.xlsx")
+        workbook = load_workbook(out_file)
+        
+        if nw_rp == 'NEW':
+            sheet_index = 0
+        else:
+            sheet_index = 1
+    
+        sheet_name = workbook.sheetnames[sheet_index]
+        worksheet = workbook[sheet_name]
+        
+        image_path = os.path.join(out_folder, f"{figname}.png")
+    
+        pil_image = PILImage.open(image_path)
+        
+        width_cm = 27
+        height_cm = 17
+        
+        dpi = 96 
+        width_px = int(width_cm * dpi / 2.54)
+        height_px = int(height_cm * dpi / 2.54)
+        
+        resized_image = pil_image.resize((width_px, height_px))
+        
+        resized_image.save(image_path, "PNG")
+        img = Image(image_path)
+    
+        cell = "J22"
+        
+        worksheet.add_image(img, cell)
+        
+        workbook.save(out_file)
+    
+    
+    def create_hitlists (self, df_rpts):
+        mtr_lst= ['mtr01','mtr03','mtr07','mtr05','mtr09',
+                  'mtr11','mtr13','mtr15','mtr17','mtr18']
+        
+        dfs_htlst = []
+        
+        for i, df in enumerate(df_rpts):
+            mtr= mtr_lst[i]
+            df.sort_values(by=mtr.upper(), ascending=False, inplace=True)
+            dfs_htlst.append(df.head(10))
+            
+        return dfs_htlst
+           
+        
+        def create_report (self, df_list, sheet_list,filename):
+            """ Exports dataframes to multi-tab excel spreasheet"""
+            writer = pd.ExcelWriter(filename+'.xlsx',engine='xlsxwriter')
+        
+            for dataframe, sheet in zip(df_list, sheet_list):
+                dataframe = dataframe.reset_index(drop=True)
+                dataframe.index = dataframe.index + 1
+        
+                dataframe.to_excel(writer, sheet_name=sheet, index=False, startrow=0 , startcol=0)
+        
+                worksheet = writer.sheets[sheet]
+                #workbook = writer.book
+                
+                if sheet == sheet_list[0] or sheet == sheet_list[1]:
+                    worksheet.set_column(0, 0, 11)
+                    worksheet.set_column(1, 1, 27)
+                    worksheet.set_column(2, 2, 11)
+                    worksheet.set_column(3, 3, 37)
+                    worksheet.set_column(4, dataframe.shape[1], 10)
+                
+                else:
+                    worksheet.set_column(0, dataframe.shape[1], 20)
+        
+                col_names = [{'header': col_name} for col_name in dataframe.columns[:]]
+        
+                worksheet.add_table(0, 0, dataframe.shape[0], dataframe.shape[1]-1, {
+                    'columns': col_names})
+        
+            writer.save()
+            writer.close()     
 
 
 
