@@ -650,7 +650,7 @@ class LandsTracker(QWidget):
         file_path_ats = self.path_label_ats.text()
         
         # Read the Excel file as pandas DataFrame
-        df = pd.read_csv(file_path_ats, delimiter = "\t",encoding='cp1252')
+        df = pd.read_csv(file_path_ats, delimiter = "\t",encoding='cp1252',error_bad_lines=False)
         
         # Display a message box if any of the DataFrames is empty
         if df is not None and df.empty:
@@ -753,12 +753,13 @@ class LandsTracker(QWidget):
         return df_mtr
     
     
-    def create_rpt_01(self,df_tnt,df_ats):
+    def create_rpt_01(self,rpt_date,df_tnt,df_ats):
         """ Creates Report 01- Files with FCBC"""
         ats_a = df_ats.loc[df_ats['Authorization Status'] == 'Active']
         #active = ats_a['File Number'].to_list()
         
         df_01= ats_a.loc[(ats_a['Received Date'].notnull()) &
+                         (ats_a['Received Date'] <= rpt_date) &
                          (ats_a['Submission Review Complete Date'].isnull())]
         
         
@@ -779,11 +780,11 @@ class LandsTracker(QWidget):
         df_01_nw= df_01.loc[df_01['Authorization Type']!='Replacements']
         df_01_rp= df_01.loc[df_01['Authorization Type']=='Replacements']
         
-        today = date.today()
-        
+        #rpt_date = date.rpt_date()
     
         for df in [df_01,df_01_nw,df_01_rp]:
-            df['mtr01']  = (today - df['Received Date']).dt.days
+            
+            df['mtr01']  = (rpt_date - df['Received Date']).dt.days
             
         metrics = ['mtr01']
         df_01_mtr_nw = self.calculate_metrics(df_01_nw , 'DISTRICT OFFICE',metrics)
@@ -793,7 +794,7 @@ class LandsTracker(QWidget):
         return df_01,df_01_nw,df_01_rp,df_01_mtr_nw,df_01_mtr_rp
     
     
-    def create_rpt_02(self, df_tnt,df_ats):
+    def create_rpt_02(self, rpt_date,df_tnt,df_ats):
         """ Creates Report 02- Files in Queue"""
         ats_r = df_ats.loc[df_ats['Authorization Status']=='Active']
         active = ats_r['File Number'].to_list()
@@ -802,7 +803,8 @@ class LandsTracker(QWidget):
                           (df_tnt['FILE NUMBER'].isin(active)) &
                           (df_tnt['OTHER EMPLOYEES ASSIGNED TO'].str.contains('WCR_', na=False) | 
                            df_tnt['OTHER EMPLOYEES ASSIGNED TO'].isnull()) &
-                          (df_tnt['STATUS'] == 'ACCEPTED')]
+                          (df_tnt['STATUS'] == 'ACCEPTED') &
+                          (df_tnt['CREATED DATE'] <= rpt_date)]
     
         df_02.sort_values(by='RECEIVED DATE', ascending=False,inplace=True)
         df_ats.sort_values(by='Received Date', ascending=False,inplace=True)
@@ -830,7 +832,7 @@ class LandsTracker(QWidget):
     
         #Calulcate metrics
         
-        today = pd.to_datetime(date.today())
+        rpt_date = pd.to_datetime(rpt_date)
         
         df_02['Submission Review Complete Date'] = pd.to_datetime(df_02['Submission Review Complete Date']
                                                  .fillna(pd.NaT), errors='coerce')
@@ -843,7 +845,7 @@ class LandsTracker(QWidget):
         
         for df in [df_02,df_02_nw,df_02_rp]:
             df['mtr02'] = (df['Submission Review Complete Date'] - df['Received Date']).dt.days
-            df['mtr03']  = (today - df['Submission Review Complete Date']).dt.days
+            df['mtr03']  = (rpt_date - df['Submission Review Complete Date']).dt.days
     
         metrics= ['mtr02','mtr03']
         df_02_mtr_nw = self.calculate_metrics(df_02_nw , 'DISTRICT OFFICE',metrics) 
