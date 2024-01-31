@@ -163,10 +163,10 @@ def run_analysis ():
     sql = load_queries ()
     
     print ('Running Analysis.')
-    
-    file_nbr= '6403921'
-    disp_id= 936716
-    
+    ##################################### USER INPUTS ######################################
+    file_nbr= '1413529'
+    disp_id= 948696
+    ##################################### USER INPUTS ######################################
     
     df_dict = {} 
     counter = 1
