@@ -1,18 +1,39 @@
+import os
 import json
+import cx_Oracle
 
-def get_db_credentials(dbname='BCGW'):
+def get_db_cnxinfo (dbname='BCGW'):
     """ Retrieves the db username and password from the config file"""
     
-    with open(r'H:\credentials\db_config.json', 'r') as file:
+    with open(r'H:\config\db_config.json', 'r') as file:
         data = json.load(file)
         
     if dbname in data:
-        credentials = data[dbname]
-        username = credentials.get("username")
-        password = credentials.get("password")
-        
-        return username, password
+        cnxinfo = data[dbname]
+
+        return cnxinfo
     
     
     raise KeyError(f"Database '{dbname}' not found.")
 
+
+
+cnxinfo= get_db_cnxinfo(dbname='BCGW')
+
+#test
+
+
+
+def connect_to_DB (username,password,hostname):
+    """ Returns a connection to Oracle database"""
+    try:
+        connection = cx_Oracle.connect(username, password, hostname, encoding="UTF-8")
+        print  ("Successffuly connected to the database")
+    except:
+        raise Exception('Connection failed! Please verifiy your login parameters')
+
+    return connection
+
+
+
+connection= connect_to_DB (cnxinfo['username'],cnxinfo['password'],cnxinfo['hostname'])
