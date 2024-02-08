@@ -2,12 +2,27 @@ import warnings
 warnings.simplefilter(action='ignore')
 
 import os
+import json
 import cx_Oracle
 import pandas as pd
 import geopandas as gpd
 #from shapely import wkb
 
 
+def get_db_cnxinfo (dbname='BCGW'):
+    """ Retrieves db connection params from the config file"""
+    
+    with open(r'H:\config\db_config.json', 'r') as file:
+        data = json.load(file)
+        
+    if dbname in data:
+        cnxinfo = data[dbname]
+
+        return cnxinfo
+    
+    raise KeyError(f"Database '{dbname}' not found.")
+    
+    
 def connect_to_DB (username,password,hostname):
     """ Returns a connection and cursor to Oracle database"""
     try:
@@ -149,10 +164,11 @@ def generate_report (workspace, df_list, sheet_list,filename):
 def run_analysis ():
     """ Runs statusing"""
     print ('Connecting to BCGW.')
-    hostname = 'bcgw.bcgov/idwprod1.bcgov'
-    bcgw_user = os.getenv('bcgw_user')
-    bcgw_pwd = os.getenv('bcgw_pwd')
-    connection, cursor = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
+    cnxinfo= get_db_cnxinfo(dbname='BCGW')
+    hostname = cnxinfo['hostname']
+    username = cnxinfo['username']
+    password = cnxinfo['password']
+    connection, cursor = connect_to_DB (username,password,hostname)
     
     print ('Reading tool inputs.')
     workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKPLACE_2024\20240129_hg_manualStatuses'
