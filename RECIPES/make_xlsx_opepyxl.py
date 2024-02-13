@@ -56,17 +56,3 @@ def make_xlsx(df_dict, xlsx_path):
 
     # Save the workbook to the specified path
     workbook.save(xlsx_path)
-
-
-# Test the function
-wks = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240129_adj_script_wes'
-f = os.path.join(wks, 'Input_Data', 'TEST_20240104_105546.xlsx')
-df = pd.read_excel(f, 'All Data')
-df1 = df.loc[df['ORGANIZATION_NAME'] == 'Selkirk Natural Resource District']
-df2 = df.loc[df['ORGANIZATION_NAME'] == 'Campbell River Natural Resource District']
-df_dict = {}
-df_dict['test 1'] = df1
-df_dict['test 2'] = df2
-outfile = os.path.join(wks, 'Output', 'tests.xlsx')
-
-make_xlsx(df_dict, outfile)
