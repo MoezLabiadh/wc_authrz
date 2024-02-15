@@ -98,11 +98,25 @@ def load_queries ():
                  AND table_name = :tab_name
                         
                     """                   
+
+    sql ['geomType'] = """
+                SELECT CASE 
+                           WHEN SDO_GEOMETRY.GET_GTYPE({geom_col}) IN (3,7) THEN 'Polygon'
+                           ELSE 'Not a Polygon'
+                       END AS GEOM_TYPE
+                FROM {table}
+                WHERE rownum=1
+                        
+                    """ 
                                          
     sql ['proximity'] = """
                 SELECT '{name}' AS FEATURE,
                         {cols} AS UNIQUE_ID, 
-                        ROUND(SDO_GEOM.SDO_DISTANCE(SDO_CS.TRANSFORM(b.{geom_col}, 1000003005, 3005), a.SHAPE, 0.05),2) PROXIMITY_METERS
+                        ROUND(SDO_GEOM.SDO_DISTANCE(
+                            SDO_CS.TRANSFORM(b.{geom_col}, 1000003005, 3005), a.SHAPE, 0.05),2) PROXIMITY_METERS,
+                        SDO_GEOM.SDO_AREA(
+                            SDO_GEOM.SDO_INTERSECTION(
+                                SDO_CS.TRANSFORM(b.{geom_col}, 1000003005, 3005),a.SHAPE, 0.005),0.005, 'unit=HECTARE') OVERLAP_HA
     
                 FROM
                   WHSE_TANTALIS.TA_CROWN_TENURES_SVW a
@@ -117,17 +131,28 @@ def load_queries ():
     return sql
 
 
-def get_geom_colname (connection,cursor,table,geomQuery):
+def get_geom_colname (connection,cursor,table,geomNameQuery):
     """ Returns the geometry column of BCGW table name: can be either SHAPE or GEOMETRY"""
     el_list = table.split('.')
 
     bvars_geom = {'owner':el_list[0].strip(),
                   'tab_name':el_list[1].strip()}
-    df_g = read_query(connection,cursor,geomQuery, bvars_geom)
+    df_g = read_query(connection,cursor,geomNameQuery, bvars_geom)
     
     geom_col = df_g['GEOM_NAME'].iloc[0]
 
     return geom_col
+
+
+def get_geom_coltype(connection,table,geom_col,geomTypeQuery):
+    """ Returns the geometry column of BCGW table name: can be either SHAPE or GEOMETRY"""
+    geomTypeQuery= geomTypeQuery.format(table=table,
+                                        geom_col=geom_col)
+    df_gt= pd.read_sql(geomTypeQuery, connection)
+    
+    geom_type = df_gt['GEOM_TYPE'].iloc[0]
+
+    return geom_type
 
 
 def generate_report (workspace, df_list, sheet_list,filename):
@@ -171,17 +196,18 @@ def run_analysis ():
     connection, cursor = connect_to_DB (username,password,hostname)
     
     print ('Reading tool inputs.')
-    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKPLACE_2024\20240129_hg_manualStatuses'
+    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE_2024\20240129_hg_manualStatuses'
     rule_xls = os.path.join(workspace,'inputs','status_datasets.xlsx')
     df_stat = pd.read_excel(rule_xls, 'rules2')
+    #df_stat = pd.read_excel(rule_xls, 'test')
     df_stat.fillna(value='nan',inplace=True)
     
     sql = load_queries ()
     
     print ('Running Analysis.')
     ##################################### USER INPUTS ######################################
-    file_nbr= '1413529'
-    disp_id= 948696
+    file_nbr= '6403921'
+    disp_id= 936716
     ##################################### USER INPUTS ######################################
     
     df_dict = {} 
@@ -199,19 +225,26 @@ def run_analysis ():
             def_query = ' '
         
         if table.startswith('WHSE'):
-            geomQuery = sql ['geomCol']
-            geom_col= get_geom_colname (connection,cursor,table,geomQuery)
+            geomNameQuery = sql ['geomCol']
+            geom_col= get_geom_colname (connection,cursor,table,geomNameQuery)
             
-            query = sql ['proximity'].format(file_nbr= file_nbr, 
+            geomTypeQuery = sql ['geomType']
+            geom_type= get_geom_coltype(connection,table,geom_col,geomTypeQuery)
+            
+            query_p = sql ['proximity'].format(file_nbr= file_nbr, 
                                              disp_id= disp_id,
                                              name= name,
                                              cols=cols,
                                              table=table,
                                              def_query=def_query, 
-                                             geom_col=geom_col)
+                                             geom_col=geom_col)           
     
-            df = pd.read_sql(query, connection)
-           
+            df = pd.read_sql(query_p, connection)
+            
+            if geom_type == 'Polygon':
+                df = df[(df['PROXIMITY_METERS'] != 0) | (df['OVERLAP_HA']!= 0)]
+            df.drop('OVERLAP_HA', axis=1, inplace=True)
+     
         else:
             gdf_trg = esri_to_gdf (table)
            
