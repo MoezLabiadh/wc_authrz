@@ -1,3 +1,3 @@
-# FCBC_tools
 
-Reporting tools and scripts for West Coast Regional Operations - Ministry of Forests. 
+Tools, scripts and recipes for West Coast Authorizations - 
+Ministry of Water, Land and Resource Stewardship - BCGOV
