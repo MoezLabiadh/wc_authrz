@@ -403,8 +403,8 @@ def make_xlsx(df_dict, xlsx_path):
 
 if __name__ == "__main__":
     print('\nConnect to BCGW')
-    oracle_connector = OracleConnector()
-    oracle_connector.connect_to_db()
+    oracle= OracleConnector()
+    oracle.connect_to_db()
     
     try:
         print('\nRun queries')
@@ -413,7 +413,7 @@ if __name__ == "__main__":
         c= 1
         for k, v in sql.items():
             print (f'..query {c} of {len(sql)}: {k}')
-            df = pd.read_sql(v, oracle_connector.connection)
+            df = pd.read_sql(v, oracle.connection)
             df_dict[k]= df
             
             for col in df.columns:
@@ -427,7 +427,7 @@ if __name__ == "__main__":
         raise Exception(f"Error occurred: {e}")
     
     finally:
-        oracle_connector.disconnect_db()
+        oracle.disconnect_db()
     
     print ('\nExport the report')
     today= datetime.today().strftime('%Y%m%d')
