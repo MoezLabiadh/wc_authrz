@@ -1,14 +1,17 @@
 #-------------------------------------------------------------------------------
 # Name:        Komoks Water Applications
 #
-# Purpose:     This script generates reporting materials 
+# Purpose:     This script generates a reporting package 
 #              (spreadsheet + html map) for Komoks Water Pilot Project
 #
-# Input(s):    (1) Workspace (folder) where outputs will be generated.
+# Input(s):    (1) Folder location where outputs will be generated.
 #              (2) New Water Applications ledger(xlsx)
-#              (3) Existing Use Applications ledger(xlsx)
-#              (4) BCGW connection parameters
+#              (3) Existing Use Groudwater Applications ledger(xlsx)
+#              (4) BCGW connection parameters (json)
 #              (5) GDB containing input datasets
+#
+#             Note: Maintain inputs 2 and 3 unchanged, unless the water team 
+#                   relocates the application ledgers to another location
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
@@ -21,6 +24,7 @@ import warnings
 warnings.simplefilter(action='ignore')
 
 import os
+import json
 import cx_Oracle
 import pandas as pd
 import geopandas as gpd
@@ -37,15 +41,40 @@ import timeit
 import mapstyle
 
 
-def connect_to_DB (username,password,hostname):
-    """ Returns a connection and cursor to Oracle database"""
-    try:
-        connection = cx_Oracle.connect(username, password, hostname, encoding="UTF-8")
-        print  ("....Successffuly connected to the database")
-    except:
-        raise Exception('....Connection failed! Please check your login parameters')
+class OracleConnector:
+    def __init__(self, dbname='BCGW'):
+        self.dbname = dbname
+        self.cnxinfo = self.get_db_cnxinfo()
 
-    return connection
+    def get_db_cnxinfo(self):
+        """ Retrieves db connection params from the config file"""
+        with open(r'H:\config\db_config.json', 'r') as file:
+            data = json.load(file)
+        
+        if self.dbname in data:
+            return data[self.dbname]
+        
+        raise KeyError(f"Database '{self.dbname}' not found.")
+    
+    def connect_to_db(self):
+        """ Connects to Oracle DB and create a cursor"""
+        try:
+            self.connection = cx_Oracle.connect(self.cnxinfo['username'], 
+                                                self.cnxinfo['password'], 
+                                                self.cnxinfo['hostname'], 
+                                                encoding="UTF-8")
+            self.cursor = self.connection.cursor()
+            print  ("..Successffuly connected to the database")
+        except Exception as e:
+            raise Exception(f'..Connection failed: {e}')
+
+    def disconnect_db(self):
+        """Close the Oracle connection and cursor"""
+        if hasattr(self, 'cursor') and self.cursor:
+            self.cursor.close()
+        if hasattr(self, 'connection') and self.connection:
+            self.connection.close()
+            print("....Disconnected from the database")
 
 
 def create_dir (path, dir):
@@ -616,11 +645,9 @@ if __name__ == '__main__':
     df = process_ledgers(f_eug,f_new)
     
     print ('\nConnecting to BCGW.')
-    hostname = 'bcgw.bcgov/idwprod1.bcgov'
-    bcgw_user = os.getenv('bcgw_user')
-    bcgw_pwd = os.getenv('bcgw_pwd')
-    connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-    
+    Oracle = OracleConnector()
+    Oracle.connect_to_db()
+    connection= Oracle.connection
     
     print ('\nFiltering applications within KFN territory')
     gdf_wapp= wapp_to_gdf(df)
@@ -630,8 +657,14 @@ if __name__ == '__main__':
     df= filter_kfn(df, gdf_wapp, gdf_kfn_pip)
 
     print ('\nAdding Aquifer info')
-    df = add_aquifer_info(df,connection)
-    
+    try:
+        df = add_aquifer_info(df,connection)
+    except Exception as e:
+        raise Exception(f"Error occurred: {e}")  
+
+    finally: 
+        Oracle.disconnect_db()
+
     print ("\nOverlaying with South KFN boundary")
     gdf_skfn= prepare_geo_data(os.path.join(in_gdb, 'kfn_southern_core'))
     df= add_southKFN_info (df, gdf_wapp, gdf_skfn)
