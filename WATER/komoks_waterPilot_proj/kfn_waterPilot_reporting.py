@@ -234,7 +234,7 @@ def filter_kfn(df, gdf_wapp, gdf_kfn_pip):
     
     df['WITHIN_KFN']= 'YES'
     
-    df= df.drop('geometry', axis=1)
+    #df= df.drop('geometry', axis=1)
     
     df.reset_index(drop=True, inplace= True)
         
