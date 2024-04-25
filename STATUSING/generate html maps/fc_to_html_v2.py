@@ -24,8 +24,9 @@ from folium.plugins import MeasureControl, MousePosition,FloatImage, MiniMap
 
 
 class HTMLGenerator:
-    def __init__(self, status_gdb, out_location):
+    def __init__(self, status_gdb, label_col, out_location):
         self.status_gdb = status_gdb
+        self.label_col = label_col
         self.out_loc = out_location
         self.add_proj_lib()
 
@@ -129,12 +130,13 @@ class HTMLGenerator:
         # Make a list of layers except aoi and aoi buffers
         ly_list = [x for x in fc_list if 'aoi' not in x]
 
-        # Make a list of buffered areas
-        #bf_list = [x for x in fc_list if 'aoi_' in x]
-        bf_list = ['aoi_500','aoi_1000','aoi_5000']
-        
         # Create a dict of buffered gdfs
-        bf_gdfs = {bf: gpd.read_file(filename=self.status_gdb, layer=bf) for bf in bf_list}
+        bf_gdfs= {'aoi_500': gpd.GeoDataFrame(geometry= gdf_aoi.buffer(500), crs= gdf_aoi.crs), 
+                  'aoi_1000': gpd.GeoDataFrame(geometry= gdf_aoi.buffer(1000), crs= gdf_aoi.crs), 
+                  'aoi_5000': gpd.GeoDataFrame(geometry= gdf_aoi.buffer(5000), crs= gdf_aoi.crs) 
+                  }
+        
+        #bf_gdfs = {bf: gpd.read_file(filename=self.status_gdb, layer=bf) for bf in bf_list}
 
         print ('Creating a map template')
         # Create an all-layers map
@@ -142,11 +144,9 @@ class HTMLGenerator:
         Xcenter = centroids.x[0]
         Ycenter = centroids.y[0]
 
-            
         map_all = self.create_map_template(map_title='Overview Map - All Overlaps',
                                     Xcenter=Xcenter,Ycenter=Ycenter)
-        
-        
+             
         # Add the AOI layer to the all-layers map
         folium.GeoJson(data=gdf_aoi, name='AOI',
                     style_function=lambda x:{'color': 'red', 
@@ -154,7 +154,6 @@ class HTMLGenerator:
                                                 'weight': 3}).add_to(map_all)
         
         # Zoom the all-layers map to the AOI extent
-
         xmin,ymin,xmax,ymax = bf_gdfs.get('aoi_1000').to_crs(4326)['geometry'].total_bounds
         map_all.fit_bounds([[ymin, xmin], [ymax, xmax]])
         
@@ -162,10 +161,7 @@ class HTMLGenerator:
         # Add buffered areas to the all-layers maps
         for k,v in bf_gdfs.items():
                 folium.GeoJson(data=v, name=k, show=True,
-                            tooltip=folium.features.GeoJsonTooltip(fields=['BUFF_DIST'],
-                                                                    aliases=['BUFFER (m)'],
-                                                                    labels=True),
-                            style_function=lambda x:{'color': 'orange',
+                               style_function=lambda x:{'color': 'orange',
                                                         'fillColor': 'none',
                                                         'weight': 3}).add_to(map_all)
         # Loop through the rest of layers and make maps
@@ -198,7 +194,11 @@ class HTMLGenerator:
                      
                 # Set label column. Will be used for tooltip and legend.
                 # Replace this with the label column from the tool inputs
-                label_col = gdf_fc.columns[0] 
+                if (self.label_col== None) or (self.label_col== ''):
+                    label_col = gdf_fc.columns[0] 
+                else:
+                    label_col= self.label_col
+                    
             
                 # Remove the Geometry column from the popup window. 
                 # Popup columns can be set to the list of columns from the tool inputs (summarize columns)
@@ -379,7 +379,9 @@ start_t = timeit.default_timer() #start time
 #file_nbr='1414630'
 work_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414375\2024\one_status_common_datasets_aoi.gdb'
 map_directory= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\fc_to_html\maps_AST_test\maps'
-html = HTMLGenerator(work_gdb, map_directory)
+
+label_col=None
+html = HTMLGenerator(work_gdb, label_col, map_directory)
 html.generate_html_maps()
 
 finish_t = timeit.default_timer() #finish time
