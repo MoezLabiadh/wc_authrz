@@ -3,7 +3,7 @@
 This script generates interavtive HTML maps 
 for the AST/UOT.
 
-Update: April 24, 2024.
+Update: April 26, 2024.
 
 '''
 import warnings
@@ -16,6 +16,7 @@ import sys
 import fiona
 import base64
 import numpy as np
+import pandas as pd
 import geopandas as gpd
 import shapely.wkt as wkt
 import folium
@@ -24,23 +25,24 @@ from folium.plugins import MeasureControl, MousePosition,FloatImage, MiniMap
 
 
 class HTMLGenerator:
-    def __init__(self, status_gdb, label_col, out_location):
+    def __init__(self, common_xls, region_xls, status_gdb, out_location):
         self.status_gdb = status_gdb
-        self.label_col = label_col
         self.out_loc = out_location
-        self.add_proj_lib()
+        self.common_xls = common_xls
+        self.region_xls = region_xls
 
 
-    def add_proj_lib (self):
-        """
-        FIX: pyproj not pointing to proj.db database.
-        Checks if proj repo is in env path. if not, add it.
-        """
-        proj_lib = os.path.join(sys.executable[:-10], r'Library\share\proj')
-        if proj_lib not in os.environ['path']:
-            os.environ["PROJ_LIB"] = proj_lib
-        else:
-            pass
+    def get_input_xlsx(self):
+        """returns a dataframe of status input xlsxs """
+        df_stat_c = pd.read_excel(common_xls)
+        df_stat_r = pd.read_excel(region_xls)
+        
+        df_stat = pd.concat([df_stat_c, df_stat_r])
+        df_stat.dropna(how='all', inplace=True)
+        
+        df_stat = df_stat.reset_index(drop=True)
+        
+        return df_stat
 
 
 
@@ -117,8 +119,11 @@ class HTMLGenerator:
 
     def generate_html_maps(self):
         """Creates a HTML map for each feature class in gdb"""
-        
-        print ('Preparing Layers for mapping')
+
+        print('\nUploading input xlsxs')
+        df_st= html.get_input_xlsx()
+
+        print ('\nPreparing Layers for mapping')
         # List all feature classes
         # Can replace with arcpy.ListFeatureClasses(). Fiona is faster!
         fc_list = fiona.listlayers(self.status_gdb)
@@ -127,9 +132,11 @@ class HTMLGenerator:
         
         # Read the AOI feature class into a gdf 
         gdf_aoi = gpd.read_file(filename=self.status_gdb, layer= 'aoi')
+        
         # Make a list of layers except aoi and aoi buffers
         ly_list = [x for x in fc_list if 'aoi' not in x]
-
+        #ly_list = ['IR_within_2_km', 'Water_Rights_Licences', 'Crossed_by_River_or_Creek_TRIM']
+        
         # Create a dict of buffered gdfs
         bf_gdfs= {'aoi_500': gpd.GeoDataFrame(geometry= gdf_aoi.buffer(500), crs= gdf_aoi.crs), 
                   'aoi_1000': gpd.GeoDataFrame(geometry= gdf_aoi.buffer(1000), crs= gdf_aoi.crs), 
@@ -138,7 +145,7 @@ class HTMLGenerator:
         
         #bf_gdfs = {bf: gpd.read_file(filename=self.status_gdb, layer=bf) for bf in bf_list}
 
-        print ('Creating a map template')
+        print ('\nCreating a map template')
         # Create an all-layers map
         centroids = gdf_aoi.to_crs(4326).centroid
         Xcenter = centroids.x[0]
@@ -164,24 +171,20 @@ class HTMLGenerator:
                                style_function=lambda x:{'color': 'orange',
                                                         'fillColor': 'none',
                                                         'weight': 3}).add_to(map_all)
+        
+        print ('\nGenerating Individual Maps')
         # Loop through the rest of layers and make maps
         counter = 1
         for fc in ly_list:
-        
             # Read the feature class into a gdf 
             gdf_fc = gpd.read_file(filename= self.status_gdb, layer= fc)
             
             print ("Creating Map {0} of {1}: {2}".format(counter,len(ly_list),fc))
             
-            # Make sure the layer is not empty
+            # Loop through non-empty feature classes
             if gdf_fc.shape[0] > 0:
                 
-                #Convert Point geometries to Polys.
-                # workaround issue with Folium/Geojon tooltips on Points only.
-                #if gdf_fc.geometry.geom_type.iloc[0] == 'Point':
-                 #   gdf_fc['geometry'] = gdf_fc.geometry.buffer(20)
-                   
-                #Flatten 3D geometries to 2D (Folium has issues with 3D)    
+                #Flatten 3D geometries to 2D (Folium doesn't like 3D)    
                 if gdf_fc['geometry'].has_z.any():
                     gdf_fc['geometry'] = gdf_fc['geometry'].apply(
                                 lambda geom: wkt.loads(
@@ -193,22 +196,34 @@ class HTMLGenerator:
                         gdf_fc[col] = gdf_fc[col].astype(str)
                      
                 # Set label column. Will be used for tooltip and legend.
-                # Replace this with the label column from the tool inputs
-                if (self.label_col== None) or (self.label_col== ''):
-                    label_col = gdf_fc.columns[0] 
-                else:
-                    label_col= self.label_col
-                    
-            
-                # Remove the Geometry column from the popup window. 
-                # Popup columns can be set to the list of columns from the tool inputs (summarize columns)
-                popup_cols = list(gdf_fc.columns)                     
-                popup_cols.remove('geometry') 
+                map_title = fc.replace('_', ' ')
+
+                df_item= df_st.loc[df_st['Featureclass_Name(valid characters only)'] == map_title]
+                label_col= df_item['Fields_to_Summarize'].iloc[0]
                 
+                if pd.isnull(label_col):
+                    label_col = gdf_fc.columns[0]
+                    
+                # Set pop up columns
+                popup_cols = []
+                
+                first_field = df_item['Fields_to_Summarize'].iloc[0]
+                if pd.notnull(first_field):
+                    popup_cols.append(str(first_field.strip()))
+                    
+                for f in range (2,7):
+                    for i in df_item['Fields_to_Summarize' + str(f)].tolist():
+                        if pd.notnull(i):
+                            popup_cols.append(str(i.strip()))
+
+                if len(popup_cols) == 0:
+                    popup_cols = [col for col in gdf_fc.columns if col != 'geometry'] 
+                    
+  
                 # Format the popup columns for better visulization
                 for col in popup_cols:
-                        gdf_fc[col] = gdf_fc[col].astype(str)
-                        gdf_fc[col] = gdf_fc[col].str.wrap(width=20).str.replace('\n','<br>')
+                    gdf_fc[col] = gdf_fc[col].astype(str)
+                    gdf_fc[col] = gdf_fc[col].str.wrap(width=20).str.replace('\n','<br>')
                 
                 
                 # Assign random colors to the features (for legend)
@@ -221,7 +236,6 @@ class HTMLGenerator:
                 gdf_fc['color2']=color
                     
                 # Create an individual map
-                map_title = fc.replace('_', ' ')
                 map_one = self.create_map_template(map_title=map_title,
                                             Xcenter=Xcenter,Ycenter=Ycenter)
                 
@@ -364,28 +378,25 @@ class HTMLGenerator:
         lyr_cont_all.add_to(map_all)
         
         # Save the all-layers map to html file
-        print('Creating the all-layers map')
+        print('\Generating the all-layers map')
         map_all.save(os.path.join(self.out_loc, '00_all_layers.html'))
         
 
 
+if __name__ == "__main__":
+    start_t = timeit.default_timer() #start time
 
-# Execute the function and track processing time
-start_t = timeit.default_timer() #start time
+    work_gdb = r'W:\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414375\2024\one_status_common_datasets_aoi.gdb'
+    map_directory= r'W:\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\fc_to_html\maps_AST_test\maps'
 
-#add_proj_lib ()
+    common_xls= r'P:\corp\script_whse\python\Utility_Misc\Ready\statusing_tools_arcpro\statusing_input_spreadsheets\one_status_common_datasets.xlsx'
+    region_xls= r'P:\corp\script_whse\python\Utility_Misc\Ready\statusing_tools_arcpro\statusing_input_spreadsheets\one_status_west_coast_specific.xlsx'
 
-# This is an example of a one_status_common_datasets geodatabase
-#file_nbr='1414630'
-work_gdb = r'\\spatialfiles.bcgov\work\lwbc\visr\Workarea\FCBC_VISR\Lands_Statusing\1414375\2024\one_status_common_datasets_aoi.gdb'
-map_directory= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\TOOLS\SCRIPTS\STATUSING\fc_to_html\maps_AST_test\maps'
+    html = HTMLGenerator(common_xls, region_xls, work_gdb, map_directory)
+    html.generate_html_maps()
 
-label_col=None
-html = HTMLGenerator(work_gdb, label_col, map_directory)
-html.generate_html_maps()
-
-finish_t = timeit.default_timer() #finish time
-t_sec = round(finish_t-start_t)
-mins = int (t_sec/60)
-secs = int (t_sec%60)
-print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
+    finish_t = timeit.default_timer() #finish time
+    t_sec = round(finish_t-start_t)
+    mins = int (t_sec/60)
+    secs = int (t_sec%60)
+    print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs))
