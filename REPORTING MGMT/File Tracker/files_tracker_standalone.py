@@ -14,7 +14,7 @@
 #   
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     2023-12-01
+# Created:     2024-05-01
 # Updated:
 #-------------------------------------------------------------------------------
 
@@ -99,6 +99,14 @@ def import_ats_pt (ats_pt_f, df_onh,df_bfw):
            'Decision-making Office Name'] = 'Aquaculture'
     
     df['Decision-making Office Name'] = df['Decision-making Office Name'].str.upper()
+    
+    
+    
+    ######## TEMPORARY: until using NANAIMO (DISTRICT) is confirmed by Auth team ###########
+    df.loc[df['Decision-making Office Name'] == 'NANAIMO (DISTRICT)', 'Decision-making Office Name'] = 'NANAIMO'
+    ######## TEMPORARY: until using NANAIMO (DISTRICT) is confirmed by Auth team ###########
+    
+    
     
     for index,row in df.iterrows():
         z_nbr = 7 - len(str(row['File Number']))
@@ -1126,14 +1134,15 @@ def add_readme_page(readme_xlsx, out_folder, filename):
 
 
 
-def main():
-
+if __name__ == "__main__":
+    
     print ('\nConnecting to BCGW.')
+    '''
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
     bcgw_user = os.getenv('bcgw_user')
     bcgw_pwd = os.getenv('bcgw_pwd')
-    #connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
-    
+    connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
+    '''
     wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\FILE_TRACKING'
     
     # The first day of previous month. Will be used to calculate Metrics
@@ -1144,8 +1153,6 @@ def main():
     rpt_month_str = rpt_date.strftime("%b%Y").lower()
     
     
-        
-        
     print ('\nImporting Input files')
     
     ats_date_tag= first_day_month.strftime("%Y%m%d")
@@ -1327,4 +1334,3 @@ def main():
     readme_xlsx= os.path.join(wks,'00_TEMPLATE/readme_template.xlsx')
     add_readme_page(readme_xlsx, out_folder, outfile_main_rpt)
     
-main()
