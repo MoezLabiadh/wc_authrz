@@ -1,7 +1,7 @@
 '''
 This script generates interavtive HTML maps.
 
-Update: April 30, 2024.
+Update: May 14, 2024.
 '''
 import warnings
 warnings.simplefilter(action='ignore')
@@ -12,6 +12,7 @@ import base64
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+import fiona
 import shapely.wkt as wkt
 import folium
 from folium.plugins import MeasureControl, MousePosition,FloatImage, MiniMap, Search, GroupedLayerControl
@@ -98,7 +99,7 @@ class HTMLGenerator:
     
         
         # Add logo to the map
-        logo_path = (r"W:\lwbc\visr\Workarea\moez_labiadh\MAPS\Logos\BCID_V_key_pms_pos_small_150px.JPG")
+        logo_path = (r"\\spatialfiles.bcgov\work\lwbc\visr\Workarea\moez_labiadh\MAPS\Logos\BCID_V_key_pms_pos_small_150px.JPG")
         #logo_path = (r"W:\lwbc\visr\Workarea\moez_labiadh\MAPS\Logos\BCID_V_key_pms_pos_small_150px.JPG")
         b64_content = base64.b64encode(open(logo_path, 'rb').read()).decode('utf-8')
         float_image = FloatImage('data:image/png;base64,{}'.format(b64_content), bottom=3, left=2)
@@ -177,6 +178,8 @@ class HTMLGenerator:
         ctg_list.insert(0, 'Area of Interest')
         
         ctg_grps=[aoi_grps]
+
+        fc_list= fiona.listlayers(self.status_gdb)
         
         for ctg in ctg_list:
             print (f'\nGenerating Maps for {ctg}')
@@ -189,197 +192,197 @@ class HTMLGenerator:
                 fc= fc.replace(" ", "_")
         
                 print (f"..creating Map {counter} of {len(df)}: {fc}")
-                gdf_fc = gpd.read_file(filename= self.status_gdb, layer= fc)
-                
-                # Loop through non-empty feature classes
-                if gdf_fc.shape[0] > 0:
-                    #Flatten 3D geometries to 2D (Folium doesn't like 3D)    
-                    if gdf_fc['geometry'].has_z.any():
-                        gdf_fc['geometry'] = gdf_fc['geometry'].apply(
-                                    lambda geom: wkt.loads(
-                                        wkt.dumps(geom, output_dimension=2)))
+                if fc in fc_list:
+                    gdf_fc = gpd.read_file(filename= self.status_gdb, layer= fc)
+            
+                    if gdf_fc.shape[0] > 0:
+                        #Flatten 3D geometries to 2D (Folium doesn't like 3D)    
+                        if gdf_fc['geometry'].has_z.any():
+                            gdf_fc['geometry'] = gdf_fc['geometry'].apply(
+                                        lambda geom: wkt.loads(
+                                            wkt.dumps(geom, output_dimension=2)))
+                            
+                        #convert all cols to str except geometry
+                        for col in gdf_fc.columns:
+                            if col != 'geometry':
+                                gdf_fc[col] = gdf_fc[col].astype(str)
+                            
+                        # Set label column. Will be used for tooltip and legend.
+                        map_title = fc.replace('_', ' ')
+            
+                        df_item= df_st.loc[df_st['Featureclass_Name(valid characters only)'] == map_title]
+                        label_col= df_item['map_label_field'].iloc[0]
+            
+                        if pd.isnull(label_col):
+                            label_col= df_item['Fields_to_Summarize'].iloc[0]
                         
-                    #convert all cols to str except geometry
-                    for col in gdf_fc.columns:
-                        if col != 'geometry':
+                        if pd.isnull(label_col):
+                            label_col = gdf_fc.columns[0]
+                            
+                        # Set pop up columns
+                        popup_cols = []
+                        
+                        first_field = df_item['Fields_to_Summarize'].iloc[0]
+                        if pd.notnull(first_field):
+                            popup_cols.append(str(first_field.strip()))
+                            
+                        for f in range (2,7):
+                            for i in df_item['Fields_to_Summarize' + str(f)].tolist():
+                                if pd.notnull(i):
+                                    popup_cols.append(str(i.strip()))
+            
+                        if len(popup_cols) == 0:
+                            popup_cols = [col for col in gdf_fc.columns if col != 'geometry'] 
+                        
+                        # Format the popup columns for better visulization
+                        for col in popup_cols:
                             gdf_fc[col] = gdf_fc[col].astype(str)
+                            gdf_fc[col] = gdf_fc[col].str.wrap(width=20).str.replace('\n','<br>')
                         
-                    # Set label column. Will be used for tooltip and legend.
-                    map_title = fc.replace('_', ' ')
-        
-                    df_item= df_st.loc[df_st['Featureclass_Name(valid characters only)'] == map_title]
-                    label_col= df_item['map_label_field'].iloc[0]
-        
-                    if pd.isnull(label_col):
-                        label_col= df_item['Fields_to_Summarize'].iloc[0]
-                    
-                    if pd.isnull(label_col):
-                        label_col = gdf_fc.columns[0]
                         
-                    # Set pop up columns
-                    popup_cols = []
-                    
-                    first_field = df_item['Fields_to_Summarize'].iloc[0]
-                    if pd.notnull(first_field):
-                        popup_cols.append(str(first_field.strip()))
+                        # Assign random colors to the features (for legend)
+                        for x in gdf_fc.index:
+                            color = np.random.randint(16, 256, size=3)
+                            color = [str(hex(i))[2:] for i in color]
+                            color = '#'+''.join(color).upper()
+                            gdf_fc.at[x, 'color'] = color
                         
-                    for f in range (2,7):
-                        for i in df_item['Fields_to_Summarize' + str(f)].tolist():
-                            if pd.notnull(i):
-                                popup_cols.append(str(i.strip()))
-        
-                    if len(popup_cols) == 0:
-                        popup_cols = [col for col in gdf_fc.columns if col != 'geometry'] 
-                    
-                    # Format the popup columns for better visulization
-                    for col in popup_cols:
-                        gdf_fc[col] = gdf_fc[col].astype(str)
-                        gdf_fc[col] = gdf_fc[col].str.wrap(width=20).str.replace('\n','<br>')
-                    
-                    
-                    # Assign random colors to the features (for legend)
-                    for x in gdf_fc.index:
-                        color = np.random.randint(16, 256, size=3)
-                        color = [str(hex(i))[2:] for i in color]
-                        color = '#'+''.join(color).upper()
-                        gdf_fc.at[x, 'color'] = color
-                    
-                    gdf_fc['color2']=color
+                        gdf_fc['color2']=color
+                            
+                        # Create an individual map
+                        map_one = self.create_map_template(title=map_title,
+                                                    Xcenter=Xcenter,Ycenter=Ycenter)
                         
-                    # Create an individual map
-                    map_one = self.create_map_template(title=map_title,
-                                                Xcenter=Xcenter,Ycenter=Ycenter)
-                    
-                    # Add the AOI layer to individual maps
-                    grp_aoi_o= folium.FeatureGroup(name= 'AOI')  
-                    lyr_aoi_o= folium.GeoJson(data=gdf_aoi, name='AOI',
-                                style_function=lambda x:{'color': 'red', 
-                                                            'fillColor': 'none',
-                                                            'weight': 3})
-                    lyr_aoi_o.add_to(grp_aoi_o)
-                    grp_aoi_o.add_to(map_one)
-        
-                    aoi_grps_o= [grp_aoi_o]
-        
-                    # Add buffered areas to ndividual maps
-                    for k,v in bf_gdfs.items():
-                        grp_aoi_b_o= folium.FeatureGroup(name= k.upper()+' m')  
-                        lyr_aoi_b_o= folium.GeoJson(data=v, name=k, show=True,
-                                        style_function=lambda x:{'color': 'orange',
+                        # Add the AOI layer to individual maps
+                        grp_aoi_o= folium.FeatureGroup(name= 'AOI')  
+                        lyr_aoi_o= folium.GeoJson(data=gdf_aoi, name='AOI',
+                                    style_function=lambda x:{'color': 'red', 
                                                                 'fillColor': 'none',
                                                                 'weight': 3})
-                        lyr_aoi_b_o.add_to(grp_aoi_b_o)
-                        grp_aoi_b_o.add_to(map_one)
-        
-                        aoi_grps_o.append(grp_aoi_b_o)
-        
-                    # Zoom the map to the layer extent
-                    gdf_fc = gdf_fc.to_crs(4326)
-                    xmin, ymin, xmax, ymax = gdf_fc['geometry'].total_bounds
-                    map_one.fit_bounds([[ymin, xmin], [ymax, xmax]])
-                    
-                    # Create a list of columns for the tooltip
-                    gdf_fc['map_title'] = map_title
-                    tooltip_cols = ['map_title',label_col]
-        
-                    # Add the layer to the individual map
-                    grp_fc_o= folium.FeatureGroup(name= map_title, show= True)  
-                    lyr_fc_o= folium.GeoJson(data=gdf_fc, name=map_title,
-                                marker=folium.Circle(radius=5),
-                                style_function= lambda x: {'fillColor': x['properties']['color'],
-                                                            'color': x['properties']['color'],
-                                                            'weight': 2},
-                                tooltip=folium.features.GeoJsonTooltip(fields=tooltip_cols,
-                                                                        aliases=['LAYER', label_col],
-                                                                        labels=True),
-                                popup=folium.features.GeoJsonPopup(fields=popup_cols, 
-                                                                    sticky=False,
-                                                                    max_width=380))
-                    lyr_fc_o.add_to(grp_fc_o)
-                    grp_fc_o.add_to(map_one)
-        
-                    # Add the layer to the all-Layers map
-                    grp_fc_a= folium.FeatureGroup(name= map_title, show= False)  
-                    lyr_fc_a= folium.GeoJson(data=gdf_fc, name=map_title,
-                                marker=folium.Circle(radius=5),
-                                style_function= lambda x: {'fillColor': x['properties']['color2'],
-                                                            'color': x['properties']['color2'],
-                                                            'weight': 2},
-                                tooltip=folium.features.GeoJsonTooltip(fields=tooltip_cols,
-                                                                        aliases=['LAYER', label_col],
-                                                                        labels=True),
-                                popup=folium.features.GeoJsonPopup(fields=popup_cols, 
-                                                                    sticky=False,
-                                                                    max_width=380))
-                    lyr_fc_a.add_to(grp_fc_a)
-                    grp_fc_a.add_to(map_all)
-                    
-                    fc_grps.append(grp_fc_a)
-        
-                    # Create a Legend for individual maps
-                    #legend colors and names
-                    legend_labels = zip(gdf_fc['color'], gdf_fc[label_col])
-                    
-                    #start the div tag and set the legend size and position
-                    legend_html = '''
-                                <div id="legend" style="position: fixed; 
-                                bottom: 200px; right: 30px; z-index: 1000; 
-                                background-color: #fff; padding: 10px; 
-                                border-radius: 5px; border: 1px solid grey;">
-                                '''
-                                
-                    #add the AOI item to the legend
-                    legend_html += '''
-                                <div style="display: inline-block; 
-                                margin-right: 10px;
-                                background-color: transparent;
-                                border: 2px solid red;
-                                width: 15px; height: 15px;"></div>AOI<br>
-                                '''
-                                
-                    #add the AOI buffer item to the legend
-                    legend_html += '''
-                                <div style="display: inline-block; 
-                                margin-right: 10px;background-color: transparent; 
-                                border: 2px solid orange;
-                                width: 15px; height: 15px;"></div>AOI buffers<br>
-                                '''            
-                    
-                    #add a header to the legend            
-                    legend_html += '''
-                                <div style="font-weight: bold; 
-                                margin-bottom: 5px;">{}</div>
-                                '''.format(label_col)
-                
-                    #add items to the legend
-                    for color, name in legend_labels:
+                        lyr_aoi_o.add_to(grp_aoi_o)
+                        grp_aoi_o.add_to(map_one)
+            
+                        aoi_grps_o= [grp_aoi_o]
+            
+                        # Add buffered areas to ndividual maps
+                        for k,v in bf_gdfs.items():
+                            grp_aoi_b_o= folium.FeatureGroup(name= k.upper()+' m')  
+                            lyr_aoi_b_o= folium.GeoJson(data=v, name=k, show=True,
+                                            style_function=lambda x:{'color': 'orange',
+                                                                    'fillColor': 'none',
+                                                                    'weight': 3})
+                            lyr_aoi_b_o.add_to(grp_aoi_b_o)
+                            grp_aoi_b_o.add_to(map_one)
+            
+                            aoi_grps_o.append(grp_aoi_b_o)
+            
+                        # Zoom the map to the layer extent
+                        gdf_fc = gdf_fc.to_crs(4326)
+                        xmin, ymin, xmax, ymax = gdf_fc['geometry'].total_bounds
+                        map_one.fit_bounds([[ymin, xmin], [ymax, xmax]])
+                        
+                        # Create a list of columns for the tooltip
+                        gdf_fc['map_title'] = map_title
+                        tooltip_cols = ['map_title',label_col]
+            
+                        # Add the layer to the individual map
+                        grp_fc_o= folium.FeatureGroup(name= map_title, show= True)  
+                        lyr_fc_o= folium.GeoJson(data=gdf_fc, name=map_title,
+                                    marker=folium.Circle(radius=5),
+                                    style_function= lambda x: {'fillColor': x['properties']['color'],
+                                                                'color': x['properties']['color'],
+                                                                'weight': 2},
+                                    tooltip=folium.features.GeoJsonTooltip(fields=tooltip_cols,
+                                                                            aliases=['LAYER', label_col],
+                                                                            labels=True),
+                                    popup=folium.features.GeoJsonPopup(fields=popup_cols, 
+                                                                        sticky=False,
+                                                                        max_width=380))
+                        lyr_fc_o.add_to(grp_fc_o)
+                        grp_fc_o.add_to(map_one)
+            
+                        # Add the layer to the all-Layers map
+                        grp_fc_a= folium.FeatureGroup(name= map_title, show= False)  
+                        lyr_fc_a= folium.GeoJson(data=gdf_fc, name=map_title,
+                                    marker=folium.Circle(radius=5),
+                                    style_function= lambda x: {'fillColor': x['properties']['color2'],
+                                                                'color': x['properties']['color2'],
+                                                                'weight': 2},
+                                    tooltip=folium.features.GeoJsonTooltip(fields=tooltip_cols,
+                                                                            aliases=['LAYER', label_col],
+                                                                            labels=True),
+                                    popup=folium.features.GeoJsonPopup(fields=popup_cols, 
+                                                                        sticky=False,
+                                                                        max_width=380))
+                        lyr_fc_a.add_to(grp_fc_a)
+                        grp_fc_a.add_to(map_all)
+                        
+                        fc_grps.append(grp_fc_a)
+            
+                        # Create a Legend for individual maps
+                        #legend colors and names
+                        legend_labels = zip(gdf_fc['color'], gdf_fc[label_col])
+                        
+                        #start the div tag and set the legend size and position
+                        legend_html = '''
+                                    <div id="legend" style="position: fixed; 
+                                    bottom: 200px; right: 30px; z-index: 1000; 
+                                    background-color: #fff; padding: 10px; 
+                                    border-radius: 5px; border: 1px solid grey;">
+                                    '''
+                                    
+                        #add the AOI item to the legend
                         legend_html += '''
-                                        <div style="display: inline-block; 
-                                        margin-right: 10px;background-color: {0}; 
-                                        width: 15px; height: 15px;"></div>{1}<br>
-                                        '''.format(color, name)
-                    #close the div tag
-                    legend_html += '</div>'
-        
-                    #add the legend to the individual maps
-                    map_one.get_root().html.add_child(folium.Element(legend_html))
-        
-                    # Add layer controls to the individual map
-                    lyr_cont_one = folium.LayerControl()
-                    lyr_cont_one.add_to(map_one)
-        
-                    #Add goups to the layer controls of the individual maps
-                    GroupedLayerControl(
-                    groups={
-                    "AREA OF INTEREST": aoi_grps_o,
-                    "LAYER": [grp_fc_o]
-                        },
-                    exclusive_groups=False,
-                    collapsed=True
-                        ).add_to(map_one)
-                
-                    # Save the indivdiual map to html file
-                    map_one.save(os.path.join(self.out_loc, fc+'.html'))
+                                    <div style="display: inline-block; 
+                                    margin-right: 10px;
+                                    background-color: transparent;
+                                    border: 2px solid red;
+                                    width: 15px; height: 15px;"></div>AOI<br>
+                                    '''
+                                    
+                        #add the AOI buffer item to the legend
+                        legend_html += '''
+                                    <div style="display: inline-block; 
+                                    margin-right: 10px;background-color: transparent; 
+                                    border: 2px solid orange;
+                                    width: 15px; height: 15px;"></div>AOI buffers<br>
+                                    '''            
+                        
+                        #add a header to the legend            
+                        legend_html += '''
+                                    <div style="font-weight: bold; 
+                                    margin-bottom: 5px;">{}</div>
+                                    '''.format(label_col)
+                    
+                        #add items to the legend
+                        for color, name in legend_labels:
+                            legend_html += '''
+                                            <div style="display: inline-block; 
+                                            margin-right: 10px;background-color: {0}; 
+                                            width: 15px; height: 15px;"></div>{1}<br>
+                                            '''.format(color, name)
+                        #close the div tag
+                        legend_html += '</div>'
+            
+                        #add the legend to the individual maps
+                        map_one.get_root().html.add_child(folium.Element(legend_html))
+            
+                        # Add layer controls to the individual map
+                        lyr_cont_one = folium.LayerControl()
+                        lyr_cont_one.add_to(map_one)
+            
+                        #Add goups to the layer controls of the individual maps
+                        GroupedLayerControl(
+                        groups={
+                        "AREA OF INTEREST": aoi_grps_o,
+                        "LAYER": [grp_fc_o]
+                            },
+                        exclusive_groups=False,
+                        collapsed=True
+                            ).add_to(map_one)
+                    
+                        # Save the indivdiual map to html file
+                        map_one.save(os.path.join(self.out_loc, fc+'.html'))
         
             
                 counter += 1
