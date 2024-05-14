@@ -1,15 +1,10 @@
 '''
+This script generates interavtive HTML maps.
 
-This script generates interavtive HTML maps 
-for the AST/UOT.
-
-Update: April 29, 2024.
-
+Update: April 30, 2024.
 '''
 import warnings
 warnings.simplefilter(action='ignore')
-
-
 
 import os
 import timeit
@@ -25,14 +20,13 @@ from branca.element import Template, MacroElement
 import mapstyle
 
 
-
-
 class HTMLGenerator:
     def __init__(self, common_xls, region_xls, status_gdb, out_location):
         self.status_gdb = status_gdb
         self.out_loc = out_location
         self.common_xls = common_xls
         self.region_xls = region_xls
+
 
     def get_input_xlsx(self):
         """returns a dataframe of status input xlsxs """
@@ -47,8 +41,6 @@ class HTMLGenerator:
         df_stat = df_stat.reset_index(drop=True)
         
         return df_stat
-
-
 
 
     def create_map_template(self, title='Placeholder for title',Xcenter=0,Ycenter=0):
@@ -107,6 +99,7 @@ class HTMLGenerator:
         
         # Add logo to the map
         logo_path = (r"W:\lwbc\visr\Workarea\moez_labiadh\MAPS\Logos\BCID_V_key_pms_pos_small_150px.JPG")
+        #logo_path = (r"W:\lwbc\visr\Workarea\moez_labiadh\MAPS\Logos\BCID_V_key_pms_pos_small_150px.JPG")
         b64_content = base64.b64encode(open(logo_path, 'rb').read()).decode('utf-8')
         float_image = FloatImage('data:image/png;base64,{}'.format(b64_content), bottom=3, left=2)
         float_image.add_to(map_obj)
@@ -122,7 +115,6 @@ class HTMLGenerator:
         map_obj.get_root().add_child(style)
         
         return map_obj
-
 
 
     def generate_html_maps(self):
