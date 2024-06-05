@@ -3,10 +3,10 @@
 #
 # Purpose:     This script generates a statusing report based on Aqua Plants Harvest Areas
 #
-# Author:      Moez Labiadh - FCBC, Nanaimo
+# Author:      Moez Labiadh - GeoBC
 #
 # Created:     28-11-2022
-# Updated:
+# Updated:     06-05-2024
 #-------------------------------------------------------------------------------
 
 import warnings
@@ -154,7 +154,7 @@ def generate_report (workspace, df_list, sheet_list,filename):
     writer.close()
     
     
-def run_staus ():
+if __name__ == "__main__":
     """ Runs statusing"""
     print ('Connecting to BCGW.')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
@@ -163,11 +163,11 @@ def run_staus ():
     connection, cursor = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
     print ('Reading tool inputs.')
-    workspace = r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240110_aquaWildPlants_2024_aplics_status'
+    workspace = r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE_2024\20240605_aquaPlants_new_2024_harvestAreas\New 2024 harvest areas\statusing'
     rule_xls = os.path.join(workspace,'statusing_rules.xlsx')
     df_stat = pd.read_excel(rule_xls, 'rules')
     df_stat.fillna(value='nan',inplace=True)
-    hareas = os.path.join(workspace,'harvest_areas_2024_applics_clean.shp')
+    hareas = os.path.join(workspace,'shapes_5628_5629.shp')
     gdf_hareas = esri_to_gdf (hareas)
     
     sql = load_queries ()
@@ -247,12 +247,8 @@ def run_staus ():
         
     
     print ('\nGenerating the statusing Report.')    
-    filename = 'aquaPlants_wild_2024_Applics_statusing'
+    filename = 'aquaPlants_wild_2024_Applics_statusing_5628_5629'
     df_list = list(results.values())
     sheet_list = list(results.keys())
     generate_report (workspace, df_list, sheet_list,filename)
-    
 
-run_staus ()
-
-            
