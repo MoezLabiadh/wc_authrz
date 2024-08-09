@@ -15,8 +15,8 @@
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     24-11-2023
-# Updated:     
+# Created:     2023-11-24
+# Updated:     2024-08-09
 #-------------------------------------------------------------------------------
 
 
@@ -204,19 +204,26 @@ def process_ledgers(f_eug,f_new):
 
 
 def modify_applic_types(gdf_wapp):
-    """Add prefixes to Applications types - for mapping purposes"""
-    dict = {'Water Licence - Surface': '1-Water Licence - Surface', 
-            'Water Licence - Ground' : '2-Water Licence - Ground',
-            'Amendment - Surface'    : '3-Amendment - Surface',
-            'Amendment - Ground'     : '4-Amendment - Ground',
-            'Amendment - Ground / Surface': '5-Amendment - Ground / Surface',
-            'Abandon - Surface': '6-Abandon - Surface',
-            'Abandon - Ground': '7-Abandon - Ground',
-            'Existing Use - Groundwater': '8-Existing Use - Groundwater',
-            }
-
-    df['APPLICATION_TYPE'] = df['APPLICATION_TYPE'].replace(dict)
+    """Modifies Applications type labels - for mapping purposes"""
     
+    mapping_dict = {
+        'Water Licence - Surface': '1-Water Licences', 
+        'Water Licence - Ground': '1-Water Licences',
+        'Amendment - Surface': '2-Amendments',
+        'Amendment - Ground': '2-Amendments',
+        'Amendment - Ground / Surface': '2-Amendments',
+        'Abandon - Surface': '3-Abandoned',
+        'Abandon - Ground': '3-Abandoned',
+        'Existing Use - Groundwater': '4-Existing Use - Groundwater',
+    }
+
+    gdf_wapp['APPLICATION_TYPE_LABEL'] = gdf_wapp['APPLICATION_TYPE'].replace(mapping_dict)
+    
+    # Reorder columns to place APPLICATION_TYPE_LABEL just after APPLICATION_TYPE
+    columns = list(gdf_wapp.columns)
+    app_type_index = columns.index('APPLICATION_TYPE')
+    columns.insert(app_type_index + 1, columns.pop(columns.index('APPLICATION_TYPE_LABEL')))
+    gdf_wapp = gdf_wapp[columns]
 
     return gdf_wapp
 
@@ -417,26 +424,27 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     pip_lyr.add_to(pip_group)
     pip_group.add_to(m) 
     
+    
     # Add water applications
     cols = list(gdf_wapp.columns.drop('geometry'))
     
     cmap= {
-        '1-Water Licence - Surface': '#2874ed',
-        '2-Water Licence - Ground': '#3db31d',
-        '3-Amendment - Surface': '#eb67ca',
-        '4-Amendment - Ground': '#d93b23',
-        '5-Amendment - Ground / Surface': '#eb9e3b',
-        '6-Abandon - Surface': '#be68e3',
-        '7-Abandon - Grounde': '#e0de53',
-        '8-Existing Use - Groundwater': '#8a6c49'}
+        '1-Water Licences': '#2874ed',
+        '2-Amendments': '#eb9e3b',
+        '3-Abandoned': '#be68e3',
+        '4-Existing Use - Groundwater': '#8a6c49'}
 
-    gdf_wapp['color']= gdf_wapp['APPLICATION_TYPE'].map(cmap)
+    gdf_wapp['color']= gdf_wapp['APPLICATION_TYPE_LABEL'].map(cmap)
     
-    wapp_group= folium.FeatureGroup(name='Water Applications')
+
+    wapp_lyr = folium.GeoJson(data=gdf_wapp)
+    '''
+    # all water applications
+    wapp_group= folium.FeatureGroup(name='Water Applications - ALL', show=False)
     wapp_lyr = folium.GeoJson(
         data=gdf_wapp,
-        name='Water Applications',
-        marker=folium.Circle(radius=5),
+        name='Water Applications - ALL',
+        marker=folium.Circle(radius=0),
         style_function= lambda x: {'fillColor': x['properties']['color'],
                                    'color': x['properties']['color'],
                                    'weight': 5},
@@ -445,9 +453,78 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     wapp_lyr.add_to(wapp_group)
     wapp_group.add_to(m)
     
+    '''
+    
+    #1-water licences
+    gdf_wapp_lic= gdf_wapp[gdf_wapp['APPLICATION_TYPE_LABEL']== '1-Water Licences']
+    wapp_lic_group= folium.FeatureGroup(name='Water Licences')
+    wapp_lic_lyr = folium.GeoJson(
+        data=gdf_wapp_lic,
+        name='Water Licences',
+        marker=folium.Circle(radius=5),
+        style_function= lambda x: {'fillColor': x['properties']['color'],
+                                   'color': x['properties']['color'],
+                                   'weight': 5},
+        tooltip= folium.features.GeoJsonTooltip(fields=cols, labels=True),
+        popup= folium.features.GeoJsonPopup(fields=cols, sticky=False, max_width=380))
+    
+    wapp_lic_lyr.add_to(wapp_lic_group)
+    wapp_lic_group.add_to(m)
+    
+
+    #2-amendments
+    gdf_wapp_amn= gdf_wapp[gdf_wapp['APPLICATION_TYPE_LABEL']== '2-Amendments']
+    wapp_amn_group= folium.FeatureGroup(name='Amendments')
+    wapp_amn_lyr = folium.GeoJson(
+        data=gdf_wapp_amn,
+        name='Amendments',
+        marker=folium.Circle(radius=5),
+        style_function= lambda x: {'fillColor': x['properties']['color'],
+                                   'color': x['properties']['color'],
+                                   'weight': 5},
+        tooltip= folium.features.GeoJsonTooltip(fields=cols, labels=True),
+        popup= folium.features.GeoJsonPopup(fields=cols, sticky=False, max_width=380))
+    
+    wapp_amn_lyr.add_to(wapp_amn_group)
+    wapp_amn_group.add_to(m)    
+    
+
+    #3-abandoned
+    gdf_wapp_abd= gdf_wapp[gdf_wapp['APPLICATION_TYPE_LABEL']== '3-Abandoned']
+    wapp_abd_group= folium.FeatureGroup(name='Abandoned')
+    wapp_abd_lyr = folium.GeoJson(
+        data=gdf_wapp_abd,
+        name='Abandoned',
+        marker=folium.Circle(radius=5),
+        style_function= lambda x: {'fillColor': x['properties']['color'],
+                                   'color': x['properties']['color'],
+                                   'weight': 5},
+        tooltip= folium.features.GeoJsonTooltip(fields=cols, labels=True),
+        popup= folium.features.GeoJsonPopup(fields=cols, sticky=False, max_width=380))
+    
+    wapp_abd_lyr.add_to(wapp_abd_group)
+    wapp_abd_group.add_to(m)     
+    
+
+    #4-existing use
+    gdf_wapp_eug= gdf_wapp[gdf_wapp['APPLICATION_TYPE_LABEL']== '4-Existing Use - Groundwater']
+    wapp_eug_group= folium.FeatureGroup(name='Existing Use - Groundwater')
+    wapp_eug_lyr = folium.GeoJson(
+        data=gdf_wapp_eug,
+        name='Existing Use - Groundwater',
+        marker=folium.Circle(radius=5),
+        style_function= lambda x: {'fillColor': x['properties']['color'],
+                                   'color': x['properties']['color'],
+                                   'weight': 5},
+        tooltip= folium.features.GeoJsonTooltip(fields=cols, labels=True),
+        popup= folium.features.GeoJsonPopup(fields=cols, sticky=False, max_width=380))
+    
+    wapp_eug_lyr.add_to(wapp_eug_group)
+    wapp_eug_group.add_to(m)     
+    
 
     #Add a heatmap
-    heat_group= folium.FeatureGroup(name='Heatmap of Water applics')
+    heat_group= folium.FeatureGroup(name='Heatmap of Water applications')
     heat_data = [[point.xy[1][0], point.xy[0][0]] for point in gdf_wapp.geometry]
     heat_lyr= HeatMap(heat_data, min_opacity= 0.4,blur= 20)
     heat_lyr.add_to(heat_group)
@@ -471,7 +548,8 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
         fmt='image/png',
         layers='WHSE_WATER_MANAGEMENT.GW_AQUIFERS_CLASSIFICATION_SVW',
         transparent=True,
-        overlay=False)
+        overlay=False,
+        opacity=0.5)
     aq_layer.add_to(aq_group)
     aq_group.add_to(m)
 
@@ -539,7 +617,7 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     #Add Layers Groups
     GroupedLayerControl(
     groups={
-    "WATER APPLICATIONS": [wapp_group, heat_group],
+    "WATER APPLICATIONS": [wapp_lic_group, wapp_amn_group, wapp_abd_group, wapp_eug_group, heat_group],
     "KFN BOUNDARIES": [pip_group, skfn_group],
     "MONITORING STATIONS": [hydr_group, obsw_group],
     "AQUIFERS & WATERSHEDS": [aq_group, ws_group],
@@ -558,16 +636,17 @@ def create_html_map(gdf_skfn, gdf_kfn_pip, gdf_wapp, gdf_hydr, gdf_obsw):
     # Adding style to the map
     m.get_root().add_child(style)
         
+
     #Add Search function
     Search(
-        layer=wapp_lyr,
+        layer=wapp_eug_lyr,
         geom_type="Point",
-        placeholder="Search Water Applications by Unique ID",
+        placeholder="Search Water Application by Unique ID",
         search_label="UNIQUE_ID",
         weight=3,
     ).add_to(m)
-    
 
+    
     #Create a Map info box
     title_txt1= 'KFN Water Pilot Project'
     title_txt2= 'Water Applications within KFN territory'
@@ -666,9 +745,8 @@ if __name__ == '__main__':
     start_t = timeit.default_timer() #start time
         
     print ('\nProcessing input water ledgers')
-    out_wks= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow'
-    in_gdb= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\KFN_waterPilot_proj.gdb'
-    #in_ldgrs= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20231110_komoks_waterPilot_proj_workflow\ledgers'
+    out_wks= r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240809_komoks_waterPilot_proj_workflow_UPDATED'
+    in_gdb= r'W:\lwbc\visr\Workarea\moez_labiadh\DATASETS\WaterAuth\KFN_waterPilot_proj.gdb'
     
     in_wap_ldgr= r'\\sfp.idir.bcgov\S140\S40133\WaterStewardship_Share\WSD\Allocation\Application Database'
     in_eug_ldgr= r'\\sfp.idir.bcgov\S164\S63087\Share\FrontCounterBC\Logs'
@@ -688,6 +766,7 @@ if __name__ == '__main__':
     gdf_kfn_pip= prepare_geo_data(os.path.join(in_gdb, 'kfn_consultation_area'))
     
     df= filter_kfn(df, gdf_wapp, gdf_kfn_pip)
+
 
     print ('\nAdding Aquifer info')
     try:
@@ -718,6 +797,7 @@ if __name__ == '__main__':
     gdf_mnaq= prepare_geo_data(os.path.join(in_gdb, 'aquifers_obs_well'))
     df= add_mntrd_aqfr_info (df, gdf_wapp, gdf_mnaq)
 
+
     print ('\nExporting results')
     out_path = create_dir (out_wks, 'OUTPUTS')
     #spatial_path = create_dir (out_path, 'SPATAL')
@@ -728,7 +808,10 @@ if __name__ == '__main__':
     xls_name= f'{today}_KFN_waterPilot_report.xlsx' 
     map_name= f'{today}_KFN_waterPilot_map.html' 
     
-    df_dict={}
+    print('...Export the table')
+    df_dict={
+        'Water Applics - KFN territory': df
+        }
     xlsx_path= os.path.join(out_path, xls_name)
     make_xlsx(df_dict, xlsx_path)
     
@@ -736,6 +819,7 @@ if __name__ == '__main__':
     #export_shp (gdf_wapp, spatial_path, filename)
     
     # Create the html map
+    print('...Export the html map')
     gdf_wapp= wapp_to_gdf(df)
     gdf_wapp= modify_applic_types(gdf_wapp)
     
