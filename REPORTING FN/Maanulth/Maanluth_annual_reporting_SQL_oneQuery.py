@@ -270,8 +270,8 @@ def generate_report (workspace, df_list, sheet_list,filename):
 def execute_process():    
     start_t = timeit.default_timer() #start time
     
-    workspace= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20230815_maanulth_reporting_2023\sep26'
-    fiscal= 2023    
+    workspace= r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240809_maanulth_reporting_2024'
+    fiscal= 2024    
         
     print ('\nConnecting to BCGW...')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
@@ -300,7 +300,7 @@ def execute_process():
     gdf_tn.drop(columns=['LANDSCAPE_UNIT','OVERLAP_IHA', 'IHA_ID'], inplace= True)
     gdf_tn.rename(columns={'INTRID_SID': 'PARCEL_ID'}, inplace=True)
     
-    indNat_fc= r'\\spatialfiles.bcgov\Work\lwbc\visr\Workarea\moez_labiadh\DATASETS\Maa-nulth.gdb\PreTreatyFirstNationAreas'
+    indNat_fc= r'W:\lwbc\visr\Workarea\moez_labiadh\DATASETS\Maa-nulth.gdb\PreTreatyFirstNationAreas'
     df_nat= get_FN_overlaps(gdf_tn, indNat_fc)
     
     print ("\nCleaning up results...")
