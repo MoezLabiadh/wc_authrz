@@ -10,8 +10,8 @@
 #
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
-# Created:     26-09-2023
-# Updated:     26-09-2023
+# Created:     2023-09-26
+# Updated:     2024-08-16
 #-------------------------------------------------------------------------------
 
 
@@ -264,13 +264,13 @@ def generate_report (workspace, df_list, sheet_list,filename):
             'total_row': True,
             'columns': col_names})
 
-    writer.save()
+    writer.close()
     
 
-def execute_process():    
+if __name__ == "__main__": 
     start_t = timeit.default_timer() #start time
     
-    workspace= r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240809_maanulth_reporting_2024'
+    workspace= r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240809_maanulth_reporting_2024\aug16'
     fiscal= 2024    
         
     print ('\nConnecting to BCGW...')
@@ -375,6 +375,3 @@ def execute_process():
     mins = int (t_sec/60)
     secs = int (t_sec%60)
     print ('\nProcessing Completed in {} minutes and {} seconds'.format (mins,secs)) 
-
-
-execute_process()
