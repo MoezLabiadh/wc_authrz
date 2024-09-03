@@ -8,7 +8,7 @@
 #              (2) Reporting Year (e.g 2023)
 #              (3) Workspace (folder) where outputs will be generated.
 #
-# Author:      Moez Labiadh - FCBC, Nanaimo
+# Author:      Moez Labiadh - GeoBC
 #
 # Created:     2023-09-26
 # Updated:     2024-08-16
