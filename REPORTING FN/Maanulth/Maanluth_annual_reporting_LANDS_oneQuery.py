@@ -11,7 +11,7 @@
 # Author:      Moez Labiadh - GeoBC
 #
 # Created:     2023-09-26
-# Updated:     2024-08-16
+# Updated:     2024-09-03
 #-------------------------------------------------------------------------------
 
 
@@ -220,8 +220,8 @@ def calculate_stats (df):
 def generate_spatial_files(gdf, workspace, year):
     """Generate a Shapefile of Tenures"""
 
-    shp_name = os.path.join(workspace, 'maan_report_{}_shapes.shp'.format(str(year)))
-    kml_name = os.path.join(workspace, 'maan_report_{}_shapes.kml'.format(str(year)))
+    shp_name = os.path.join(workspace, f'maan_report_{str(year)}_shapes.shp')
+    kml_name = os.path.join(workspace, f'maan_report_{str(year)}_shapes.kml')
     #if not os.path.isfile(shp_name):
         
     for col in gdf.columns:
@@ -229,6 +229,19 @@ def generate_spatial_files(gdf, workspace, year):
             gdf[col] = gdf[col].astype(str)
              
     gdf.to_file(shp_name, driver="ESRI Shapefile")
+    
+    #generate seperte shapefiles for each tenure nbr
+    files= gdf['FILE_NBR'].to_list()
+    for file in files:
+        gdf_f= gdf[gdf['FILE_NBR']== file]
+        
+        
+        shps_folder = os.path.join(workspace, 'shapefiles')
+        os.makedirs(shps_folder, exist_ok=True)
+        
+        shp_f_name= os.path.join(shps_folder, f'maan_report_{str(year)}_file{file}.shp'.format(str(year)))
+        gdf_f.to_file(shp_f_name, driver="ESRI Shapefile")
+    
     
     gdf = gdf.to_crs(4326)    
     
@@ -270,7 +283,7 @@ def generate_report (workspace, df_list, sheet_list,filename):
 if __name__ == "__main__": 
     start_t = timeit.default_timer() #start time
     
-    workspace= r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240809_maanulth_reporting_2024\aug16'
+    workspace= r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240809_maanulth_reporting_2024\sep03'
     fiscal= 2024    
         
     print ('\nConnecting to BCGW...')
