@@ -6,7 +6,7 @@
 # Author:      Moez Labiadh - GeoBC
 #
 # Created:     28-11-2022
-# Updated:     06-05-2024
+# Updated:     19-09-2024
 #-------------------------------------------------------------------------------
 
 import warnings
@@ -150,7 +150,7 @@ def generate_report (workspace, df_list, sheet_list,filename):
             'total_row': True,
             'columns': col_names})
 
-    writer.save()
+    #writer.save()
     writer.close()
     
     
@@ -163,11 +163,11 @@ if __name__ == "__main__":
     connection, cursor = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
     print ('Reading tool inputs.')
-    workspace = r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE_2024\20240605_aquaPlants_new_2024_harvestAreas\New 2024 harvest areas\statusing'
+    workspace = r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240919_wildPlants_harvest_statusing2025'
     rule_xls = os.path.join(workspace,'statusing_rules.xlsx')
     df_stat = pd.read_excel(rule_xls, 'rules')
     df_stat.fillna(value='nan',inplace=True)
-    hareas = os.path.join(workspace,'shapes_5628_5629.shp')
+    hareas = os.path.join(workspace,'20240919_1313_status_shapes_2025.shp')
     gdf_hareas = esri_to_gdf (hareas)
     
     sql = load_queries ()
@@ -241,13 +241,14 @@ if __name__ == "__main__":
             df_res = df_res.groupby(['HARVEST_AREA','CNSLTN_AREA_NAME','CONTACT_ORGANIZATION_NAME'], 
                                     as_index=False)['OVERLAP_AREA_HA'].agg('sum')
         if df_res.shape [0] < 1:
-            df_res = df_res.append({'HARVEST_AREA' : 'NO OVERLAPS FOUND!'}, ignore_index=True)
+            new_row = pd.DataFrame({'HARVEST_AREA': ['NO OVERLAPS FOUND!']})
+            df_res = pd.concat([df_res, new_row], ignore_index=True)
         
         results[name] =  df_res  
         
     
     print ('\nGenerating the statusing Report.')    
-    filename = 'aquaPlants_wild_2024_Applics_statusing_5628_5629'
+    filename = 'aquaPlants_wild_2025_Applics_statusing'
     df_list = list(results.values())
     sheet_list = list(results.keys())
     generate_report (workspace, df_list, sheet_list,filename)
