@@ -282,14 +282,16 @@ def generate_report (workspace, df_list, sheet_list,filename):
 
 if __name__ == "__main__": 
     start_t = timeit.default_timer() #start time
-    
+
+    ############################ CHANGE WORKSPACE AND REPORTING YEAR ########################################
     workspace= r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240809_maanulth_reporting_2024\sep03'
-    fiscal= 2024    
+    fiscal= 2024  
+    ############################ CHANGE WORKSPACE AND REPORTING YEAR ########################################
         
     print ('\nConnecting to BCGW...')
     hostname = 'bcgw.bcgov/idwprod1.bcgov'
-    bcgw_user = os.getenv('bcgw_user')
-    bcgw_pwd = os.getenv('bcgw_pwd')
+    bcgw_user = os.getenv('bcgw_user')     #################### REPLACE WITH BCGW CREDENTIALS ###################          
+    bcgw_pwd = os.getenv('bcgw_pwd')       #################### REPLACE WITH BCGW CREDENTIALS ################### 
     connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
     print ("\nRunning SQL queries...")
