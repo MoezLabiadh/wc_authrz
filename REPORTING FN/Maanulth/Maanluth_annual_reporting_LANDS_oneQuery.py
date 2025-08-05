@@ -284,8 +284,8 @@ if __name__ == "__main__":
     start_t = timeit.default_timer() #start time
 
     ############################ CHANGE WORKSPACE AND REPORTING YEAR ########################################
-    workspace= r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240809_maanulth_reporting_2024\sep03'
-    fiscal= 2024  
+    workspace= r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20250805_maanulth_reporting_2025'
+    fiscal= 2025  
     ############################ CHANGE WORKSPACE AND REPORTING YEAR ########################################
         
     print ('\nConnecting to BCGW...')
@@ -315,7 +315,7 @@ if __name__ == "__main__":
     gdf_tn.drop(columns=['LANDSCAPE_UNIT','OVERLAP_IHA', 'IHA_ID'], inplace= True)
     gdf_tn.rename(columns={'INTRID_SID': 'PARCEL_ID'}, inplace=True)
     
-    indNat_fc= r'W:\lwbc\visr\Workarea\moez_labiadh\DATASETS\Maa-nulth.gdb\PreTreatyFirstNationAreas'
+    indNat_fc= r'W:\lwbc\visr\Workarea\moez_labiadh\DATASETS\Maa-nulth.gdb\PreTreatyFirstNationAreas'   #### PATH TO MAANLUTH INDIVIDUAL NATIONS BOUNDARIES ####
     df_nat= get_FN_overlaps(gdf_tn, indNat_fc)
     
     print ("\nCleaning up results...")
