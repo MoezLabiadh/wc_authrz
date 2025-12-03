@@ -5,27 +5,28 @@
 #
 # Author:      Moez Labiadh - GeoBC
 #
-# Created:     28-11-2022
-# Updated:     19-09-2024
+# Created:     2022-11-28
+# Updated:     2025-12-03
 #-------------------------------------------------------------------------------
 
 import warnings
 warnings.simplefilter(action='ignore')
 
 import os
-import cx_Oracle
+import oracledb
 import pandas as pd
 import geopandas as gpd
 from shapely import wkb
 import zipfile
 import tempfile
 from pathlib import Path
+from datetime import datetime
 
 
 def connect_to_DB (username,password,hostname):
     """ Returns a connection and cursor to Oracle database"""
     try:
-        connection = cx_Oracle.connect(username, password, hostname, encoding="UTF-8")
+        connection = oracledb.connect(user=username, password=password, dsn=hostname)
         cursor = connection.cursor()
         print  ("....Successffuly connected to the database")
     except:
@@ -212,7 +213,9 @@ def get_geom_colname (connection,cursor,table,geomQuery):
 
 def generate_report (workspace, df_list, sheet_list,filename):
     """ Exports dataframes to multi-tab excel spreasheet"""
-    outfile= os.path.join(workspace, filename + '.xlsx')
+    # Add timestamp to filename
+    timestamp = datetime.now().strftime('%Y%m%d_')
+    outfile= os.path.join(workspace, timestamp + filename + '.xlsx')
 
     writer = pd.ExcelWriter(outfile,engine='xlsxwriter')
 
@@ -306,7 +309,7 @@ if __name__ == "__main__":
                 
                 query = sql ['intersect_wkb'].format(cols=cols,tab=table,
                                                      def_query=def_query, geom_col=geom_col)
-                cursor.setinputsizes(wkb_aoi=cx_Oracle.BLOB)
+                cursor.setinputsizes(wkb_aoi=oracledb.DB_TYPE_BLOB)
                 bvars = {'wkb_aoi':wkb_aoi,'srid':srid}
                 df = read_query(connection,cursor,query,bvars)
            
@@ -351,4 +354,3 @@ if __name__ == "__main__":
     df_list = list(results.values())
     sheet_list = list(results.keys())
     generate_report (workspace, df_list, sheet_list,filename)
-
