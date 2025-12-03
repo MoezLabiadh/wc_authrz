@@ -17,6 +17,9 @@ import cx_Oracle
 import pandas as pd
 import geopandas as gpd
 from shapely import wkb
+import zipfile
+import tempfile
+from pathlib import Path
 
 
 def connect_to_DB (username,password,hostname):
@@ -58,6 +61,89 @@ def esri_to_gdf (aoi):
         raise Exception ('Format not recognized. Please provide a shp or featureclass (gdb)!')
     
     return gdf
+
+
+def combine_kmz_kml(folder_path):
+    """
+    Combines all KMZ and KML files in a folder and return a geodataframe
+    """
+    gdfs = []
+    temp_dir = tempfile.mkdtemp()
+    
+    try:
+        # Get all KMZ and KML files in the folder
+        kmz_files = list(Path(folder_path).glob('*.kmz'))
+        kml_files = list(Path(folder_path).glob('*.kml'))
+        
+        all_files = kmz_files + kml_files
+        
+        if not all_files:
+            raise Exception(f"No KMZ or KML files found in {folder_path}")
+        
+        print(f"..Found {len(all_files)} KMZ/KML files to process")
+        
+        for file_path in all_files:
+            print(f"...Processing: {file_path.name}")
+            
+            if file_path.suffix.lower() == '.kmz':
+                # Extract KMZ to temporary directory
+                with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+                
+                # Find KML file in extracted contents
+                kml_path = None
+                for root, dirs, files in os.walk(temp_dir):
+                    for file in files:
+                        if file.endswith('.kml'):
+                            kml_path = os.path.join(root, file)
+                            break
+                    if kml_path:
+                        break
+                
+                if kml_path:
+                    gdf = gpd.read_file(kml_path, driver='KML')
+                else:
+                    print(f"Warning: No KML found in {file_path.name}, skipping")
+                    continue
+            else:
+                # Read KML directly
+                gdf = gpd.read_file(file_path, driver='KML')
+            
+            # Add source file name as harvest_ar
+            gdf['harvest_ar'] = file_path.stem
+            
+            # Reproject to BC Albers (EPSG:3005) if needed
+            if gdf.crs is None:
+                print(f"Warning: No CRS found for {file_path.name}, assuming WGS84")
+                gdf.set_crs(epsg=4326, inplace=True)
+            
+            if gdf.crs.to_epsg() != 3005:
+                gdf = gdf.to_crs(epsg=3005)
+            
+            gdfs.append(gdf)
+        
+        if not gdfs:
+            raise Exception("No valid geodata could be read from the files")
+        
+        # Combine all geodataframes
+        combined_gdf = pd.concat(gdfs, ignore_index=True)
+        
+        # Keep only geometry and harvest_ar columns
+        cols_to_keep = ['geometry', 'harvest_ar']
+        combined_gdf = combined_gdf[cols_to_keep]
+        
+        print(f"..Successfully combined {len(gdfs)} files")
+        
+        # Dissolve polygons by harvest_ar
+        dissolved_gdf = combined_gdf.dissolve(by='harvest_ar', as_index=False)
+        
+        return dissolved_gdf
+        
+    finally:
+        # Clean up temporary directory
+        import shutil
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
 
 
 def multipart_to_singlepart(gdf):
@@ -163,18 +249,31 @@ if __name__ == "__main__":
     connection, cursor = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     
     print ('Reading tool inputs.')
-    workspace = r'W:\lwbc\visr\Workarea\moez_labiadh\WORKSPACE\20240919_wildPlants_harvest_statusing2025'
+    workspace = r'W:\srm\gss\sandbox\mlabiadh\workspace\20251202_aquaculture_wild_harvest_statusing'
     rule_xls = os.path.join(workspace,'statusing_rules.xlsx')
     df_stat = pd.read_excel(rule_xls, 'rules')
     df_stat.fillna(value='nan',inplace=True)
-    hareas = os.path.join(workspace,'20240919_1313_status_shapes_2025.shp')
-    gdf_hareas = esri_to_gdf (hareas)
+
+
+   # Check if KMZ folder should be used. if not, use a shapefile
+    kmz_folder = r'W:\srm\gss\authorizations\wildlife\2025\wild_harvest_statusing\Harvest+area+maps\Harvest area maps'
+
+    use_kmz = True  # Set to False to use a shapefile instead
     
+    if use_kmz and os.path.exists(kmz_folder):
+        print(f'\nProcessing KMZ/KML files from folder...')
+        gdf_hareas = combine_kmz_kml(kmz_folder)
+    else:
+        print('\nUsing existing shapefile...')
+        hareas = os.path.join(workspace,'20240919_1313_status_shapes_2025.shp')
+        gdf_hareas = esri_to_gdf(hareas)
+    
+    id_col = 'harvest_ar'
+    hareas = gdf_hareas[id_col].tolist()
+    
+    print ('\nRunning Analysis.')
     sql = load_queries ()
-    
-    hareas = gdf_hareas['harvest_ar'].tolist()
-    
-    print ('Running Analysis.')
+
     results = {} 
     c_names = 1
     for index, row in df_stat.iterrows(): 
@@ -194,7 +293,7 @@ if __name__ == "__main__":
         dfs = []
         for harea in hareas:
             print (".....working on Harvest Area {} of {}: {}".format (c_ha, str(len(hareas)), harea))
-            gdf_ha = gdf_hareas.loc[gdf_hareas['harvest_ar'] == harea]
+            gdf_ha = gdf_hareas.loc[gdf_hareas[id_col] == harea]
             
             if gdf_ha.shape[0] > 1:
                 gdf_ha =  multipart_to_singlepart(gdf_ha) 
