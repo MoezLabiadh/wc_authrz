@@ -15,7 +15,7 @@
 # Author:      Moez Labiadh - FCBC, Nanaimo
 #
 # Created:     2024-05-01
-# Updated:     2024-09-04
+# Updated:     2026-05-04
 #-------------------------------------------------------------------------------
 
 import warnings
@@ -171,6 +171,7 @@ def import_titan (tnt_f):
             
     df.loc[df['PURPOSE'] == 'AQUACULTURE', 'DISTRICT OFFICE'] = 'AQUACULTURE'
     df.loc[df['DISTRICT OFFICE'] == 'COURTENAY', 'DISTRICT OFFICE'] = 'AQUACULTURE'
+    df.loc[df['DISTRICT OFFICE'] == 'AT HUB', 'DISTRICT OFFICE'] = 'NANAIMO'
     df['DISTRICT OFFICE'] = df['DISTRICT OFFICE'].fillna(value='NANAIMO')
     
     return df
@@ -178,6 +179,22 @@ def import_titan (tnt_f):
 
 def calculate_metrics(df , grp_col, mtr_ids):
     """ Calculates Median and Mean metrics and return in df"""
+    offices = ['AQUACULTURE','CAMPBELL RIVER','HAIDA GWAII',
+               'NANAIMO','PORT ALBERNI','PORT MCNEILL']
+
+    unexpected = df.loc[~df[grp_col].isin(offices), grp_col]
+    if not unexpected.empty:
+        bad = unexpected.value_counts(dropna=False).to_dict()
+        print(f"   [WARN] calculate_metrics: dropping rows with unexpected "
+              f"{grp_col} value(s): {bad}")
+        fn_col = 'FILE NUMBER' if 'FILE NUMBER' in df.columns else (
+                 'File Number' if 'File Number' in df.columns else None)
+        if fn_col is not None:
+            files = (df.loc[~df[grp_col].isin(offices), fn_col]
+                       .dropna().unique().tolist())
+            print(f"   [WARN] affected {fn_col}s: {files}")
+        df = df.loc[df[grp_col].isin(offices)].copy()
+
     df_mtrs = []
     for mtr_id in mtr_ids:
         df_mtr = df.groupby(grp_col)[[mtr_id]].agg(['median', 'mean'])
@@ -1227,7 +1244,7 @@ if __name__ == "__main__":
     bcgw_pwd = os.getenv('bcgw_pwd')
     connection = connect_to_DB (bcgw_user,bcgw_pwd,hostname)
     '''
-    wks= r'W:\lwbc\visr\Workarea\moez_labiadh\FILE_TRACKING'
+    wks= r'W:\srm\gss\sandbox\mlabiadh\authorizations\FILE_TRACKING'
     
     # The first day of previous month. Will be used to calculate Metrics
     today = date.today()
@@ -1240,6 +1257,8 @@ if __name__ == "__main__":
     print ('\nImporting Input files')
     
     ats_date_tag= first_day_month.strftime("%Y%m%d")
+    #ats_date_tag= '20250601'
+    
     print('...TITAN workledger spreadsheet')
     tnt_f = os.path.join(wks,'00_INPUTS/TITAN_RPT009.xlsx')
     df_tnt = import_titan (tnt_f)
@@ -1417,4 +1436,3 @@ if __name__ == "__main__":
     
     readme_xlsx= os.path.join(wks,'00_TEMPLATE/readme_template.xlsx')
     add_readme_page(readme_xlsx, out_folder, outfile_main_rpt)
-    
